@@ -1,0 +1,38 @@
+{
+  "accountCommitment": {
+    "alg": 1,
+    "direction": "Received",
+    "idx": [
+      {
+        "end": 119,
+        "start": 103
+      }
+    ],
+    "valueLength": 32
+  },
+  "bodyFields": [
+    "cert_commitment",
+    "connection_info",
+    "extensions",
+    "server_ephemeral_key",
+    "transcript_commitments",
+    "verifying_key"
+  ],
+  "commitmentFieldKeys": [
+    "data",
+    "id"
+  ],
+  "commitmentVariants": [
+    "Hash"
+  ],
+  "plaintextHashKeys": [
+    "direction",
+    "hash",
+    "idx"
+  ],
+  "tlsnTag": "v0.1.0-alpha.15",
+  "typedHashKeys": [
+    "alg",
+    "value"
+  ]
+}

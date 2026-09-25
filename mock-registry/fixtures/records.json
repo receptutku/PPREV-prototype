@@ -1,0 +1,23 @@
+{
+  "accounts": [
+    { "id": "ACC-000000000001", "password": "owner-one" },
+    { "id": "ACC-000000000002", "password": "owner-two" },
+    { "id": "ACC-000000000003", "password": "tenant" }
+  ],
+  "records": [
+    {
+      "propertyId": "TR-06-CANKAYA-000123",
+      "owners": ["ACC-000000000001", "ACC-000000000002"],
+      "encumbrance": "N",
+      "assessedValue": "000000012500000",
+      "recordDate": "2026-09-24"
+    },
+    {
+      "propertyId": "TR-34-KADIKOY-004567",
+      "owners": ["ACC-000000000002"],
+      "encumbrance": "Y",
+      "assessedValue": "000000030750000",
+      "recordDate": "2025-11-03"
+    }
+  ]
+}

@@ -1,14 +1,19 @@
 # PPREV prototype
 
 Prototype of PPREV, a protocol that verifies real estate transactions over notarised registry data.
-This repository currently holds the on-chain enforcement layer (`contracts/`) and its test suite.
+This repository holds the on-chain enforcement layer (`contracts/`) and the attested-submission
+session over a local registry (`mock-registry/`, `offchain/`), each with its test suite.
 
 ## Layout
 
 ```
-contracts/      Foundry project: PPREV contract, ECDSA notary verifier, tests, vector script
-test-vectors/   EIP-712 and C_tx vectors shared with the off-chain components
-script/         Helper scripts (Table VI coverage report)
+contracts/        Foundry project: PPREV contract, ECDSA notary verifier, tests, vector script
+mock-registry/    Local HTTPS title registry with a fixed-layout response
+offchain/crates/  pprev-types (layout), pprev-notary (MPC-TLS notary, presentation checks),
+                  pprev-prover (registry login, MPC-TLS session, commitments, presentation)
+policies/         Response layout of the title registry
+test-vectors/     EIP-712 and C_tx vectors shared with the off-chain components
+script/           Helper scripts (Table VI coverage report)
 ```
 
 ## Toolchain
@@ -16,6 +21,7 @@ script/         Helper scripts (Table VI coverage report)
 - solc 0.8.36, optimizer enabled with 200 runs, via-IR disabled, EVM target `cancun`,
   `bytecode_hash = "ipfs"` (see `contracts/foundry.toml`)
 - Foundry 1.8.3, forge-std v1.16.2 (git submodule)
+- Rust 1.98.1 (`rust-toolchain.toml`), TLSNotary `tlsn` v0.1.0-alpha.15 (git tag), MPC mode
 
 ## Build and test
 
@@ -46,6 +52,34 @@ written):
 
 ```
 cd contracts && forge script script/GenVectors.s.sol
+```
+
+## Attested session (off-chain)
+
+The prover logs in to the mock registry, runs an MPC-TLS session with the notary for one title
+request, and commits with SHA-256 to byte ranges of the fixed-layout response. The presentation opens
+the request line, the response status line, the `Content-Type` header, and the JSON keys; the
+`account`, `owners`, and `propertyId` values stay committed and hidden. The notary signs its own clock
+into the attestation as the `pprev.t_att` extension. TLSNotary's MPC mode supports TLS 1.2 with
+`TLS_ECDHE_{ECDSA,RSA}_WITH_AES_128_GCM_SHA256` over secp256r1, so the registry serves exactly that.
+
+```
+cargo test --release --workspace
+```
+
+`offchain/crates/pprev-prover/tests/gate.rs` checks that the notary's signature binds the direction,
+index set, and hash of every commitment, that the committed bytes are the bytes the registry sent, and
+that the verifier reads the hidden index sets. `pprev_notary::attested_commitments` reads the commitments
+from tlsn's serialised attestation body, because v0.1.0-alpha.15 keeps the accessor crate-private; the
+golden test `g3_attestation_body_layout_matches_golden` fails if a tlsn update changes that layout.
+TLSNotary v0.1.0-alpha.15 has an intermittent deadlock in MPC preprocessing (upstream pull request
+[tlsnotary/tlsn#1173](https://github.com/tlsnotary/tlsn/pull/1173), open). The prover bounds
+preprocessing (30 s by default) and retries with a new session up to three times, logging each retry;
+the notary cuts a session that exceeds its preprocessing or session bound. The clock-shift tests run the prover under libfaketime
+(`brew install libfaketime` on macOS) and are ignored by default:
+
+```
+cargo test --release -p pprev-prover --test time -- --include-ignored
 ```
 
 ## Notation
@@ -83,6 +117,9 @@ Code follows Solidity naming conventions. The table maps the paper's notation to
 | $\tau_{\mathsf{lock}}$ | `TAU_LOCK` (seconds) |
 | $\mathsf{maxExpirations}$ | `MAX_EXPIRATIONS` |
 | $\rho$ | `RHO` (basis points) |
+| $t_{\mathsf{att},\psi}$ (source) | notary clock, attestation extension `pprev.t_att` |
+| $\mathsf{prov}_\psi$ | TLSNotary `Attestation`, shown to the policy verifier as a `Presentation` |
+| $\mathsf{record}_R$ fields committed | `account`, `owners`, `propertyId` byte ranges (`pprev_types::ResponseRanges`) |
 
 Undeliverable payouts: every payout made by an algorithm forwards `PAYOUT_GAS` (30,000) gas and copies
 no return data; a payout that fails is credited to its recipient and claimed with `withdraw`.

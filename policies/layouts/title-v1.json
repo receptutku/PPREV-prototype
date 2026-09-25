@@ -1,0 +1,14 @@
+{
+  "id": "title-v1",
+  "serverName": "registry.pprev.test",
+  "pathPrefix": "/title/",
+  "statusLine": "HTTP/1.1 200 OK",
+  "contentType": "application/json",
+  "padding": " ",
+  "accountWidth": 16,
+  "propertyIdWidth": 20,
+  "ownerSlots": 4,
+  "encumbranceWidth": 1,
+  "assessedValueWidth": 15,
+  "recordDateWidth": 10
+}

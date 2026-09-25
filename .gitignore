@@ -3,3 +3,4 @@ PLAN.md
 .claude/
 .DS_Store
 .env
+target/
