@@ -40,6 +40,8 @@ alloy-primitives = "1.7"
 alloy-sol-types = "1.7"
 alloy-signer = "2.5"
 alloy-signer-local = "2.5"
+# Provider for the end-to-end Register client; plain HTTP to a local node, so no TLS backend.
+alloy = { version = "2.5", default-features = false, features = ["std", "reqwest", "provider-http", "rpc-types", "signer-local", "sol-types"] }
 # arkworks 0.5 for Groth16, the version light-poseidon (H_c) is built on; tlsn brings 0.4.
 ark-bn254 = "0.5"
 ark-ec = "0.5"

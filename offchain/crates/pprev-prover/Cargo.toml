@@ -7,6 +7,10 @@ publish.workspace = true
 
 [dependencies]
 pprev-types = { workspace = true }
+pprev-notary = { workspace = true }
+alloy = { workspace = true }
+alloy-primitives = { workspace = true }
+rand = { workspace = true }
 tlsn = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
@@ -29,7 +33,5 @@ tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
 mock-registry = { workspace = true }
-pprev-notary = { workspace = true }
 k256 = { workspace = true }
 num-bigint = { workspace = true }
-alloy-primitives = { workspace = true }

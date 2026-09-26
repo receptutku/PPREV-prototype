@@ -1,18 +1,41 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
-use anyhow::Result;
-use clap::Parser;
+use alloy_primitives::{Address, B256, U256};
+use anyhow::{Context, Result};
+use clap::{Args as ClapArgs, Parser, Subcommand};
+use pprev_prover::chain::{RegisterPayload, SubmitOutcome, read_private_key, submit_register};
+use pprev_prover::circuit::CircuitFiles;
+use pprev_prover::register::{self, Outcome, RegisterConfig};
 use pprev_prover::{
     DEFAULT_MAX_RETRIES, DEFAULT_PREPROCESS_TIMEOUT, ProverSetup, login, notarize_with_retries,
     present,
 };
-use pprev_types::Layout;
+use pprev_types::{Layout, PolicyBundle};
 
-/// Logs in to the registry, runs one MPC-TLS session with the notary, and writes the attestation,
-/// its secrets, and the presentation (bincode) to `--out`.
 #[derive(Parser)]
-struct Args {
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    /// Logs in to the registry, runs one MPC-TLS session with the notary, and writes the
+    /// attestation, its secrets, and the presentation (bincode) to `--out`.
+    Notarize(NotarizeArgs),
+    /// Runs Register end to end and writes `record.json` (and `payload.json` once sigma_R is held)
+    /// to `--out`. Exits with an error unless the listing is registered, or signed with
+    /// `--no-submit`.
+    Register(Box<RegisterArgs>),
+    /// Sends the `register` transaction of a payload written by `register` and writes the result as
+    /// JSON to `--out`. Exits with an error unless the transaction is included.
+    Submit(SubmitArgs),
+}
+
+/// Registry session options shared by `notarize` and `register`.
+#[derive(ClapArgs)]
+struct SessionArgs {
     #[arg(long)]
     notary: SocketAddr,
     #[arg(long)]
@@ -20,16 +43,12 @@ struct Args {
     /// Registry CA certificate (DER).
     #[arg(long)]
     ca: PathBuf,
-    #[arg(long, default_value = "policies/layouts/title-v1.json")]
-    layout: PathBuf,
     #[arg(long)]
     account: String,
     #[arg(long)]
     password: String,
     #[arg(long)]
     property: String,
-    #[arg(long)]
-    out: PathBuf,
     #[arg(long, default_value_t = 1024)]
     max_sent: usize,
     #[arg(long, default_value_t = 1024)]
@@ -41,37 +60,113 @@ struct Args {
     preprocess_timeout_secs: u64,
 }
 
+#[derive(ClapArgs)]
+struct NotarizeArgs {
+    #[command(flatten)]
+    session: SessionArgs,
+    #[arg(long, default_value = "policies/layouts/title-v1.json")]
+    layout: PathBuf,
+    #[arg(long)]
+    out: PathBuf,
+}
+
+#[derive(ClapArgs)]
+struct RegisterArgs {
+    #[command(flatten)]
+    session: SessionArgs,
+    /// Policy verifier of the notary.
+    #[arg(long)]
+    verifier: SocketAddr,
+    /// Policy bundle; its paths are relative to `--root`.
+    #[arg(long, default_value = "policies/rental-v1.json")]
+    policy: PathBuf,
+    /// Repository root.
+    #[arg(long, default_value = ".")]
+    root: PathBuf,
+    #[arg(long)]
+    rpc_url: String,
+    /// PPREV contract.
+    #[arg(long)]
+    contract: Address,
+    /// File with the owner's private key (hex).
+    #[arg(long)]
+    key_file: PathBuf,
+    /// txData.amount, in wei.
+    #[arg(long)]
+    amount_wei: U256,
+    /// txData.settlementShare, in basis points.
+    #[arg(long, default_value_t = U256::ZERO)]
+    settlement_share_bps: U256,
+    /// Collateral sent with `register`, in wei.
+    #[arg(long)]
+    collateral_wei: U256,
+    #[arg(long, default_value = "circuits")]
+    circuits: PathBuf,
+    #[arg(long)]
+    out: PathBuf,
+    /// Nonce to use instead of a fresh one.
+    #[arg(long)]
+    eta: Option<B256>,
+    /// `proof.json` to submit instead of the owner's own proof.
+    #[arg(long)]
+    proof_from: Option<PathBuf>,
+    /// Stop after sigma_R; leave the payload in `--out`.
+    #[arg(long)]
+    no_submit: bool,
+}
+
+#[derive(ClapArgs)]
+struct SubmitArgs {
+    #[arg(long)]
+    payload: PathBuf,
+    #[arg(long)]
+    rpc_url: String,
+    /// File with the sender's private key (hex).
+    #[arg(long)]
+    key_file: PathBuf,
+    #[arg(long)]
+    out: PathBuf,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
-    let args = Args::parse();
+    match Cli::parse().command {
+        Command::Notarize(args) => notarize(args).await,
+        Command::Register(args) => register(args).await,
+        Command::Submit(args) => submit(args).await,
+    }
+}
+
+async fn notarize(args: NotarizeArgs) -> Result<()> {
+    let s = args.session;
     let layout = Layout::load(&args.layout)?;
-    let ca = std::fs::read(&args.ca)?;
+    let ca = std::fs::read(&s.ca)?;
     let token = login(
-        args.registry,
+        s.registry,
         &layout.server_name,
         &ca,
-        &args.account,
-        &args.password,
+        &s.account,
+        &s.password,
     )
     .await?;
     let setup = ProverSetup {
         layout,
-        registry_addr: args.registry,
+        registry_addr: s.registry,
         root_certs: vec![ca],
         token,
-        property_id: args.property,
-        max_sent: args.max_sent,
-        max_recv: args.max_recv,
-        preprocess_timeout: std::time::Duration::from_secs(args.preprocess_timeout_secs),
+        property_id: s.property,
+        max_sent: s.max_sent,
+        max_recv: s.max_recv,
+        preprocess_timeout: std::time::Duration::from_secs(s.preprocess_timeout_secs),
     };
-    let notary_addr = args.notary;
+    let notary_addr = s.notary;
     let (notarized, stats) = notarize_with_retries(
         |_attempt| async move { anyhow::Ok(tokio::net::TcpStream::connect(notary_addr).await?) },
         &setup,
-        args.max_retries,
+        s.max_retries,
     )
     .await?;
     println!("notarised in {} attempt(s)", stats.attempts);
@@ -95,4 +190,86 @@ async fn main() -> Result<()> {
         args.out.display()
     );
     Ok(())
+}
+
+fn write_json(path: &std::path::Path, value: &impl serde::Serialize) -> Result<()> {
+    std::fs::write(path, serde_json::to_string_pretty(value)? + "\n")
+        .with_context(|| format!("writing {}", path.display()))
+}
+
+async fn register(args: Box<RegisterArgs>) -> Result<()> {
+    let args = *args;
+    let s = args.session;
+    let policy = PolicyBundle::load(&args.policy)?;
+    let config = RegisterConfig {
+        notary: s.notary,
+        verifier: args.verifier,
+        registry: s.registry,
+        ca_der: std::fs::read(&s.ca).with_context(|| format!("reading {}", s.ca.display()))?,
+        layout: Layout::load(args.root.join(&policy.register.layout))?,
+        policy,
+        account: s.account,
+        password: s.password,
+        property: s.property,
+        rpc_url: args.rpc_url,
+        contract: args.contract,
+        key: read_private_key(&args.key_file)?,
+        amount: args.amount_wei,
+        settlement_share: args.settlement_share_bps,
+        collateral: args.collateral_wei,
+        circuits: CircuitFiles::new(args.root.join(&args.circuits)),
+        out: args.out.clone(),
+        max_sent: s.max_sent,
+        max_recv: s.max_recv,
+        max_retries: s.max_retries,
+        preprocess_timeout: std::time::Duration::from_secs(s.preprocess_timeout_secs),
+        eta: args.eta,
+        proof_from: args.proof_from,
+        submit: !args.no_submit,
+    };
+    let record_path = args.out.join("record.json");
+    let record = match register::run(&config).await {
+        Ok(record) => record,
+        Err(e) => {
+            std::fs::create_dir_all(&args.out)?;
+            write_json(
+                &record_path,
+                &serde_json::json!({ "outcome": "error", "reason": format!("{e:#}") }),
+            )?;
+            return Err(e);
+        }
+    };
+    write_json(&record_path, &record)?;
+    println!(
+        "outcome: {:?}{}",
+        record.outcome,
+        record
+            .reason
+            .as_deref()
+            .map(|r| format!(" ({r})"))
+            .unwrap_or_default()
+    );
+    let expected = if config.submit {
+        Outcome::Registered
+    } else {
+        Outcome::Signed
+    };
+    anyhow::ensure!(record.outcome == expected, "Register did not complete");
+    Ok(())
+}
+
+async fn submit(args: SubmitArgs) -> Result<()> {
+    let text = std::fs::read_to_string(&args.payload)
+        .with_context(|| format!("reading {}", args.payload.display()))?;
+    let payload: RegisterPayload = serde_json::from_str(&text).context("parsing the payload")?;
+    let key = read_private_key(&args.key_file)?;
+    let outcome = submit_register(&args.rpc_url, &key, &payload).await?;
+    write_json(&args.out, &outcome)?;
+    match outcome {
+        SubmitOutcome::Included { tx_hash, .. } => {
+            println!("included: {tx_hash}");
+            Ok(())
+        }
+        SubmitOutcome::Reverted { error } => anyhow::bail!("reverted: {error}"),
+    }
 }

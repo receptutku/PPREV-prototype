@@ -1,0 +1,15 @@
+{
+  "id": "rental-v1",
+  "labels": {
+    "register": "pprev.rental.register",
+    "apply": "pprev.rental.apply",
+    "settle": "pprev.rental.settle"
+  },
+  "register": {
+    "layout": "policies/layouts/title-v1.json",
+    "verificationKey": "circuits/setup/verification_key.json"
+  },
+  "reqEscrowWei": "50000000000000000",
+  "minCollateralWei": "100000000000000000",
+  "maxCollateralWei": "1000000000000000000"
+}

@@ -163,6 +163,7 @@ async fn run_with_prover_clock(offset: &str) -> ShiftedRun {
         move || {
             let child = Command::new(env!("CARGO_BIN_EXE_pprev-prover"))
                 .args([
+                    "notarize",
                     "--notary",
                     &notary_addr.to_string(),
                     "--registry",

@@ -2,8 +2,10 @@
 //! MPC-TLS session with the notary, transcript commitments (D3, D26), attestation, presentation,
 //! and the phi_R witness.
 
+pub mod chain;
 pub mod circuit;
 pub mod login;
+pub mod register;
 pub mod session;
 
 pub use login::login;

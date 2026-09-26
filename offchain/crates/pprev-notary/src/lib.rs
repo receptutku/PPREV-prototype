@@ -14,6 +14,7 @@ pub mod presentation;
 pub mod register;
 pub mod session;
 pub mod sigma;
+pub mod wire;
 
 pub use groth16::{Groth16Proof, Groth16Verifier};
 pub use nonces::NonceStore;
@@ -21,7 +22,7 @@ pub use presentation::{
     Attested, CommittedHash, Expectation, TLSN_CLOCK_TOLERANCE, attested_commitments,
     check_presentation, check_times,
 };
-pub use register::{PolicyVerifier, RegisterPolicy, RegisterRequest};
+pub use register::{PolicyVerifier, RegisterPolicy, RegisterRequest, RegisterTimings};
 pub use session::{
     DEFAULT_PREPROCESS_TIMEOUT, DEFAULT_SESSION_TIMEOUT, NotarizationReport, NotaryConfig,
     SessionCut, notarize,
