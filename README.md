@@ -122,8 +122,8 @@ tool versions, and the machine.
 
 | Result | Command | Record | Recorded value | Time (estimate) | Network |
 |---|---|---|---|---|---|
-| End-to-end Register: TLSNotary session, phi_R proof, notary signature, transaction; five negative cases | `script/e2e_register.sh` | `measurements/e2e_register/20260926T183439Z.json` | 19/19 checks pass | ~3 min | no |
-| Freshness budget of one Register run (t_prove + t_verify + t_sign + t_incl, local chain) | `script/e2e_register.sh` | `measurements/e2e_register/20260926T183439Z.json` | 4,544 ms, 1.51% of Delta = 300 s | ~3 min | no |
+| End-to-end Register: TLSNotary session, phi_R proof, notary signature, transaction; five negative cases | `script/e2e_register.sh` | `measurements/e2e_register/20260926T201218Z.json` | 19/19 checks pass | ~3 min | no |
+| Freshness budget of one Register run (t_prove + t_verify + t_sign + t_incl, local chain) | `script/e2e_register.sh` | `measurements/e2e_register/20260926T201218Z.json` | 3,279 ms, 1.09% of Delta = 300 s | ~3 min | no |
 | phi_R circuit size | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | 119,680 constraints (O2) | ~15 min | no |
 | Proving time t_prove (witness generation + snarkjs), n = 20 | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | 3,311.8 ms (IQR 3,235.9-3,354.5) | ~15 min | no |
 | Policy verifier: t_verify (presentation checks + Groth16) and t_sign | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | t_verify 1.7 ms (IQR 1.6-1.7); Groth16 alone 1.25 ms; t_sign 5.1 ms (IQR 3.7-6.5) | ~15 min | no |
@@ -141,8 +141,8 @@ tool versions, and the machine.
 | L1 gas price snapshot (one day of blocks) | `script/l1_price.sh` | `measurements/l1_price/20260926T194005Z.json` | blocks 26,056,487-26,063,686; base fee 0.075715 gwei, priority fee 0.05 gwei, effective 0.133984 gwei (medians) | ~1 min | yes: ETH_MAINNET_RPC_URL |
 | ETH/USD (Chainlink, one reading, used for L1 and L2) | `script/l1_price.sh` | `measurements/l1_price/20260926T194005Z.json` | $2,685.42 at block 26,063,686 | ~1 min | yes: ETH_MAINNET_RPC_URL |
 | L1 lifecycle cost | `script/l1_price.sh` | `measurements/l1_price/20260926T194005Z.json` | execution $0.194, receipts $0.225; deployment $0.834 | ~1 min | yes: ETH_MAINNET_RPC_URL |
-| On-chain Groth16 verification of phi_R (9 public inputs) | `script/measure_groth16.sh` | `measurements/groth16/20260926T194031Z.json` | 242,098 gas execution; EIP-1108 model 236,350 | ~1 min | no |
-| Lifecycle with three predicate verifications on-chain | `script/measure_groth16.sh` | `measurements/groth16/20260926T194031Z.json` | +726,294 gas, x2.3475 (assumes phi_A, phi_S verified like phi_R) | ~1 min | no |
+| On-chain Groth16 verification of phi_R (9 public inputs) | `script/measure_groth16.sh` | `measurements/groth16/20260926T201202Z.json` | 242,098 gas execution; EIP-1108 model 236,350 | ~1 min | no |
+| Lifecycle with three predicate verifications on-chain | `script/measure_groth16.sh` | `measurements/groth16/20260926T201202Z.json` | +726,294 gas, x2.3475 (assumes phi_A, phi_S verified like phi_R) | ~1 min | no |
 | L2 receipt gas per operation (Base Sepolia) | `script/measure_l2.sh` | `measurements/l2/20260926T195911Z.json` | Register 208,227, Apply 193,736, Engage 113,137, Settle 110,636, Expire 79,991, Reclaim 40,257, Cancel 37,642 | ~4 min | yes: BASE_SEPOLIA_RPC_URL, BASE_MAINNET_RPC_URL, TESTNET_PRIVATE_KEY |
 | L2 cost per operation (Base mainnet prices) | `script/measure_l2.sh` | `measurements/l2/20260926T195911Z.json` | Register $0.0034, Apply $0.0032, Engage $0.0019, Settle $0.0018, Expire $0.0013, Reclaim $0.0007, Cancel $0.0006 | ~4 min | yes: BASE_SEPOLIA_RPC_URL, BASE_MAINNET_RPC_URL, TESTNET_PRIVATE_KEY |
 | L2 lifecycle cost and L1 data share | `script/measure_l2.sh` | `measurements/l2/20260926T195911Z.json` | $0.0103, 1,762 bytes; L1 data 0.12% (per operation 0.07-0.22%) | ~4 min | yes: BASE_SEPOLIA_RPC_URL, BASE_MAINNET_RPC_URL, TESTNET_PRIVATE_KEY |
@@ -175,8 +175,14 @@ the newest L1 record; `measure_l2.sh` also takes ETH/USD from the newest price r
   anvil node; the public-chain figure is the Base Sepolia one of `script/measure_l2.sh`, which is
   the time from sending a transaction until the including block can be read (Base serves
   preconfirmed receipts earlier; the record keeps both times).
-- **Gas schedule**: gas figures follow the Osaka (Fusaka) schedule (`script/measure.sh` pins anvil
-  to it). The Solidity compiler targets cancun.
+- **Gas schedule**: gas figures follow the Osaka (Fusaka) schedule; every script pins anvil to it.
+  The Solidity compiler targets cancun. The first L1 and Groth16 records
+  (`measurements/l1/20260926T190801Z.json`, `measurements/groth16/20260926T194031Z.json`) were taken
+  on anvil's default fork at the time (Bpo1, the same execution gas schedule); their gas values are
+  identical to those of the Osaka records. Both L1 records are kept because the price record computes
+  its dollar figures from the first one, and the L2 record takes its ETH/USD from that price record.
+- **Off-chain record and the fork**: `measure_offchain.sh` ran before the pin, on anvil's default
+  fork; its times do not depend on the fork, since only the local t_incl involves the chain.
 
 ## 7. Known issues
 
