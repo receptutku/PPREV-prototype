@@ -44,7 +44,7 @@ repository can pin them:
 | Foundry (forge, cast, anvil) | 1.8.3 | install with `foundryup --install 1.8.3` |
 | solc | 0.8.36, optimizer 200 runs, via-IR off, EVM cancun | `contracts/foundry.toml` (fetched by forge) |
 | forge-std | v1.16.2 | git submodule |
-| circom | 2.2.3 | install with `cargo install --git https://github.com/iden3/circom --tag v2.2.3 circom` |
+| circom | 2.2.3 | build from source: `git clone --branch v2.2.3 https://github.com/iden3/circom.git`, then `cargo install --path circom` inside it |
 | snarkjs, circomlib | 0.7.6, 2.0.5 | `circuits/package-lock.json` |
 | Node.js | v26.9.0 | `.nvmrc`; the scripts stop on another version (`PPREV_NODE` names a binary) |
 | TLSNotary | v0.1.0-alpha.15 | `Cargo.toml` (git tag), `Cargo.lock` |
