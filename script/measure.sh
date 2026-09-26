@@ -18,6 +18,8 @@ LOG_TAG=l1
 . "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 
 OUT_DIR="${MEASUREMENTS_DIR:?}/l1"
+# Gas figures follow the Osaka (Fusaka) schedule; anvil's default fork can move with its version.
+HARDFORK_PIN=osaka
 PORTS="${ANVIL_PORT:?}"
 
 for tool in anvil forge cast jq lsof python3 git; do
@@ -46,7 +48,7 @@ cp "${MEASURE_DIR}/gas.json" "${WORK}/gas.json"
 
 log "lifecycle on anvil"
 start anvil "${WORK}/anvil.log" anvil --port "${ANVIL_PORT}" --chain-id "${CHAIN_ID}" \
-    --config-out "${WORK}/anvil.json"
+    --hardfork "${HARDFORK_PIN}" --config-out "${WORK}/anvil.json"
 wait_port "${ANVIL_PORT}" anvil "${PIDS[0]}"
 HARDFORK="$(cast rpc anvil_nodeInfo --rpc-url "${RPC}" | jq -r .hardFork)"
 export DEPLOYER_KEY OWNER_KEY APPLICANT_KEY LIFECYCLE_STATE
