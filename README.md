@@ -136,9 +136,11 @@ the same inputs give the same file.
 | Policy verifier: t_verify (presentation checks + Groth16) and t_sign | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | t_verify 1.7 ms (IQR 1.6-1.7); Groth16 alone 1.25 ms; t_sign 5.1 ms (IQR 3.7-6.5) | ~15 min | no |
 | MPC-TLS session with the notary | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | 345.4 ms (IQR 333.0-380.7); 30.2 MB sent, 3.8 MB received | ~15 min | no |
 | Peak memory | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | snarkjs 1,638.6 MB, witness generator 96.9 MB, prover 242.3 MB (medians) | ~15 min | no |
-| Freshness budget over 20 runs (medians, local t_incl) | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | 3,333 ms, 1.11% of Delta | ~15 min | no |
 | MPC-TLS preprocessing stalls (tlsn#1173), recovered by retry | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | 3/223 sessions (1.35%); 0 runs gave up | ~15 min | no |
-| Contract test suite | `script/measure.sh` | `measurements/l1/20260926T194331Z.json` | 206 tests passed, 0 failed, 0 skipped (206 total tests) | ~2 min | no |
+| Contract tests | `script/record_tests.sh` | `measurements/tests/20260926T212837Z.json` | 206 forge tests (Fuzz 5, Invariant 1, Unit 200), 0 failed; invariants 256 runs x depth 128 | ~10 min | no |
+| Table VI coverage (contract conditions) | `script/record_tests.sh` | `measurements/tests/20260926T212837Z.json` | 205/205 tests pass, 4/4 invariants hold; every condition has a passing positive and negative test | ~10 min | no |
+| Coverage of contracts/src | `script/record_tests.sh` | `measurements/tests/20260926T212837Z.json` | lines 100.0%, statements 100.0%, branches 100.0%, functions 100.0% | ~10 min | no |
+| Rust tests | `script/record_tests.sh` | `measurements/tests/20260926T212837Z.json` | 114 passed, 0 failed, 3 ignored; ignored clock-shift tests under libfaketime: 6 passed | ~10 min | no |
 | On-chain execution gas per operation | `script/measure.sh` | `measurements/l1/20260926T194331Z.json` | Register 182,779, Apply 168,680, Engage 96,593, Settle 90,924, Expire 58,787, Reclaim 23,853, Cancel 21,238 | ~2 min | no |
 | Lifecycle gas (Register + Apply + Engage + Settle) | `script/measure.sh` | `measurements/l1/20260926T194331Z.json` | execution 538,976; receipts 625,732; 1,753 transaction bytes | ~2 min | no |
 | Deployment and bytecode size | `script/measure.sh` | `measurements/l1/20260926T194331Z.json` | PPREV 2,124,381 gas, runtime 9,126 B (37.1% of EIP-170); verifier 192,589 gas, 634 B | ~2 min | no |
@@ -147,14 +149,17 @@ the same inputs give the same file.
 | Receipts against measured gas (signature-dependent difference) | `script/measure.sh` | `measurements/l1/20260926T194331Z.json` | Register +32, Apply +0, Engage +0, Settle +12 gas | ~2 min | no |
 | L1 gas price snapshot (one day of blocks) | `script/l1_price.sh` | `measurements/l1_price/20260926T194005Z.json` | blocks 26,056,487-26,063,686; base fee 0.075715 gwei, priority fee 0.05 gwei, effective 0.133984 gwei (medians) | ~1 min | yes: ETH_MAINNET_RPC_URL |
 | ETH/USD (Chainlink, one reading, used for L1 and L2) | `script/l1_price.sh` | `measurements/l1_price/20260926T194005Z.json` | $2,685.42 at block 26,063,686 | ~1 min | yes: ETH_MAINNET_RPC_URL |
-| L1 lifecycle cost | `script/l1_price.sh` | `measurements/l1_price/20260926T194005Z.json` | execution $0.194, receipts $0.225; deployment $0.834 | ~1 min | yes: ETH_MAINNET_RPC_URL |
+| L1 cost per operation (execution gas at the median effective price) | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | Register $0.0658, Apply $0.0607, Engage $0.0348, Settle $0.0327, Expire $0.0212, Reclaim $0.0086, Cancel $0.0076 | ~1 s | no |
+| L1 lifecycle and deployment cost | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | execution $0.194; receipts $0.225 (without refunds $0.229); deployment $0.834 | ~1 s | no |
+| L1 lifecycle cost at other gas prices | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | 0.1 gwei $0.145, 1 gwei $1.447, 10 gwei $14.474, 30 gwei $43.421 | ~1 s | no |
+| Freshness budget, medians (Section VII-F formula) | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | local anvil t_incl: 3,333 ms (1.11% of Delta); Base Sepolia t_incl: 4,728 ms (1.58% of Delta) | ~1 s | no |
 | On-chain Groth16 verification of phi_R (9 public inputs) | `script/measure_groth16.sh` | `measurements/groth16/20260926T201202Z.json` | 242,098 gas execution; EIP-1108 model 236,350 | ~1 min | no |
-| Lifecycle with three predicate verifications on-chain | `script/measure_groth16.sh` | `measurements/groth16/20260926T201202Z.json` | +726,294 gas, x2.3475 (assumes phi_A, phi_S verified like phi_R) | ~1 min | no |
+| Lifecycle with three predicate verifications on-chain | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | 1,265,270 gas, x2.3475 (assumes phi_A, phi_S verified like phi_R) | ~1 s | no |
 | L2 receipt gas per operation (Base Sepolia) | `script/measure_l2.sh` | `measurements/l2/20260926T195911Z.json` | Register 208,227, Apply 193,736, Engage 113,137, Settle 110,636, Expire 79,991, Reclaim 40,257, Cancel 37,642 | ~4 min | yes: BASE_SEPOLIA_RPC_URL, BASE_MAINNET_RPC_URL, TESTNET_PRIVATE_KEY |
-| L2 cost per operation (Base mainnet prices) | `script/measure_l2.sh` | `measurements/l2/20260926T195911Z.json` | Register $0.0034, Apply $0.0032, Engage $0.0019, Settle $0.0018, Expire $0.0013, Reclaim $0.0007, Cancel $0.0006 | ~4 min | yes: BASE_SEPOLIA_RPC_URL, BASE_MAINNET_RPC_URL, TESTNET_PRIVATE_KEY |
-| L2 lifecycle cost and L1 data share | `script/measure_l2.sh` | `measurements/l2/20260926T195911Z.json` | $0.0103, 1,762 bytes; L1 data 0.12% (per operation 0.07-0.22%) | ~4 min | yes: BASE_SEPOLIA_RPC_URL, BASE_MAINNET_RPC_URL, TESTNET_PRIVATE_KEY |
+| L2 cost per operation (Base mainnet prices) | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | Register $0.0034, Apply $0.0032, Engage $0.0019, Settle $0.0018, Expire $0.0013, Reclaim $0.0007, Cancel $0.0006 | ~1 s | no |
+| L2 lifecycle cost and L1 data share | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | $0.0103, 1,762 bytes; L1 data 0.12% (per operation 0.07-0.22%) | ~1 s | no |
 | Inclusion time t_incl on Base Sepolia (Register, n = 10) | `script/measure_l2.sh` | `measurements/l2/20260926T195911Z.json` | 1,409.2 ms (IQR 1,300.8-2,780.1) | ~4 min | yes: BASE_SEPOLIA_RPC_URL, BASE_MAINNET_RPC_URL, TESTNET_PRIVATE_KEY |
-| L1 against L2 lifecycle cost | `script/measure_l2.sh` | `measurements/l2/20260926T195911Z.json` | L1 21.94x L2 | ~4 min | yes: BASE_SEPOLIA_RPC_URL, BASE_MAINNET_RPC_URL, TESTNET_PRIVATE_KEY |
+| L1 against L2 lifecycle cost (receipt gas, same ETH/USD) | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | L1 21.94x L2 | ~1 s | no |
 <!-- results:end -->
 
 `script/render_results.py` regenerates this table from the newest records; `--check` tells whether it
