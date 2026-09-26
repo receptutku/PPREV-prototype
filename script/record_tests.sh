@@ -77,7 +77,9 @@ coverage = {}
 for line in open(f"{work}/coverage.txt"):
     cells = [c.strip() for c in line.strip().strip("|").split("|")]
     if len(cells) == 5 and (cells[0].startswith("src/") or cells[0] == "Total"):
-        pct = lambda c: {"percent": float(c.split("%")[0]), "covered": c.split("(")[1].rstrip(")")}
+        # "N/A (0/0)": nothing of that kind in the file (for example no branches).
+        pct = lambda c: {"percent": None if c.startswith("N/A") else float(c.split("%")[0]),
+                         "covered": c.split("(")[1].rstrip(")")}
         coverage[cells[0]] = {"lines": pct(cells[1]), "statements": pct(cells[2]),
                               "branches": pct(cells[3]), "functions": pct(cells[4])}
 
