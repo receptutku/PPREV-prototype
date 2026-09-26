@@ -1,0 +1,480 @@
+{
+  "runId": "20260926T194331Z",
+  "commit": "41eb93038c868a3d354b7b1015c5454bb58be154",
+  "workingTreeDirty": false,
+  "machine": {
+    "cpu": "Apple M2",
+    "memoryBytes": 17179869184,
+    "os": "26.6.2",
+    "powerSource": "AC Power"
+  },
+  "tools": {
+    "anvil": "anvil Version: 1.8.3",
+    "forge": "forge Version: 1.8.3",
+    "cast": "cast Version: 1.8.3",
+    "solc": "0.8.36",
+    "circom": "circom compiler 2.2.3",
+    "snarkjs": "0.7.6",
+    "circomlib": "2.0.5",
+    "node": "v26.9.0",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "tlsn": "v0.1.0-alpha.15#47aee45b53e06648c1b2ad3689b367b8c923fdec",
+    "alloy": "2.5.0"
+  },
+  "parameters": {
+    "deployment": "D18 (Delta 300 s, tau_lock 14 days, maxExpirations 3, rho 5000 bp)",
+    "anvilHardfork": "Osaka",
+    "evmVersion": "cancun (compiler target)"
+  },
+  "tests": "Ran 15 test suites in 14.48s (14.94s CPU time): 206 tests passed, 0 failed, 0 skipped (206 total tests)",
+  "method": {
+    "executionGas": "forge script, fresh deployment per operation, pranked call as its own transaction: transaction gas before refund minus 21,000 and EIP-2028 calldata gas",
+    "warmth": "caller and contract warm; verifier and payees other than the caller cold",
+    "callers": {
+      "Register": "owner",
+      "Apply": "applicant",
+      "Engage": "owner",
+      "Settle": "owner (applicant is a cold payee)",
+      "Expire": "applicant (the payee)",
+      "Reclaim": "applicant",
+      "Cancel": "owner"
+    },
+    "decomposition": "slots from the recorded state diff priced at 22,100 (initialised), 5,000 (updated), 2,100 (read only), 100 per warm re-access; ECDSA marginal against an accept-all verifier; other is the residual"
+  },
+  "perOperation": {
+    "Register": {
+      "executionGas": 182779,
+      "transactionGas": 208195,
+      "calldataGas": 4416,
+      "calldataBytes": 420,
+      "refund": 0,
+      "ecdsaMarginal": 3574,
+      "acceptAllTransactionGas": 204621
+    },
+    "Apply": {
+      "executionGas": 168680,
+      "transactionGas": 193724,
+      "calldataGas": 4044,
+      "calldataBytes": 420,
+      "refund": 0,
+      "ecdsaMarginal": 3594,
+      "acceptAllTransactionGas": 190130
+    },
+    "Engage": {
+      "executionGas": 96593,
+      "transactionGas": 117937,
+      "calldataGas": 344,
+      "calldataBytes": 68,
+      "refund": 4800
+    },
+    "Settle": {
+      "executionGas": 90924,
+      "transactionGas": 115432,
+      "calldataGas": 3508,
+      "calldataBytes": 388,
+      "refund": 4800,
+      "ecdsaMarginal": 3582,
+      "acceptAllTransactionGas": 111850
+    },
+    "Expire": {
+      "executionGas": 58787,
+      "transactionGas": 79991,
+      "calldataGas": 204,
+      "calldataBytes": 36,
+      "refund": 0
+    },
+    "Reclaim": {
+      "executionGas": 23853,
+      "transactionGas": 45057,
+      "calldataGas": 204,
+      "calldataBytes": 36,
+      "refund": 4800
+    },
+    "Cancel": {
+      "executionGas": 21238,
+      "transactionGas": 42442,
+      "calldataGas": 204,
+      "calldataBytes": 36,
+      "refund": 4800
+    }
+  },
+  "decomposition": {
+    "Register": {
+      "executionGas": 182779,
+      "slots": {
+        "initialised": 7,
+        "updated": 1,
+        "readOnly": 4,
+        "warmReaccesses": 7,
+        "accesses": 19
+      },
+      "components": {
+        "storageInitialisation": 154700,
+        "storageUpdates": 5000,
+        "coldStorageReads": 8400,
+        "warmReaccesses": 700,
+        "ecdsaMarginal": 3574,
+        "other": 10405
+      },
+      "percent": {
+        "storageInitialisation": 84.64,
+        "storageUpdates": 2.74,
+        "coldStorageReads": 4.6,
+        "warmReaccesses": 0.38,
+        "ecdsaMarginal": 1.96,
+        "other": 5.69
+      },
+      "recorderChangedGas": false
+    },
+    "Apply": {
+      "executionGas": 168680,
+      "slots": {
+        "initialised": 6,
+        "updated": 1,
+        "readOnly": 8,
+        "warmReaccesses": 8,
+        "accesses": 23
+      },
+      "components": {
+        "storageInitialisation": 132600,
+        "storageUpdates": 5000,
+        "coldStorageReads": 16800,
+        "warmReaccesses": 800,
+        "ecdsaMarginal": 3594,
+        "other": 9886
+      },
+      "percent": {
+        "storageInitialisation": 78.61,
+        "storageUpdates": 2.96,
+        "coldStorageReads": 9.96,
+        "warmReaccesses": 0.47,
+        "ecdsaMarginal": 2.13,
+        "other": 5.86
+      },
+      "recorderChangedGas": false
+    },
+    "Engage": {
+      "executionGas": 96593,
+      "slots": {
+        "initialised": 3,
+        "updated": 4,
+        "readOnly": 3,
+        "warmReaccesses": 6,
+        "accesses": 16
+      },
+      "components": {
+        "storageInitialisation": 66300,
+        "storageUpdates": 20000,
+        "coldStorageReads": 6300,
+        "warmReaccesses": 600,
+        "other": 3393
+      },
+      "percent": {
+        "storageInitialisation": 68.64,
+        "storageUpdates": 20.71,
+        "coldStorageReads": 6.52,
+        "warmReaccesses": 0.62,
+        "other": 3.51
+      },
+      "recorderChangedGas": false
+    },
+    "Settle": {
+      "executionGas": 90924,
+      "slots": {
+        "initialised": 1,
+        "updated": 3,
+        "readOnly": 11,
+        "warmReaccesses": 11,
+        "accesses": 26
+      },
+      "components": {
+        "storageInitialisation": 22100,
+        "storageUpdates": 15000,
+        "coldStorageReads": 23100,
+        "warmReaccesses": 1100,
+        "ecdsaMarginal": 3582,
+        "other": 26042
+      },
+      "percent": {
+        "storageInitialisation": 24.31,
+        "storageUpdates": 16.5,
+        "coldStorageReads": 25.41,
+        "warmReaccesses": 1.21,
+        "ecdsaMarginal": 3.94,
+        "other": 28.64
+      },
+      "recorderChangedGas": false
+    },
+    "Expire": {
+      "executionGas": 58787,
+      "slots": {
+        "initialised": 1,
+        "updated": 3,
+        "readOnly": 5,
+        "warmReaccesses": 6,
+        "accesses": 15
+      },
+      "components": {
+        "storageInitialisation": 22100,
+        "storageUpdates": 15000,
+        "coldStorageReads": 10500,
+        "warmReaccesses": 600,
+        "other": 10587
+      },
+      "percent": {
+        "storageInitialisation": 37.59,
+        "storageUpdates": 25.52,
+        "coldStorageReads": 17.86,
+        "warmReaccesses": 1.02,
+        "other": 18.01
+      },
+      "recorderChangedGas": false
+    },
+    "Reclaim": {
+      "executionGas": 23853,
+      "slots": {
+        "initialised": 0,
+        "updated": 2,
+        "readOnly": 2,
+        "warmReaccesses": 3,
+        "accesses": 7
+      },
+      "components": {
+        "storageInitialisation": 0,
+        "storageUpdates": 10000,
+        "coldStorageReads": 4200,
+        "warmReaccesses": 300,
+        "other": 9353
+      },
+      "percent": {
+        "storageInitialisation": 0.0,
+        "storageUpdates": 41.92,
+        "coldStorageReads": 17.61,
+        "warmReaccesses": 1.26,
+        "other": 39.21
+      },
+      "recorderChangedGas": false
+    },
+    "Cancel": {
+      "executionGas": 21238,
+      "slots": {
+        "initialised": 0,
+        "updated": 2,
+        "readOnly": 1,
+        "warmReaccesses": 3,
+        "accesses": 6
+      },
+      "components": {
+        "storageInitialisation": 0,
+        "storageUpdates": 10000,
+        "coldStorageReads": 2100,
+        "warmReaccesses": 300,
+        "other": 8838
+      },
+      "percent": {
+        "storageInitialisation": 0.0,
+        "storageUpdates": 47.09,
+        "coldStorageReads": 9.89,
+        "warmReaccesses": 1.41,
+        "other": 41.61
+      },
+      "recorderChangedGas": false
+    }
+  },
+  "verifierCalls": {
+    "ecdsaFrame": 4020,
+    "acceptAllFrame": 434,
+    "ecdsaColdCallFromContract": 7116,
+    "acceptAllColdCallFromContract": 3530
+  },
+  "deployment": {
+    "EcdsaNotaryVerifier": {
+      "transactionGas": 192589,
+      "intrinsicGas": 53000,
+      "calldataGas": 12296,
+      "initcodeWordGas": 54,
+      "creationExecutionGas": 127239,
+      "codeDepositGas": 126800,
+      "initcodeBytes": 804,
+      "runtimeBytes": 634,
+      "runtimeBytesOfEip170Limit": 0.0258,
+      "constructorArgsBytes": 32
+    },
+    "PPREV": {
+      "transactionGas": 2124381,
+      "intrinsicGas": 53000,
+      "calldataGas": 152820,
+      "initcodeWordGas": 628,
+      "creationExecutionGas": 1917933,
+      "codeDepositGas": 1825200,
+      "initcodeBytes": 9828,
+      "runtimeBytes": 9126,
+      "runtimeBytesOfEip170Limit": 0.3713,
+      "constructorArgsBytes": 192
+    }
+  },
+  "deploymentTotal": {
+    "creationExecutionGas": 2045172,
+    "transactionGas": 2316970
+  },
+  "lifecycle": {
+    "operations": [
+      "Register",
+      "Apply",
+      "Engage",
+      "Settle"
+    ],
+    "executionGas": 538976,
+    "receiptGas": 625732,
+    "calldataGas": 12336,
+    "rawTransactionBytes": 1753,
+    "transactions": [
+      {
+        "name": "register",
+        "type": "CALL",
+        "hash": "0x812ecc8e25e440e089eb6b03c504f1fc9340c5a7afd5d81467a1db991e2cef46",
+        "blockNumber": 4,
+        "receiptGas": 208227,
+        "calldataBytes": 420,
+        "calldataGas": 4428,
+        "rawTransactionBytes": 539
+      },
+      {
+        "name": "applyFor",
+        "type": "CALL",
+        "hash": "0xcfa1d859a6f428ed4bd4b4749a9a8ab59c92543ce44e70f48527a7d0cd81b534",
+        "blockNumber": 5,
+        "receiptGas": 193724,
+        "calldataBytes": 420,
+        "calldataGas": 4044,
+        "rawTransactionBytes": 538
+      },
+      {
+        "name": "engage",
+        "type": "CALL",
+        "hash": "0x71c2efc23451fcfef9372dbfb2eb9541b552a625bbbbfb50b3c38bb4fff17328",
+        "blockNumber": 6,
+        "receiptGas": 113137,
+        "calldataBytes": 68,
+        "calldataGas": 344,
+        "rawTransactionBytes": 177
+      },
+      {
+        "name": "settle",
+        "type": "CALL",
+        "hash": "0x9a6105f5206aef04ea6c0280d9d79a22af241ace32a04b4e8621c4856b4b423f",
+        "blockNumber": 7,
+        "receiptGas": 110644,
+        "calldataBytes": 388,
+        "calldataGas": 3520,
+        "rawTransactionBytes": 499
+      }
+    ]
+  },
+  "reconciliation": {
+    "Register": {
+      "receiptGas": 208227,
+      "predictedFromMeasurement": 208195,
+      "difference": 32,
+      "calldataGasMeasured": 4416,
+      "calldataGasOnChain": 4428,
+      "differenceBeyondCalldata": 20
+    },
+    "Apply": {
+      "receiptGas": 193724,
+      "predictedFromMeasurement": 193724,
+      "difference": 0,
+      "calldataGasMeasured": 4044,
+      "calldataGasOnChain": 4044,
+      "differenceBeyondCalldata": 0
+    },
+    "Engage": {
+      "receiptGas": 113137,
+      "predictedFromMeasurement": 113137,
+      "difference": 0,
+      "calldataGasMeasured": 344,
+      "calldataGasOnChain": 344,
+      "differenceBeyondCalldata": 0
+    },
+    "Settle": {
+      "receiptGas": 110644,
+      "predictedFromMeasurement": 110632,
+      "difference": 12,
+      "calldataGasMeasured": 3508,
+      "calldataGasOnChain": 3520,
+      "differenceBeyondCalldata": 0
+    }
+  },
+  "allTransactions": [
+    {
+      "name": "EcdsaNotaryVerifier",
+      "type": "CREATE",
+      "hash": "0xa504b929489a6d471081b6eb42e5db3c33b1eee177a1db1dfd3c96d2ccf1b138",
+      "blockNumber": 1,
+      "receiptGas": 192589,
+      "calldataBytes": 836,
+      "calldataGas": 12296,
+      "rawTransactionBytes": 927
+    },
+    {
+      "name": "PPREV",
+      "type": "CREATE",
+      "hash": "0x091c77f02bbb729c01ab8bc1ffaf96caf11bd77c88346022808860fa4e95a921",
+      "blockNumber": 2,
+      "receiptGas": 2124381,
+      "calldataBytes": 10020,
+      "calldataGas": 152820,
+      "rawTransactionBytes": 10111
+    },
+    {
+      "name": "registerPolicy",
+      "type": "CALL",
+      "hash": "0x927ddf7baf13a9f96afcb8749d13c93f7765deab8ea823613afd30bd2a9fb99b",
+      "blockNumber": 3,
+      "receiptGas": 159295,
+      "calldataBytes": 196,
+      "calldataGas": 2188,
+      "rawTransactionBytes": 306
+    },
+    {
+      "name": "register",
+      "type": "CALL",
+      "hash": "0x812ecc8e25e440e089eb6b03c504f1fc9340c5a7afd5d81467a1db991e2cef46",
+      "blockNumber": 4,
+      "receiptGas": 208227,
+      "calldataBytes": 420,
+      "calldataGas": 4428,
+      "rawTransactionBytes": 539
+    },
+    {
+      "name": "applyFor",
+      "type": "CALL",
+      "hash": "0xcfa1d859a6f428ed4bd4b4749a9a8ab59c92543ce44e70f48527a7d0cd81b534",
+      "blockNumber": 5,
+      "receiptGas": 193724,
+      "calldataBytes": 420,
+      "calldataGas": 4044,
+      "rawTransactionBytes": 538
+    },
+    {
+      "name": "engage",
+      "type": "CALL",
+      "hash": "0x71c2efc23451fcfef9372dbfb2eb9541b552a625bbbbfb50b3c38bb4fff17328",
+      "blockNumber": 6,
+      "receiptGas": 113137,
+      "calldataBytes": 68,
+      "calldataGas": 344,
+      "rawTransactionBytes": 177
+    },
+    {
+      "name": "settle",
+      "type": "CALL",
+      "hash": "0x9a6105f5206aef04ea6c0280d9d79a22af241ace32a04b4e8621c4856b4b423f",
+      "blockNumber": 7,
+      "receiptGas": 110644,
+      "calldataBytes": 388,
+      "calldataGas": 3520,
+      "rawTransactionBytes": 499
+    }
+  ]
+}
