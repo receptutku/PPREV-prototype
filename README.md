@@ -170,6 +170,8 @@ input evicted to iCloud.
 | Script | Output | Content |
 |---|---|---|
 | `script/measure_offchain.sh` | `measurements/offchain/<run>.json` | 20 Register runs on the local stack after one warm-up: login, MPC-TLS session and its traffic, presentation, witness, snarkjs, t_verify, t_sign, local t_incl; peak RSS of the witness generator, snarkjs, and the prover; 20 standalone Groth16 verifications; 200 MPC-TLS-only sessions for the preprocessing stall rate |
+| `script/l1_price.sh [newest_block] [block_count]` | `measurements/l1_price/<run>.json` | Ethereum mainnet base fee and median priority fee per block over one day (7,200 blocks, `eth_feeHistory`, `ETH_MAINNET_RPC_URL` from `.env`), effective price; one Chainlink ETH/USD reading with its block, used for L1 and L2 dollar figures alike; dollar cost of the newest L1 record |
+| `script/measure_groth16.sh` | `measurements/groth16/<run>.json` | the exported 9-input phi_R verifier on anvil with the committed sample proof: acceptance, rejection of a changed input, verification gas against the EIP-1108 prices, deployment; the lifecycle with three on-chain verifications, under the stated assumption on phi_A and phi_S |
 | `script/measure.sh` | `measurements/l1/<run>.json` | contract tests; execution gas of the seven algorithms on fresh deployments (`contracts/script/MeasureGas.s.sol`), storage decomposition from a recorded state diff, ECDSA marginal against an accept-all verifier, verifier call costs; on anvil, deployment and a complete lifecycle as real transactions (`contracts/script/Lifecycle.s.sol`), bytecode sizes, and each receipt reconciled with the measured gas |
 
 Execution gas is transaction gas before the refund minus 21,000 and the EIP-2028 calldata gas:
