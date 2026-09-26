@@ -1,12 +1,13 @@
 {
-  "runId": "20260926T183439Z",
-  "commit": "f92fe17eeb20fcadc95ac315d33d4916cda3c467",
+  "runId": "20260926T201218Z",
+  "commit": "72b654b299071daba4ed8143886a86112352da30",
   "workingTreeDirty": false,
   "passed": true,
   "machine": {
     "cpu": "Apple M2",
     "memoryBytes": 17179869184,
-    "os": "26.6.2"
+    "os": "26.6.2",
+    "powerSource": "AC Power"
   },
   "tools": {
     "anvil": "anvil Version: 1.8.3",
@@ -29,7 +30,7 @@
     "chainId": 31337,
     "pprev": "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
     "ecdsaNotaryVerifier": "0x5fbdb2315678afecb367f032d93f642f64180aa3",
-    "vkNotary": "0xc451AF97e175d62FE10a2798615298fbE692DCCa",
+    "vkNotary": "0xE3ce7505BFe0C83b029E0e280162044b49F495C6",
     "deltaS": 300,
     "policy": "policies/rental-v1.json",
     "blockProduction": "anvil automine (one block per transaction)"
@@ -42,52 +43,52 @@
   },
   "positive": {
     "outsideDelta": {
-      "loginMs": 2.12,
-      "mpcTlsMs": 578.577
+      "loginMs": 2.789,
+      "mpcTlsMs": 368.65
     },
     "insideDelta": {
-      "presentationMs": 0.044,
-      "readTAttMs": 0.226,
-      "witnessMs": 401.523,
-      "snarkjsProveMs": 4089.384,
-      "tProveMs": 4490.906,
-      "tVerifyMs": 2.059,
-      "tSignMs": 26.797,
-      "tInclMs": 23.755,
-      "sumMs": 4543.787,
+      "presentationMs": 0.035,
+      "readTAttMs": 0.205,
+      "witnessMs": 320.596,
+      "snarkjsProveMs": 2934.887,
+      "tProveMs": 3255.483,
+      "tVerifyMs": 1.925,
+      "tSignMs": 3.852,
+      "tInclMs": 17.62,
+      "sumMs": 3279.119,
       "deltaMs": 300000,
-      "sumOverDelta": 0.015146
+      "sumOverDelta": 0.01093
     },
     "paperFormula": {
       "description": "Delta >= t_prove + t_verify + t_sign + t_incl (Section VII-F); t_prove includes witness generation",
-      "tProveMs": 4490.906,
-      "tVerifyMs": 2.059,
-      "tSignMs": 26.797,
-      "tInclMs": 23.755,
-      "sumMs": 4543.517,
+      "tProveMs": 3255.483,
+      "tVerifyMs": 1.925,
+      "tSignMs": 3.852,
+      "tInclMs": 17.62,
+      "sumMs": 3278.879,
       "deltaMs": 300000,
-      "sumOverDelta": 0.015145
+      "sumOverDelta": 0.01093
     },
     "verifierDetail": {
-      "decodeMs": 0.155,
-      "presentationMs": 0.496,
-      "groth16Ms": 1.381,
-      "verifyMs": 1.904,
-      "signMs": 26.797
+      "decodeMs": 0.148,
+      "presentationMs": 0.423,
+      "groth16Ms": 1.334,
+      "verifyMs": 1.777,
+      "signMs": 3.852
     },
     "otherAfterAttestation": {
-      "verifierRoundTripMs": 30.666,
-      "afterAttestationMs": 4559.701,
-      "notInInsideDeltaMs": 15.914,
-      "attestationArrivalMinusTAttMs": 737
+      "verifierRoundTripMs": 6.386,
+      "afterAttestationMs": 3281.84,
+      "notInInsideDeltaMs": 2.721,
+      "attestationArrivalMinusTAttMs": 576
     },
     "onChain": {
-      "tAtt": 1790447686,
-      "blockTimestamp": 1790447691,
-      "blockTimestampMinusTAttS": 5,
+      "tAtt": 1790453544,
+      "blockTimestamp": 1790453547,
+      "blockTimestampMinusTAttS": 3,
       "blockNumber": 2,
-      "gasUsed": 208195,
-      "txHash": "0x67ce965dbedb45256e25e8c268a256e01e33d001bca090717862621e2f6ac0ff"
+      "gasUsed": 208227,
+      "txHash": "0xeae6f9ed55e0801df2b18268795b7e9490c4cbea9a75d3468a7116e105293f20"
     }
   },
   "d33": {
@@ -120,8 +121,8 @@
   "checks": [
     {
       "name": "positive: Registered.cTx equals the submitted value",
-      "expected": "0x05d162b8becfddcebff3806c8a6f5741b58c1c7f64d6b0e63f40a6fb4cf2b5c7",
-      "observed": "0x05d162b8becfddcebff3806c8a6f5741b58c1c7f64d6b0e63f40a6fb4cf2b5c7",
+      "expected": "0xc182f9f21479391e6fc572279f8ea49fa31f0039a3936f52f6a86de0eda23358",
+      "observed": "0xc182f9f21479391e6fc572279f8ea49fa31f0039a3936f52f6a86de0eda23358",
       "pass": true
     },
     {
@@ -150,8 +151,8 @@
     },
     {
       "name": "positive: Registered.r equals the submitted value",
-      "expected": "0x1b86a387e8c34d43a47b5babdda74904a4d4531dc27a3f889c490036ebd3ffe9",
-      "observed": "0x1b86a387e8c34d43a47b5babdda74904a4d4531dc27a3f889c490036ebd3ffe9",
+      "expected": "0x16f6be171f0c199b1b3298100d624283261957bf168f3e1687825051171ff922",
+      "observed": "0x16f6be171f0c199b1b3298100d624283261957bf168f3e1687825051171ff922",
       "pass": true
     },
     {
@@ -205,7 +206,7 @@
     {
       "name": "nonce-reuse: policy verifier refuses a signed nonce",
       "expected": "refused: ...already been signed...",
-      "observed": "refused: nonce 0x4cda0297d26895fe6a9fd8cd2224d5d560dfcdf8c996e204f3f6a44a780c9a7f has already been signed",
+      "observed": "refused: nonce 0x44e3373285fca881bf850a1762ca22b45f86f34ba4ebe73b69bcc3b2d9d8196c has already been signed",
       "pass": true
     },
     {
@@ -217,7 +218,7 @@
     {
       "name": "replay: same payload from the owner reverts",
       "expected": "reverted: NonceConsumed",
-      "observed": "reverted: NonceConsumed(NonceConsumed { eta: 0x4cda0297d26895fe6a9fd8cd2224d5d560dfcdf8c996e204f3f6a44a780c9a7f })",
+      "observed": "reverted: NonceConsumed(NonceConsumed { eta: 0x44e3373285fca881bf850a1762ca22b45f86f34ba4ebe73b69bcc3b2d9d8196c })",
       "pass": true
     },
     {
@@ -229,7 +230,7 @@
     {
       "name": "expired: submission after Delta + 1 s reverts",
       "expected": "reverted: AttestationExpired",
-      "observed": "reverted: AttestationExpired(AttestationExpired { tAtt: 1790447698 })",
+      "observed": "reverted: AttestationExpired(AttestationExpired { tAtt: 1790453552 })",
       "pass": true
     }
   ],
@@ -241,9 +242,9 @@
       "property": "TR-06-CANKAYA-000123",
       "submitter": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
       "policyIdR": "0xdaa0cc8bee0f7a38b19d419dc9c099dca2411eecb84dda8c97bb9d1c0df7ff13",
-      "cTx": "0x05d162b8becfddcebff3806c8a6f5741b58c1c7f64d6b0e63f40a6fb4cf2b5c7",
-      "eta": "0x4cda0297d26895fe6a9fd8cd2224d5d560dfcdf8c996e204f3f6a44a780c9a7f",
-      "tAtt": 1790447686,
+      "cTx": "0xc182f9f21479391e6fc572279f8ea49fa31f0039a3936f52f6a86de0eda23358",
+      "eta": "0x44e3373285fca881bf850a1762ca22b45f86f34ba4ebe73b69bcc3b2d9d8196c",
+      "tAtt": 1790453544,
       "notarization": {
         "attempts": 1,
         "stalls": []
@@ -255,61 +256,70 @@
       "proofSource": "own",
       "timings": {
         "outsideDelta": {
-          "loginMs": 2.119875,
-          "mpcTlsMs": 578.576917
+          "loginMs": 2.78875,
+          "mpcTlsMs": 368.64950000000005
         },
         "insideDelta": {
-          "presentationMs": 0.044083,
-          "readTAttMs": 0.225667,
-          "witnessMs": 401.522625,
-          "snarkjsProveMs": 4089.383584,
-          "tProveMs": 4490.906209,
-          "tVerifyMs": 2.059,
-          "tSignMs": 26.796833,
-          "tInclMs": 23.755125
+          "presentationMs": 0.035083,
+          "readTAttMs": 0.204541,
+          "witnessMs": 320.595875,
+          "snarkjsProveMs": 2934.886833,
+          "tProveMs": 3255.482708,
+          "tVerifyMs": 1.9249169999999998,
+          "tSignMs": 3.8518329999999996,
+          "tInclMs": 17.619916999999997
         },
         "verifier": {
-          "decodeMs": 0.154667,
-          "presentationMs": 0.49629100000000004,
-          "groth16Ms": 1.381209,
-          "verifyMs": 1.904333,
-          "signMs": 26.796833
+          "decodeMs": 0.147625,
+          "presentationMs": 0.423459,
+          "groth16Ms": 1.3342910000000001,
+          "verifyMs": 1.7772919999999999,
+          "signMs": 3.8518329999999996
         },
-        "verifierRoundTripMs": 30.665916000000003,
-        "afterAttestationMs": 4559.700916,
-        "attestationArrivalMinusTAttMs": 737
+        "verifierRoundTripMs": 6.385791,
+        "afterAttestationMs": 3281.840042,
+        "attestationArrivalMinusTAttMs": 576
+      },
+      "resources": {
+        "mpcTraffic": {
+          "sentBytes": 30200434,
+          "receivedBytes": 3805814
+        },
+        "witnessPeakRssBytes": null,
+        "snarkjsPeakRssBytes": null,
+        "proverPeakRssBytes": 234242048
       },
       "payload": {
         "chainId": 31337,
         "contract": "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
         "submitter": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
-        "cTx": "0x05d162b8becfddcebff3806c8a6f5741b58c1c7f64d6b0e63f40a6fb4cf2b5c7",
+        "cTx": "0xc182f9f21479391e6fc572279f8ea49fa31f0039a3936f52f6a86de0eda23358",
         "propertyId": "0x54522d30362d43414e4b4159412d303030313233000000000000000000000000",
         "amount": "0xde0b6b3a7640000",
         "settlementShare": "0x0",
         "policyIdR": "0xdaa0cc8bee0f7a38b19d419dc9c099dca2411eecb84dda8c97bb9d1c0df7ff13",
-        "r": "0x1b86a387e8c34d43a47b5babdda74904a4d4531dc27a3f889c490036ebd3ffe9",
-        "sigmaR": "0x686c903886e4ce2aed7f445684ba2760c3425a8f9ae5ac15d43fb90b1553d708726a48fe005514590f36e5aff756e9723b84b5be59d29785f8ce83d6c58e798d1b",
-        "etaR": "0x4cda0297d26895fe6a9fd8cd2224d5d560dfcdf8c996e204f3f6a44a780c9a7f",
-        "tAttR": 1790447686,
+        "r": "0x16f6be171f0c199b1b3298100d624283261957bf168f3e1687825051171ff922",
+        "sigmaR": "0xc2900e369cbf0bca63b47cb49f4f348f084ccff824c586749e0463ac100599a754c82a3b09cbaa4beff69b64775ee9fc5457b6909c648d29c801c8f02c7b690e1c",
+        "etaR": "0x44e3373285fca881bf850a1762ca22b45f86f34ba4ebe73b69bcc3b2d9d8196c",
+        "tAttR": 1790453544,
         "collateral": "0x6f05b59d3b20000"
       },
       "submission": {
         "outcome": "included",
-        "txHash": "0x67ce965dbedb45256e25e8c268a256e01e33d001bca090717862621e2f6ac0ff",
+        "txHash": "0xeae6f9ed55e0801df2b18268795b7e9490c4cbea9a75d3468a7116e105293f20",
         "blockNumber": 2,
-        "blockTimestamp": 1790447691,
-        "gasUsed": 208195,
-        "tInclMs": 23.755125,
+        "blockTimestamp": 1790453547,
+        "gasUsed": 208227,
+        "tInclMs": 17.619916999999997,
         "event": {
           "txId": "0x1",
           "owner": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
-          "cTx": "0x05d162b8becfddcebff3806c8a6f5741b58c1c7f64d6b0e63f40a6fb4cf2b5c7",
+          "cTx": "0xc182f9f21479391e6fc572279f8ea49fa31f0039a3936f52f6a86de0eda23358",
           "policyIdR": "0xdaa0cc8bee0f7a38b19d419dc9c099dca2411eecb84dda8c97bb9d1c0df7ff13",
           "propertyId": "0x54522d30362d43414e4b4159412d303030313233000000000000000000000000",
           "amount": "0xde0b6b3a7640000",
           "settlementShare": "0x0",
-          "r": "0x1b86a387e8c34d43a47b5babdda74904a4d4531dc27a3f889c490036ebd3ffe9",
+          "r": "0x16f6be171f0c199b1b3298100d624283261957bf168f3e1687825051171ff922",
           "collateral": "0x6f05b59d3b20000"
         }
       }
@@ -321,9 +331,9 @@
       "property": "TR-06-CANKAYA-000123",
       "submitter": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
       "policyIdR": "0xdaa0cc8bee0f7a38b19d419dc9c099dca2411eecb84dda8c97bb9d1c0df7ff13",
-      "cTx": "0xff62d662abc603e7c1b91bc0e72eeda904353913d3e36047004a116289ab078d",
-      "eta": "0x7acd8834637848bdef8e758b0aa652a34108dd4741166dc99c6fe8449f286835",
-      "tAtt": 1790447692,
+      "cTx": "0xfb169cda54dc70723aa377c7d19a7b03886a4c3399948297bc1dbbe130b6a545",
+      "eta": "0xfa9712369264254a0bc760a7218f72bed01ab79c075cf306420e2677a34727e8",
+      "tAtt": 1790453548,
       "notarization": {
         "attempts": 1,
         "stalls": []
@@ -332,15 +342,15 @@
         "satisfied": false,
         "failedAssertion": "template PhiR line 94"
       },
-      "proofSource": "/Users/receptutku/src/pprev-prototype/target/e2e/20260926T183439Z/positive/proof.json",
+      "proofSource": "/Users/receptutku/src/pprev-prototype/target/e2e/20260926T201218Z/positive/proof.json",
       "timings": {
         "outsideDelta": {
-          "loginMs": 1.043333,
-          "mpcTlsMs": 519.2175
+          "loginMs": 0.686125,
+          "mpcTlsMs": 301.280875
         },
         "insideDelta": {
-          "presentationMs": 0.038292,
-          "readTAttMs": 0.22008299999999997,
+          "presentationMs": 0.036416,
+          "readTAttMs": 0.20083399999999998,
           "witnessMs": null,
           "snarkjsProveMs": null,
           "tProveMs": null,
@@ -349,23 +359,32 @@
           "tInclMs": null
         },
         "verifier": null,
-        "verifierRoundTripMs": 3.727042,
-        "afterAttestationMs": 304.81075000000004,
-        "attestationArrivalMinusTAttMs": 341
+        "verifierRoundTripMs": 2.1870000000000003,
+        "afterAttestationMs": 278.711833,
+        "attestationArrivalMinusTAttMs": 332
+      },
+      "resources": {
+        "mpcTraffic": {
+          "sentBytes": 30200490,
+          "receivedBytes": 3804890
+        },
+        "witnessPeakRssBytes": null,
+        "snarkjsPeakRssBytes": null,
+        "proverPeakRssBytes": 232652800
       },
       "payload": null,
       "submission": null
     },
     "nonce-reuse": {
       "outcome": "refused",
-      "reason": "nonce 0x4cda0297d26895fe6a9fd8cd2224d5d560dfcdf8c996e204f3f6a44a780c9a7f has already been signed",
+      "reason": "nonce 0x44e3373285fca881bf850a1762ca22b45f86f34ba4ebe73b69bcc3b2d9d8196c has already been signed",
       "account": "ACC-000000000001",
       "property": "TR-06-CANKAYA-000123",
       "submitter": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
       "policyIdR": "0xdaa0cc8bee0f7a38b19d419dc9c099dca2411eecb84dda8c97bb9d1c0df7ff13",
-      "cTx": "0xbe01b9ece270a3d0359385265ee69a3cfc8df7545d5bf457b1e6d07f2539e3dc",
-      "eta": "0x4cda0297d26895fe6a9fd8cd2224d5d560dfcdf8c996e204f3f6a44a780c9a7f",
-      "tAtt": 1790447693,
+      "cTx": "0xfa4cc9e48d00c9f0a9f4940071e09818c70736dbdc44d54a911da3cb6db4484d",
+      "eta": "0x44e3373285fca881bf850a1762ca22b45f86f34ba4ebe73b69bcc3b2d9d8196c",
+      "tAtt": 1790453548,
       "notarization": {
         "attempts": 1,
         "stalls": []
@@ -377,23 +396,32 @@
       "proofSource": "own",
       "timings": {
         "outsideDelta": {
-          "loginMs": 0.700584,
-          "mpcTlsMs": 558.2347920000001
+          "loginMs": 0.737,
+          "mpcTlsMs": 307.644333
         },
         "insideDelta": {
-          "presentationMs": 0.050708,
-          "readTAttMs": 0.200875,
-          "witnessMs": 375.801083,
-          "snarkjsProveMs": 4356.311542,
-          "tProveMs": 4732.112625000001,
+          "presentationMs": 0.045375,
+          "readTAttMs": 0.214,
+          "witnessMs": 289.569459,
+          "snarkjsProveMs": 3007.638542,
+          "tProveMs": 3297.208001,
           "tVerifyMs": null,
           "tSignMs": null,
           "tInclMs": null
         },
         "verifier": null,
-        "verifierRoundTripMs": 0.988709,
-        "afterAttestationMs": 4733.564083,
-        "attestationArrivalMinusTAttMs": 286
+        "verifierRoundTripMs": 0.914458,
+        "afterAttestationMs": 3298.588917,
+        "attestationArrivalMinusTAttMs": 944
+      },
+      "resources": {
+        "mpcTraffic": {
+          "sentBytes": 30200434,
+          "receivedBytes": 3805114
+        },
+        "witnessPeakRssBytes": null,
+        "snarkjsPeakRssBytes": null,
+        "proverPeakRssBytes": 244760576
       },
       "payload": null,
       "submission": null
@@ -405,9 +433,9 @@
       "property": "TR-06-CANKAYA-000123",
       "submitter": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
       "policyIdR": "0xdaa0cc8bee0f7a38b19d419dc9c099dca2411eecb84dda8c97bb9d1c0df7ff13",
-      "cTx": "0x167b27f749e87eda50ce906a45accaac871e7080d17372f720a09a8e6d4e89ef",
-      "eta": "0x46f277d8a52d2177200f94709b38f24e76f72402fa417ba0a4dccbfc3489d7ac",
-      "tAtt": 1790447698,
+      "cTx": "0xb85f8813d1c1ecc9178ce48e261ad84a7bb9d0955d7e9d199720e0713ac252a5",
+      "eta": "0x87bfe4b78cecf696d374005196fd8be3f7a39a80c51f62fcb0d68ef046e6e763",
+      "tAtt": 1790453552,
       "notarization": {
         "attempts": 1,
         "stalls": []
@@ -419,43 +447,52 @@
       "proofSource": "own",
       "timings": {
         "outsideDelta": {
-          "loginMs": 0.769292,
-          "mpcTlsMs": 435.28104099999996
+          "loginMs": 0.7929579999999999,
+          "mpcTlsMs": 429.459916
         },
         "insideDelta": {
-          "presentationMs": 0.040834,
-          "readTAttMs": 0.211375,
-          "witnessMs": 422.421208,
-          "snarkjsProveMs": 3566.0815000000002,
-          "tProveMs": 3988.502708,
-          "tVerifyMs": 1.771416,
-          "tSignMs": 6.435584,
+          "presentationMs": 0.034165999999999995,
+          "readTAttMs": 0.206083,
+          "witnessMs": 312.45304200000004,
+          "snarkjsProveMs": 3073.471542,
+          "tProveMs": 3385.9245840000003,
+          "tVerifyMs": 1.685875,
+          "tSignMs": 3.849583,
           "tInclMs": null
         },
         "verifier": {
-          "decodeMs": 0.134416,
-          "presentationMs": 0.321542,
-          "groth16Ms": 1.309833,
-          "verifyMs": 1.637,
-          "signMs": 6.435584
+          "decodeMs": 0.1385,
+          "presentationMs": 0.274625,
+          "groth16Ms": 1.2661669999999998,
+          "verifyMs": 1.547375,
+          "signMs": 3.849583
         },
-        "verifierRoundTripMs": 8.867666999999999,
-        "afterAttestationMs": 3998.310459,
-        "attestationArrivalMinusTAttMs": 512
+        "verifierRoundTripMs": 6.18,
+        "afterAttestationMs": 3393.06675,
+        "attestationArrivalMinusTAttMs": 723
+      },
+      "resources": {
+        "mpcTraffic": {
+          "sentBytes": 30200462,
+          "receivedBytes": 3804190
+        },
+        "witnessPeakRssBytes": null,
+        "snarkjsPeakRssBytes": null,
+        "proverPeakRssBytes": 243367936
       },
       "payload": {
         "chainId": 31337,
         "contract": "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
         "submitter": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
-        "cTx": "0x167b27f749e87eda50ce906a45accaac871e7080d17372f720a09a8e6d4e89ef",
+        "cTx": "0xb85f8813d1c1ecc9178ce48e261ad84a7bb9d0955d7e9d199720e0713ac252a5",
         "propertyId": "0x54522d30362d43414e4b4159412d303030313233000000000000000000000000",
         "amount": "0xde0b6b3a7640000",
         "settlementShare": "0x0",
         "policyIdR": "0xdaa0cc8bee0f7a38b19d419dc9c099dca2411eecb84dda8c97bb9d1c0df7ff13",
-        "r": "0x872ef0fdbd10f854187709f701b7bc9e0cd553bdeb85c86bae7bfbc22d30b91b",
-        "sigmaR": "0x1802aa70172029ce511e9019a20c9ca79c66667b9ea04c6e76d164b7bde5de2032947f2ee5b4c54db84df8b038ee01fa8cb8dc8301292d22c1390adb180221d21c",
-        "etaR": "0x46f277d8a52d2177200f94709b38f24e76f72402fa417ba0a4dccbfc3489d7ac",
-        "tAttR": 1790447698,
+        "r": "0x05b92c8d8065f68aca5e7276eef6a210efd4f5c0270dd5b45eb592c5a3f23214",
+        "sigmaR": "0x9e1f587674a7b786218825db575943e5bd0255616d36ea62bb4aa0c74b6842f316fb6892a6721f86e1b2c8874f084cabce795772b7d219d97809eaac295b51be1b",
+        "etaR": "0x87bfe4b78cecf696d374005196fd8be3f7a39a80c51f62fcb0d68ef046e6e763",
+        "tAttR": 1790453552,
         "collateral": "0x6f05b59d3b20000"
       },
       "submission": null
@@ -468,81 +505,81 @@
     },
     "replay": {
       "outcome": "reverted",
-      "error": "NonceConsumed(NonceConsumed { eta: 0x4cda0297d26895fe6a9fd8cd2224d5d560dfcdf8c996e204f3f6a44a780c9a7f })"
+      "error": "NonceConsumed(NonceConsumed { eta: 0x44e3373285fca881bf850a1762ca22b45f86f34ba4ebe73b69bcc3b2d9d8196c })"
     },
     "expired-submit": {
       "outcome": "reverted",
-      "error": "AttestationExpired(AttestationExpired { tAtt: 1790447698 })"
+      "error": "AttestationExpired(AttestationExpired { tAtt: 1790453552 })"
     }
   },
   "notaryEvents": [
     {
-      "connectionTime": 1790447686,
-      "durationMs": 578.151959,
+      "connectionTime": 1790453544,
+      "durationMs": 368.094875,
       "event": "session",
       "outcome": "attested",
-      "tAtt": 1790447686,
-      "unixMs": 1790447686737
+      "tAtt": 1790453544,
+      "unixMs": 1790453544575
     },
     {
-      "decodeMs": 0.154667,
+      "decodeMs": 0.147625,
       "event": "register",
       "outcome": "signed",
       "timings": {
-        "groth16Ms": 1.381209,
-        "presentationMs": 0.49629100000000004,
-        "signMs": 26.796833,
-        "verifyMs": 1.904333
+        "groth16Ms": 1.3342910000000001,
+        "presentationMs": 0.423459,
+        "signMs": 3.8518329999999996,
+        "verifyMs": 1.7772919999999999
       },
-      "unixMs": 1790447691258
+      "unixMs": 1790453547838
     },
     {
-      "connectionTime": 1790447692,
-      "durationMs": 518.8239169999999,
+      "connectionTime": 1790453548,
+      "durationMs": 301.016959,
       "event": "session",
       "outcome": "attested",
-      "tAtt": 1790447692,
-      "unixMs": 1790447692340
+      "tAtt": 1790453548,
+      "unixMs": 1790453548332
     },
     {
       "event": "register",
       "outcome": "refused",
       "reason": "the phi_R proof does not verify for this statement and attestation",
-      "unixMs": 1790447692644
+      "unixMs": 1790453548611
     },
     {
-      "connectionTime": 1790447693,
-      "durationMs": 557.7653750000001,
+      "connectionTime": 1790453548,
+      "durationMs": 307.343459,
       "event": "session",
       "outcome": "attested",
-      "tAtt": 1790447693,
-      "unixMs": 1790447693286
+      "tAtt": 1790453548,
+      "unixMs": 1790453548944
     },
     {
       "event": "register",
       "outcome": "refused",
-      "reason": "nonce 0x4cda0297d26895fe6a9fd8cd2224d5d560dfcdf8c996e204f3f6a44a780c9a7f has already been signed",
-      "unixMs": 1790447698019
+      "reason": "nonce 0x44e3373285fca881bf850a1762ca22b45f86f34ba4ebe73b69bcc3b2d9d8196c has already been signed",
+      "unixMs": 1790453552242
     },
     {
-      "connectionTime": 1790447698,
-      "durationMs": 434.953542,
+      "connectionTime": 1790453552,
+      "durationMs": 429.166875,
       "event": "session",
       "outcome": "attested",
-      "tAtt": 1790447698,
-      "unixMs": 1790447698512
+      "tAtt": 1790453552,
+      "unixMs": 1790453552723
     },
     {
-      "decodeMs": 0.134416,
+      "decodeMs": 0.1385,
       "event": "register",
       "outcome": "signed",
       "timings": {
-        "groth16Ms": 1.309833,
-        "presentationMs": 0.321542,
-        "signMs": 6.435584,
-        "verifyMs": 1.637
+        "groth16Ms": 1.2661669999999998,
+        "presentationMs": 0.274625,
+        "signMs": 3.849583,
+        "verifyMs": 1.547375
       },
-      "unixMs": 1790447702510
+      "unixMs": 1790453556115
     }
   ]
 }
