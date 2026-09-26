@@ -1,0 +1,66 @@
+{
+  "runId": "20260926T194031Z",
+  "commit": "f49965208630fa45beb6148435cf6a2c8a028cf3",
+  "workingTreeDirty": false,
+  "machine": {
+    "cpu": "Apple M2",
+    "memoryBytes": 17179869184,
+    "os": "26.6.2",
+    "powerSource": "AC Power"
+  },
+  "tools": {
+    "anvil": "anvil Version: 1.8.3",
+    "forge": "forge Version: 1.8.3",
+    "cast": "cast Version: 1.8.3",
+    "solc": "0.8.36",
+    "circom": "circom compiler 2.2.3",
+    "snarkjs": "0.7.6",
+    "circomlib": "2.0.5",
+    "node": "v26.9.0",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "tlsn": "v0.1.0-alpha.15#47aee45b53e06648c1b2ad3689b367b8c923fdec",
+    "alloy": "2.5.0"
+  },
+  "parameters": {
+    "publicInputs": 9,
+    "anvilHardfork": "Bpo1",
+    "proof": "circuits/setup/sample/{proof,public}.json (register statement of test-vectors/eip712.json, same key)",
+    "verifier": "circuits/setup/Groth16Verifier.sol as exported by snarkjs, unmodified"
+  },
+  "checks": {
+    "validProofAccepted": true,
+    "changedPublicInputRejected": true,
+    "transactionReturnedTrue": true,
+    "transactionGasLimit": 1000000
+  },
+  "verification": {
+    "receiptGas": 270162,
+    "intrinsicGas": 21000,
+    "calldataBytes": 548,
+    "calldataGas": 7064,
+    "executionGas": 242098,
+    "transactionHash": "0x9f896ebd43a44190294bd705006544f765811c710205b2aad5a94ea64ff41874"
+  },
+  "eip1108Model": {
+    "pairing": 181000,
+    "publicInputMsm": 55350,
+    "total": 236350,
+    "executionMinusModel": 5748,
+    "modelShareOfExecution": 0.9763
+  },
+  "deployment": {
+    "transactionGas": 506627,
+    "initcodeBytes": 2126,
+    "runtimeBytes": 2098,
+    "calldataGas": 33440
+  },
+  "threeVerificationsOnChain": {
+    "assumption": "Groth16 verification gas depends on the number of public inputs, not on the circuit size. The comparison assumes that phi_A and phi_S are circuits of similar size and interface to phi_R, each verified with 9 public inputs at the measured cost; neither circuit exists in the prototype (D23).",
+    "l1Record": "measurements/l1/20260926T190801Z.json",
+    "l1RecordCommit": "67568afc5652b5f58f699ff51e29f2f654e8718a",
+    "lifecycleExecutionGas": 538976,
+    "addedExecutionGas": 726294,
+    "lifecycleWithVerificationGas": 1265270,
+    "factor": 2.3475
+  }
+}
