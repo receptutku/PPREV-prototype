@@ -1,0 +1,217 @@
+{
+  "runId": "20260926T212837Z",
+  "commit": "9d824a258859ce3a82354b18b1333a3e0e15c459",
+  "workingTreeDirty": false,
+  "machine": {
+    "cpu": "Apple M2",
+    "memoryBytes": 17179869184,
+    "os": "26.6.2",
+    "powerSource": "AC Power"
+  },
+  "tools": {
+    "anvil": "anvil Version: 1.8.3",
+    "forge": "forge Version: 1.8.3",
+    "cast": "cast Version: 1.8.3",
+    "solc": "0.8.36",
+    "circom": "circom compiler 2.2.3",
+    "snarkjs": "0.7.6",
+    "circomlib": "2.0.5",
+    "node": "v26.9.0",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "tlsn": "v0.1.0-alpha.15#47aee45b53e06648c1b2ad3689b367b8c923fdec",
+    "alloy": "2.5.0"
+  },
+  "forge": {
+    "total": 206,
+    "byKind": {
+      "Unit": 200,
+      "Fuzz": 5,
+      "Invariant": 1
+    },
+    "failed": [],
+    "fuzzConfig": {
+      "runs": 256,
+      "seed": "0x5050524556"
+    },
+    "invariantConfig": {
+      "runs": 256,
+      "depth": 128,
+      "failOnRevert": true
+    },
+    "invariantRuns": [
+      {
+        "test": "invariant_atMostOneOpenEngagementPerListing",
+        "runs": 256,
+        "calls": 32768,
+        "reverts": 0
+      }
+    ]
+  },
+  "table6Coverage": {
+    "exitStatus": 0,
+    "summary": {
+      "testsPassed": 205,
+      "tests": 205,
+      "invariantsHeld": 4,
+      "invariants": 4
+    },
+    "report": [
+      "## Contract conditions",
+      "",
+      "| Condition | In Table VI | Positive passed/total | Negative passed/total | Status |",
+      "|---|---|---|---|---|",
+      "| R(b) | yes | 1/1 | 4/4 | covered |",
+      "| R(c) | yes | 1/1 | 9/9 | covered |",
+      "| R(d) | yes | 1/1 | 1/1 | covered |",
+      "| R(e) | yes | 2/2 | 2/2 | covered |",
+      "| R(f) | yes | 1/1 | 2/2 | covered |",
+      "| R(h) | yes | 1/1 | 1/1 | covered |",
+      "| A(c) | yes | 1/1 | 2/2 | covered |",
+      "| A(d) | yes | 1/1 | 6/6 | covered |",
+      "| A(e) | yes | 1/1 | 1/1 | covered |",
+      "| A(f) | yes | 2/2 | 2/2 | covered |",
+      "| S(b) | yes | 1/1 | 2/2 | covered |",
+      "| S(c) | yes | 1/1 | 2/2 | covered |",
+      "| S(d) | yes | 1/1 | 2/2 | covered |",
+      "| S(e) | yes | 1/1 | 6/6 | covered |",
+      "| S(f) | yes | 1/1 | 1/1 | covered |",
+      "| S(g) | yes | 2/2 | 2/2 | covered |",
+      "| S(h) | yes | 1/1 | 2/2 | covered |",
+      "| E(a) | yes | 1/1 | 4/4 | covered |",
+      "| E(b) | yes | 1/1 | 1/1 | covered (negative via white-box) |",
+      "| E(c) | yes | 1/1 | 2/2 | covered |",
+      "| R(a) | no | 1/1 | 1/1 | covered |",
+      "| R(g) | no | 2/2 | 2/2 | covered |",
+      "| A(a) | no | 2/2 | 6/6 | covered |",
+      "| A(b) | no | 1/1 | 1/1 | covered |",
+      "| A(g) | no | 3/3 | 1/1 | covered |",
+      "| A(h) | no | 1/1 | 1/1 | covered |",
+      "| Engage (i) | no | 1/1 | 1/1 | covered |",
+      "| Engage (ii) | no | 1/1 | 4/4 | covered |",
+      "| Engage (iii) | no | 1/1 | 4/4 | covered |",
+      "",
+      "## Table VI properties",
+      "",
+      "| Property | Conditions | Property-specific negative tests | Attack-scenario tests |",
+      "|---|---|---|---|",
+      "| P1 Freshness | R(e), A(f), S(g) | 6/6 | 1/1 |",
+      "| P2 Transaction binding | R(b), R(c), R(f), A(c), A(d), S(d), S(e), R(d), A(e), S(f) | 10/10 | 4/4 |",
+      "| P3 Phase binding | R(c), A(d), S(e) | 4/4 | 1/1 |",
+      "| P4 Settlement integrity | R(h), S(b), S(c), S(d), S(h), E(a), E(b), E(c) | 5/5 | 3/3 |",
+      "| P5 Sender binding | R(c), A(d), S(e), S(b) | 4/4 | 3/3 |",
+      "",
+      "## Invariants",
+      "",
+      "| Invariant | Status |",
+      "|---|---|",
+      "| invariant_atMostOneOpenEngagementPerListing | pass |",
+      "| invariant_balanceEqualsObligations | pass |",
+      "| invariant_listingRecordsMatchState | pass |",
+      "| invariant_openEngagementListingIsLocked | pass |",
+      "",
+      "Tests: 205/205 passed; invariants: 4/4 held.",
+      "Conditions without a passing positive and negative test: none."
+    ],
+    "howItCounts": "forge reports every test function, invariant functions included. table6_coverage.py counts a result as invariants when it carries invariant predicate results (one per predicate) and as a test otherwise.",
+    "reconciliation": {
+      "forgeTotal": 206,
+      "forgeInvariantFunctions": 1,
+      "resultsWithPredicates": 1,
+      "predicates": 4,
+      "table6Tests": 205,
+      "table6Invariants": 4
+    }
+  },
+  "cargo": {
+    "workspace": {
+      "passed": 114,
+      "failed": 0,
+      "ignored": 3
+    },
+    "ignoredTests": [
+      "prover_clock_minus_3s_is_accepted_and_t_att_is_the_notary_clock",
+      "prover_clock_plus_10s_is_rejected_by_tlsn",
+      "prover_clock_plus_3s_is_accepted_and_t_att_is_the_notary_clock"
+    ],
+    "ignoredUnderLibfaketime": {
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "status": "ran"
+    }
+  },
+  "coverageContractsSrc": {
+    "src/PPREV.sol": {
+      "lines": {
+        "percent": 100.0,
+        "covered": "219/219"
+      },
+      "statements": {
+        "percent": 100.0,
+        "covered": "276/276"
+      },
+      "branches": {
+        "percent": 100.0,
+        "covered": "43/43"
+      },
+      "functions": {
+        "percent": 100.0,
+        "covered": "20/20"
+      }
+    },
+    "src/PPREVEncoding.sol": {
+      "lines": {
+        "percent": 100.0,
+        "covered": "10/10"
+      },
+      "statements": {
+        "percent": 100.0,
+        "covered": "10/10"
+      },
+      "branches": {
+        "percent": null,
+        "covered": "0/0"
+      },
+      "functions": {
+        "percent": 100.0,
+        "covered": "5/5"
+      }
+    },
+    "src/verifiers/EcdsaNotaryVerifier.sol": {
+      "lines": {
+        "percent": 100.0,
+        "covered": "15/15"
+      },
+      "statements": {
+        "percent": 100.0,
+        "covered": "23/23"
+      },
+      "branches": {
+        "percent": 100.0,
+        "covered": "4/4"
+      },
+      "functions": {
+        "percent": 100.0,
+        "covered": "2/2"
+      }
+    },
+    "Total": {
+      "lines": {
+        "percent": 100.0,
+        "covered": "244/244"
+      },
+      "statements": {
+        "percent": 100.0,
+        "covered": "309/309"
+      },
+      "branches": {
+        "percent": 100.0,
+        "covered": "47/47"
+      },
+      "functions": {
+        "percent": 100.0,
+        "covered": "27/27"
+      }
+    }
+  }
+}
