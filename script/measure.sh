@@ -18,8 +18,6 @@ LOG_TAG=l1
 . "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 
 OUT_DIR="${MEASUREMENTS_DIR:?}/l1"
-# Gas figures follow the Osaka (Fusaka) schedule; anvil's default fork can move with its version.
-HARDFORK_PIN=osaka
 PORTS="${ANVIL_PORT:?}"
 
 for tool in anvil forge cast jq lsof python3 git; do

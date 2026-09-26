@@ -23,6 +23,8 @@ VERIFIER_PORT="${VERIFIER_PORT:-7048}"
 PORTS="${ANVIL_PORT:?} ${REGISTRY_PORT:?} ${MPC_PORT:?} ${VERIFIER_PORT:?}"
 CHAIN_ID=31337
 RPC="http://127.0.0.1:${ANVIL_PORT:?}"
+# Local chains follow the Osaka (Fusaka) schedule; anvil's default fork can move with its version.
+HARDFORK_PIN=osaka
 POLICY="policies/rental-v1.json"
 WORK=""
 
@@ -211,7 +213,7 @@ start_stack() {
     VK_NOTARY="$(cast wallet address --private-key "0x$(cat "${WORK}/statement.key")")"
 
     start anvil "${WORK}/anvil.log" anvil --port "${ANVIL_PORT}" --chain-id "${CHAIN_ID}" \
-        --config-out "${WORK}/anvil.json"
+        --hardfork "${HARDFORK_PIN}" --config-out "${WORK}/anvil.json"
     wait_port "${ANVIL_PORT}" anvil "${PIDS[${#PIDS[@]} - 1]}"
     for i in 0 1 2; do
         jq -r ".private_keys[${i}]" "${WORK}/anvil.json" >"${WORK}/account${i}.key"

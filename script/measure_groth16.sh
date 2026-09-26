@@ -69,7 +69,8 @@ PY
 A="$(cat "${WORK}/arg0.txt")" B="$(cat "${WORK}/arg1.txt")" C="$(cat "${WORK}/arg2.txt")"
 PUB="$(cat "${WORK}/arg3.txt")" PUB_TAMPERED="$(cat "${WORK}/arg3-tampered.txt")"
 
-start anvil "${WORK}/anvil.log" anvil --port "${ANVIL_PORT}" --chain-id "${CHAIN_ID}" --config-out "${WORK}/anvil.json"
+start anvil "${WORK}/anvil.log" anvil --port "${ANVIL_PORT}" --chain-id "${CHAIN_ID}" --hardfork "${HARDFORK_PIN}" \
+    --config-out "${WORK}/anvil.json"
 wait_port "${ANVIL_PORT}" anvil "${PIDS[0]}"
 HARDFORK="$(cast rpc anvil_nodeInfo --rpc-url "${RPC}" | jq -r .hardFork)"
 KEY="$(jq -r '.private_keys[0]' "${WORK}/anvil.json")"

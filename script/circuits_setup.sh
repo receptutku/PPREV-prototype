@@ -36,6 +36,13 @@ R1CS="${BUILD:?}/main_title_v1.r1cs"
 WASM_DIR="${BUILD:?}/main_title_v1_js"
 ZKEY="${BUILD:?}/phi_r.zkey"
 
+# setup.json records the Node.js version, and the other scripts require the one in .nvmrc.
+NODE_VERSION="$(tr -d '[:space:]' <"${ROOT:?}/.nvmrc")"
+[ "$(node --version)" = "${NODE_VERSION}" ] || {
+    echo "node $(node --version) is not ${NODE_VERSION} (.nvmrc); run 'nvm use' or put that version first on PATH" >&2
+    exit 1
+}
+
 strip_colors() { sed 's/\x1b\[[0-9;]*m//g'; }
 entropy() { head -c 64 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
 
