@@ -64,6 +64,11 @@ PRICE_RECORD="${PPREV_PRICE_RECORD:-$(find "${ROOT}/measurements/l1_price" -name
 [ -f "${L1_RECORD}" ] && [ -f "${PRICE_RECORD}" ] || die "needs an L1 record and an L1 price record"
 
 init_run l2
+# Provenance before anything is written under measurements/.
+PROVENANCE="$(jq -n --arg c "$(git -C "${ROOT}" rev-parse HEAD)" --argjson d "$(git_dirty)" \
+    --arg forge "$(first_line forge --version)" --arg cast "$(first_line cast --version)" \
+    --arg solc "$(awk -F'"' '/^solc_version/ { print $2 }' "${ROOT}/contracts/foundry.toml")" \
+    '{commit: $c, workingTreeDirty: $d, tools: {forge: $forge, cast: $cast, solc: $solc}}')"
 mkdir -p "${OUT_DIR:?}"
 OUT="${OUT_DIR:?}/${RUN_ID:?}.json"
 REL="../target/l2/${RUN_ID}"
@@ -166,10 +171,6 @@ jq -n --argjson m "${REGISTER_COUNT}" --argjson tauA "${TAU_LOCK_A}" --argjson t
     >"${WORK}/params.json"
 
 python3 "${ROOT}/script/lib/l2_report.py" "${WORK}" "${L1_RECORD}" "${PRICE_RECORD}" "${OUT}.part"
-PROVENANCE="$(jq -n --arg c "$(git -C "${ROOT}" rev-parse HEAD)" --argjson d "$(git_dirty)" \
-    --arg forge "$(first_line forge --version)" --arg cast "$(first_line cast --version)" \
-    --arg solc "$(awk -F'"' '/^solc_version/ { print $2 }' "${ROOT}/contracts/foundry.toml")" \
-    '{commit: $c, workingTreeDirty: $d, tools: {forge: $forge, cast: $cast, solc: $solc}}')"
 jq -n --arg runId "${RUN_ID}" --argjson prov "${PROVENANCE}" --slurpfile body "${OUT}.part" \
     '{runId: $runId} + $prov + $body[0]' >"${OUT}"
 rm -f -- "${OUT:?}.part"
