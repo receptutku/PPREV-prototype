@@ -1,11 +1,13 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::time::Instant;
 
 use alloy_primitives::{Address, B256, U256};
 use anyhow::{Context, Result};
 use clap::{Args as ClapArgs, Parser, Subcommand};
 use pprev_prover::chain::{RegisterPayload, SubmitOutcome, read_private_key, submit_register};
 use pprev_prover::circuit::CircuitFiles;
+use pprev_prover::counting::{ByteCounts, CountingStream};
 use pprev_prover::register::{self, Outcome, RegisterConfig};
 use pprev_prover::{
     DEFAULT_MAX_RETRIES, DEFAULT_PREPROCESS_TIMEOUT, ProverSetup, login, notarize_with_retries,
@@ -68,6 +70,9 @@ struct NotarizeArgs {
     layout: PathBuf,
     #[arg(long)]
     out: PathBuf,
+    /// Also write attempts, stalls, timings, and traffic of the session as JSON to this file.
+    #[arg(long)]
+    report: Option<PathBuf>,
 }
 
 #[derive(ClapArgs)]
@@ -113,6 +118,9 @@ struct RegisterArgs {
     /// Stop after sigma_R; leave the payload in `--out`.
     #[arg(long)]
     no_submit: bool,
+    /// Report the peak RSS of the witness generator and snarkjs (runs them under /usr/bin/time -l).
+    #[arg(long)]
+    measure_rss: bool,
 }
 
 #[derive(ClapArgs)]
@@ -144,6 +152,7 @@ async fn notarize(args: NotarizeArgs) -> Result<()> {
     let s = args.session;
     let layout = Layout::load(&args.layout)?;
     let ca = std::fs::read(&s.ca)?;
+    let started = Instant::now();
     let token = login(
         s.registry,
         &layout.server_name,
@@ -152,6 +161,7 @@ async fn notarize(args: NotarizeArgs) -> Result<()> {
         &s.password,
     )
     .await?;
+    let login_ms = millis(started);
     let setup = ProverSetup {
         layout,
         registry_addr: s.registry,
@@ -163,13 +173,53 @@ async fn notarize(args: NotarizeArgs) -> Result<()> {
         preprocess_timeout: std::time::Duration::from_secs(s.preprocess_timeout_secs),
     };
     let notary_addr = s.notary;
-    let (notarized, stats) = notarize_with_retries(
-        |_attempt| async move { anyhow::Ok(tokio::net::TcpStream::connect(notary_addr).await?) },
+    let mut attempt_started = Vec::new();
+    let mut attempt_counts = Vec::new();
+    let result = notarize_with_retries(
+        |_attempt| {
+            attempt_started.push(Instant::now());
+            let counts = ByteCounts::default();
+            attempt_counts.push(counts.clone());
+            async move {
+                let stream = tokio::net::TcpStream::connect(notary_addr).await?;
+                anyhow::Ok(CountingStream::with_counts(stream, counts))
+            }
+        },
         &setup,
         s.max_retries,
     )
-    .await?;
+    .await;
+    let (notarized, stats) = match result {
+        Ok(ok) => ok,
+        Err(e) => {
+            if let Some(path) = &args.report {
+                write_json(
+                    path,
+                    &serde_json::json!({
+                        "outcome": "failed",
+                        "attempts": attempt_started.len(),
+                        "reason": format!("{e:#}"),
+                    }),
+                )?;
+            }
+            return Err(e);
+        }
+    };
+    let mpc_tls_ms = millis(*attempt_started.last().expect("one attempt"));
     println!("notarised in {} attempt(s)", stats.attempts);
+    if let Some(path) = &args.report {
+        write_json(
+            path,
+            &serde_json::json!({
+                "outcome": "attested",
+                "attempts": stats.attempts,
+                "stalls": stats.stalls,
+                "loginMs": login_ms,
+                "mpcTlsMs": mpc_tls_ms,
+                "mpcTraffic": attempt_counts.last().expect("one attempt").traffic(),
+            }),
+        )?;
+    }
     let presentation = present(&notarized, false)?;
 
     std::fs::create_dir_all(&args.out)?;
@@ -190,6 +240,10 @@ async fn notarize(args: NotarizeArgs) -> Result<()> {
         args.out.display()
     );
     Ok(())
+}
+
+fn millis(since: Instant) -> f64 {
+    since.elapsed().as_secs_f64() * 1000.0
 }
 
 fn write_json(path: &std::path::Path, value: &impl serde::Serialize) -> Result<()> {
@@ -217,7 +271,14 @@ async fn register(args: Box<RegisterArgs>) -> Result<()> {
         amount: args.amount_wei,
         settlement_share: args.settlement_share_bps,
         collateral: args.collateral_wei,
-        circuits: CircuitFiles::new(args.root.join(&args.circuits)),
+        circuits: {
+            let files = CircuitFiles::new(args.root.join(&args.circuits));
+            if args.measure_rss {
+                files.with_rss_measurement()
+            } else {
+                files
+            }
+        },
         out: args.out.clone(),
         max_sent: s.max_sent,
         max_recv: s.max_recv,

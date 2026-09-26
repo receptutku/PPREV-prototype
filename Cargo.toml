@@ -50,6 +50,7 @@ ark-groth16 = "0.5"
 ark-std = "0.5"
 light-poseidon = "0.4"
 hex = "0.4"
+libc = "0.2"
 rand = "0.8"
 clap = { version = "4", features = ["derive"] }
 anyhow = "1"

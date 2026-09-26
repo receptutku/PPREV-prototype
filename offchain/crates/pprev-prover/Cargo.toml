@@ -11,6 +11,7 @@ pprev-notary = { workspace = true }
 alloy = { workspace = true }
 alloy-primitives = { workspace = true }
 rand = { workspace = true }
+libc = { workspace = true }
 tlsn = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }

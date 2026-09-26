@@ -22,6 +22,7 @@ use tlsn::webpki::{CertificateDer, RootCertStore};
 
 use crate::chain::{self, RegisterPayload, SubmitOutcome};
 use crate::circuit::{CircuitFiles, PhiRInput, Unsatisfied, prove, public_of};
+use crate::counting::{ByteCounts, CountingStream, Traffic};
 use crate::session::{ProverSetup, notarize_with_retries, present};
 
 pub struct RegisterConfig {
@@ -146,6 +147,38 @@ pub struct Timings {
     pub attestation_arrival_minus_t_att_ms: i128,
 }
 
+/// Traffic and memory of the run.
+#[derive(Clone, Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Resources {
+    /// Prover-notary traffic of the successful MPC-TLS session, attestation included.
+    pub mpc_traffic: Traffic,
+    /// Peak RSS of the witness generator and of snarkjs, when measured.
+    pub witness_peak_rss_bytes: Option<u64>,
+    pub snarkjs_peak_rss_bytes: Option<u64>,
+    /// Peak RSS of the prover process itself, children excluded, at the end of the run.
+    pub prover_peak_rss_bytes: Option<u64>,
+}
+
+/// Peak RSS of this process from `getrusage(RUSAGE_SELF)`; children are not included.
+fn self_peak_rss_bytes() -> Option<u64> {
+    let mut usage = std::mem::MaybeUninit::<libc::rusage>::zeroed();
+    // SAFETY: getrusage writes a complete rusage into the pointer on success.
+    let usage = unsafe {
+        if libc::getrusage(libc::RUSAGE_SELF, usage.as_mut_ptr()) != 0 {
+            return None;
+        }
+        usage.assume_init()
+    };
+    let maxrss = u64::try_from(usage.ru_maxrss).ok()?;
+    // ru_maxrss is in bytes on macOS and in kilobytes on Linux.
+    Some(if cfg!(target_os = "macos") {
+        maxrss
+    } else {
+        maxrss * 1024
+    })
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RegisterRecord {
@@ -163,6 +196,7 @@ pub struct RegisterRecord {
     /// `own`, or the path of the borrowed proof.
     pub proof_source: String,
     pub timings: Timings,
+    pub resources: Resources,
     pub payload: Option<RegisterPayload>,
     pub submission: Option<SubmitOutcome>,
 }
@@ -217,10 +251,16 @@ pub async fn run(config: &RegisterConfig) -> Result<RegisterRecord> {
     };
     let notary_addr = config.notary;
     let mut attempt_started = Vec::new();
+    let mut attempt_counts = Vec::new();
     let (notarized, stats) = notarize_with_retries(
         |_attempt| {
             attempt_started.push(Instant::now());
-            async move { anyhow::Ok(tokio::net::TcpStream::connect(notary_addr).await?) }
+            let counts = ByteCounts::default();
+            attempt_counts.push(counts.clone());
+            async move {
+                let stream = tokio::net::TcpStream::connect(notary_addr).await?;
+                anyhow::Ok(CountingStream::with_counts(stream, counts))
+            }
         },
         &setup,
         config.max_retries,
@@ -231,6 +271,7 @@ pub async fn run(config: &RegisterConfig) -> Result<RegisterRecord> {
     timings.outside_delta.mpc_tls_ms =
         (attestation_received - *attempt_started.last().expect("one attempt")).as_secs_f64()
             * 1000.0;
+    let mpc_traffic = attempt_counts.last().expect("one attempt").traffic();
     let notarization = Notarization {
         attempts: stats.attempts,
         stalls: stats.stalls,
@@ -291,12 +332,17 @@ pub async fn run(config: &RegisterConfig) -> Result<RegisterRecord> {
         },
         proof_source: "own".into(),
         timings,
+        resources: Resources {
+            mpc_traffic,
+            ..Resources::default()
+        },
         payload: None,
         submission: None,
     };
     let finish = |mut record: RegisterRecord, outcome: Outcome, reason: Option<String>| {
         record.outcome = outcome;
         record.reason = reason;
+        record.resources.prover_peak_rss_bytes = self_peak_rss_bytes();
         record.timings.after_attestation_ms = millis(attestation_received);
         record
     };
@@ -314,6 +360,8 @@ pub async fn run(config: &RegisterConfig) -> Result<RegisterRecord> {
             inside.witness_ms = Some(proof.timings.witness_ms);
             inside.snarkjs_prove_ms = Some(proof.timings.prove_ms);
             inside.t_prove_ms = Some(proof.timings.witness_ms + proof.timings.prove_ms);
+            record.resources.witness_peak_rss_bytes = proof.timings.witness_peak_rss_bytes;
+            record.resources.snarkjs_peak_rss_bytes = proof.timings.prove_peak_rss_bytes;
             proof.proof_json
         }
         Err(e) => {

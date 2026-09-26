@@ -4,6 +4,7 @@
 
 pub mod chain;
 pub mod circuit;
+pub mod counting;
 pub mod login;
 pub mod register;
 pub mod session;

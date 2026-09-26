@@ -12,7 +12,7 @@ via_ir = false
 evm_version = "cancun"
 bytecode_hash = "ipfs"
 
-fs_permissions = [{ access = "read-write", path = "../test-vectors" }, { access = "read", path = "../policies" }]
+fs_permissions = [{ access = "read-write", path = "../test-vectors" }, { access = "read", path = "../policies" }, { access = "read-write", path = "../target/measure" }]
 
 [fuzz]
 runs = 256

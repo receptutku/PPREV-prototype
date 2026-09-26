@@ -4180,6 +4180,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "k256",
+ "libc",
  "mock-registry",
  "num-bigint",
  "pprev-notary",

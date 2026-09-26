@@ -110,12 +110,32 @@ impl PhiRInput {
 #[derive(Clone, Debug)]
 pub struct CircuitFiles {
     pub circuits_dir: PathBuf,
+    /// Run the witness generator and snarkjs under `/usr/bin/time -l` and report their peak
+    /// resident set size.
+    pub measure_rss: bool,
 }
 
 impl CircuitFiles {
     pub fn new(circuits_dir: impl Into<PathBuf>) -> Self {
         Self {
             circuits_dir: circuits_dir.into(),
+            measure_rss: false,
+        }
+    }
+
+    pub fn with_rss_measurement(mut self) -> Self {
+        self.measure_rss = true;
+        self
+    }
+
+    /// A command for `program`, under `/usr/bin/time -l` when the peak RSS is measured.
+    fn command(&self, program: impl AsRef<std::ffi::OsStr>) -> Command {
+        if self.measure_rss {
+            let mut command = Command::new("/usr/bin/time");
+            command.arg("-l").arg(program);
+            command
+        } else {
+            Command::new(program)
         }
     }
 
@@ -186,6 +206,18 @@ fn parse_unsatisfied(stderr: &str) -> Option<Unsatisfied> {
     })
 }
 
+/// Peak resident set size in bytes from the report of `/usr/bin/time -l` (macOS), which ends the
+/// child's stderr: `  123456789  maximum resident set size`.
+fn peak_rss(stderr: &str) -> Option<u64> {
+    stderr
+        .lines()
+        .find(|line| line.trim_end().ends_with("maximum resident set size"))?
+        .split_whitespace()
+        .next()?
+        .parse()
+        .ok()
+}
+
 /// Writes `input` as `input.json` in `dir` and runs circom's witness generator, which writes
 /// `witness.wtns`. Fails with [`Unsatisfied`] when an assertion of the circuit does not hold.
 pub fn generate_witness(
@@ -193,6 +225,15 @@ pub fn generate_witness(
     input: &impl Serialize,
     dir: &Path,
 ) -> Result<PathBuf> {
+    Ok(generate_witness_measured(files, input, dir)?.0)
+}
+
+/// As [`generate_witness`], with the peak RSS of the witness generator when it is measured.
+fn generate_witness_measured(
+    files: &CircuitFiles,
+    input: &impl Serialize,
+    dir: &Path,
+) -> Result<(PathBuf, Option<u64>)> {
     for path in [files.wasm(), files.witness_generator()] {
         if !path.exists() {
             bail!(
@@ -205,7 +246,8 @@ pub fn generate_witness(
     std::fs::write(&input_path, serde_json::to_vec(input)?)
         .with_context(|| format!("writing {}", input_path.display()))?;
     let witness = dir.join("witness.wtns");
-    let out = Command::new("node")
+    let out = files
+        .command("node")
         .arg(files.witness_generator())
         .arg(files.wasm())
         .arg(&input_path)
@@ -219,7 +261,11 @@ pub fn generate_witness(
         }
         bail!("witness generation failed: {stderr}");
     }
-    Ok(witness)
+    let rss = files
+        .measure_rss
+        .then(|| peak_rss(&String::from_utf8_lossy(&out.stderr)))
+        .flatten();
+    Ok((witness, rss))
 }
 
 /// Wall-clock time of each proving phase, in milliseconds.
@@ -228,6 +274,9 @@ pub fn generate_witness(
 pub struct ProveTimings {
     pub witness_ms: f64,
     pub prove_ms: f64,
+    /// Peak RSS of the witness generator and of snarkjs, when measured.
+    pub witness_peak_rss_bytes: Option<u64>,
+    pub prove_peak_rss_bytes: Option<u64>,
 }
 
 /// A phi_R proof as snarkjs writes it, with the public inputs and the phase timings.
@@ -254,12 +303,13 @@ pub fn prove(files: &CircuitFiles, input: &PhiRInput, dir: &Path) -> Result<PhiR
         zkey.display()
     );
     let started = Instant::now();
-    let witness = generate_witness(files, input, dir)?;
+    let (witness, witness_rss) = generate_witness_measured(files, input, dir)?;
     let witness_time = started.elapsed();
 
     let (proof_path, public_path) = (dir.join("proof.json"), dir.join("public.json"));
     let started = Instant::now();
-    let out = Command::new(files.snarkjs())
+    let out = files
+        .command(files.snarkjs())
         .args(["groth16", "prove"])
         .arg(&zkey)
         .arg(&witness)
@@ -283,6 +333,11 @@ pub fn prove(files: &CircuitFiles, input: &PhiRInput, dir: &Path) -> Result<PhiR
         timings: ProveTimings {
             witness_ms: millis(witness_time),
             prove_ms: millis(prove_time),
+            witness_peak_rss_bytes: witness_rss,
+            prove_peak_rss_bytes: files
+                .measure_rss
+                .then(|| peak_rss(&String::from_utf8_lossy(&out.stderr)))
+                .flatten(),
         },
     })
 }
@@ -290,6 +345,14 @@ pub fn prove(files: &CircuitFiles, input: &PhiRInput, dir: &Path) -> Result<PhiR
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_the_peak_rss_of_time_l() {
+        let stderr = "some output\n        0.35 real         0.30 user         0.04 sys\n\
+                      96256000  maximum resident set size\n               0  average shared memory size\n";
+        assert_eq!(peak_rss(stderr), Some(96_256_000));
+        assert_eq!(peak_rss("no report"), None);
+    }
 
     #[test]
     fn reads_the_failed_assertion() {

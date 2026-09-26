@@ -18,7 +18,8 @@ offchain/crates/  pprev-types (layout, circuit parameters, field encoding, EIP-7
                   phi_R witness and proof, end-to-end Register client)
 policies/         Policy bundle (rental-v1.json) and response layout of the title registry
 test-vectors/     EIP-712, C_tx, and notary signature vectors shared by the Solidity and Rust code
-script/           Table VI coverage report, circuit build, Groth16 setup, end-to-end Register
+script/           Table VI coverage report, circuit build, Groth16 setup, end-to-end Register,
+                  measurement scripts (shared parts in script/lib/common.sh)
 measurements/     Records written by the scripts (JSON)
 ```
 
@@ -158,6 +159,22 @@ witness generation + `snarkjs groth16 prove`, t_verify, t_sign, t_incl), the sum
 MPC-TLS attempts of each run, the result of every check, the commit (with a dirty flag), tool
 versions, and the machine. Blocks are mined on demand, so t_incl measures a local node, not a public
 chain. Keys, proofs, and logs of a run stay in `target/e2e/<run>/`.
+
+## Measurements
+
+Every number is produced by a script and written as JSON under `measurements/`, with the commit, a
+dirty flag, tool versions, and the machine. The measurement scripts refuse a dirty working tree
+(`PPREV_ALLOW_DIRTY=1` together with `PPREV_MEASUREMENTS_DIR` allows a trial run elsewhere) and an
+input evicted to iCloud.
+
+| Script | Output | Content |
+|---|---|---|
+| `script/measure_offchain.sh` | `measurements/offchain/<run>.json` | 20 Register runs on the local stack after one warm-up: login, MPC-TLS session and its traffic, presentation, witness, snarkjs, t_verify, t_sign, local t_incl; peak RSS of the witness generator, snarkjs, and the prover; 20 standalone Groth16 verifications; 200 MPC-TLS-only sessions for the preprocessing stall rate |
+| `script/measure.sh` | `measurements/l1/<run>.json` | contract tests; execution gas of the seven algorithms on fresh deployments (`contracts/script/MeasureGas.s.sol`), storage decomposition from a recorded state diff, ECDSA marginal against an accept-all verifier, verifier call costs; on anvil, deployment and a complete lifecycle as real transactions (`contracts/script/Lifecycle.s.sol`), bytecode sizes, and each receipt reconciled with the measured gas |
+
+Execution gas is transaction gas before the refund minus 21,000 and the EIP-2028 calldata gas:
+forge runs a pranked top-level call of a script as a transaction of its own, so `vm.lastCallGas`
+includes both, and the caller and the contract are warm while the verifier and payees start cold.
 
 ## Notation
 

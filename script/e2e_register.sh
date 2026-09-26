@@ -19,21 +19,10 @@
 # are checked free before starting and after stopping.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
-WORK="${ROOT:?}/target/e2e/${RUN_ID:?}"
-OUT_DIR="${ROOT:?}/measurements/e2e_register"
-OUT="${OUT_DIR:?}/${RUN_ID:?}.json"
+LOG_TAG=e2e
+# shellcheck source=lib/common.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 
-ANVIL_PORT="${ANVIL_PORT:-8545}"
-REGISTRY_PORT="${REGISTRY_PORT:-4443}"
-MPC_PORT="${MPC_PORT:-7047}"
-VERIFIER_PORT="${VERIFIER_PORT:-7048}"
-PORTS="${ANVIL_PORT:?} ${REGISTRY_PORT:?} ${MPC_PORT:?} ${VERIFIER_PORT:?}"
-CHAIN_ID=31337
-RPC="http://127.0.0.1:${ANVIL_PORT:?}"
-
-POLICY="policies/rental-v1.json"
 PROPERTY="TR-06-CANKAYA-000123"
 OWNER_ACCOUNT="ACC-000000000001"
 OWNER_PASSWORD="owner-one"
@@ -43,201 +32,17 @@ AMOUNT_WEI="1000000000000000000"    # txData.amount: 1 ETH monthly rent
 SETTLEMENT_SHARE_BPS=0              # rental (D18)
 COLLATERAL_WEI="500000000000000000" # 0.5 ETH, within [minCollateral, maxCollateral]
 
-BIN="${ROOT:?}/target/release"
-if ! command -v forge >/dev/null && [ -x "${HOME:?}/.foundry/bin/forge" ]; then
-    PATH="${HOME:?}/.foundry/bin:${PATH}"
-fi
-for tool in anvil forge cast jq lsof openssl circom cargo git; do
-    command -v "${tool}" >/dev/null || { echo "missing tool: ${tool}" >&2; exit 1; }
-done
+OUT_DIR="${MEASUREMENTS_DIR:?}/e2e_register"
 
-log() { printf '[e2e] %s\n' "$*" >&2; }
-die() { log "error: $*"; exit 1; }
-
-# Node.js runs the witness generator and snarkjs. The version is pinned in .nvmrc and must equal the
-# one that produced the setup (circuits/setup/setup.json). PPREV_NODE names a node binary; without
-# it, the node on PATH, Homebrew's, and nvm's are tried in that order.
-NODE_VERSION="$(tr -d '[:space:]' <"${ROOT:?}/.nvmrc")"
-[ "${NODE_VERSION}" = "$(jq -r .tools.node "${ROOT:?}/circuits/setup/setup.json")" ] \
-    || die ".nvmrc (${NODE_VERSION}) differs from the node version in circuits/setup/setup.json"
-if [ -n "${PPREV_NODE:-}" ]; then
-    NODE_CANDIDATES="${PPREV_NODE}"
-else
-    NODE_CANDIDATES="$(command -v node || true) /opt/homebrew/bin/node ${HOME:?}/.nvm/versions/node/${NODE_VERSION}/bin/node"
-fi
-NODE_BIN=""
-for candidate in ${NODE_CANDIDATES}; do
-    [ -x "${candidate}" ] || continue
-    if [ "$("${candidate}" --version)" = "${NODE_VERSION}" ]; then
-        NODE_BIN="${candidate}"
-        break
-    fi
-done
-[ -n "${NODE_BIN}" ] || die "node ${NODE_VERSION} not found (tried: ${NODE_CANDIDATES}); set PPREV_NODE"
-PATH="$(dirname "${NODE_BIN}"):${PATH}"
-[ "$(node --version)" = "${NODE_VERSION}" ] || die "node on PATH is not ${NODE_VERSION}"
-
-# ------------------------------------------------------------------ processes and ports
-
-PIDS=()
-NAMES=()
-STARTED=false
-
-listener_pids() { lsof -nP -iTCP:"$1" -sTCP:LISTEN -t 2>/dev/null || true; }
-
-check_ports_free() {
-    local busy=""
-    for port in ${PORTS}; do
-        local pids
-        pids="$(listener_pids "${port}")"
-        [ -z "${pids}" ] || busy="${busy} ${port}(pid ${pids//$'\n'/,})"
-    done
-    [ -z "${busy}" ] || die "ports in use:${busy}"
-}
-
-stop_all() {
-    local i
-    for ((i = ${#PIDS[@]} - 1; i >= 0; i--)); do
-        kill -TERM "${PIDS[i]}" 2>/dev/null || true
-    done
-    for ((i = ${#PIDS[@]} - 1; i >= 0; i--)); do
-        local waited=0
-        while kill -0 "${PIDS[i]}" 2>/dev/null && [ "${waited}" -lt 50 ]; do
-            sleep 0.1
-            waited=$((waited + 1))
-        done
-        if kill -0 "${PIDS[i]}" 2>/dev/null; then
-            log "${NAMES[i]} (pid ${PIDS[i]}) did not stop on TERM; killing"
-            kill -KILL "${PIDS[i]}" 2>/dev/null || true
-        fi
-        wait "${PIDS[i]}" 2>/dev/null || true
-    done
-    PIDS=()
-    NAMES=()
-}
-
-cleanup() {
-    local status=$?
-    trap - EXIT INT TERM
-    if [ "${status}" -ne 0 ] && [ -d "${WORK}" ]; then
-        for f in "${WORK}"/*.log; do
-            [ -f "${f}" ] || continue
-            log "last lines of ${f#"${ROOT}/"}:"
-            tail -n 5 "${f}" >&2 || true
-        done
-    fi
-    stop_all
-    # Ports busy before anything started belong to other processes; check_ports_free reported them.
-    [ "${STARTED}" = true ] || exit "${status}"
-    local left=""
-    for port in ${PORTS}; do
-        [ -z "$(listener_pids "${port}")" ] || left="${left} ${port}"
-    done
-    if [ -n "${left}" ]; then
-        log "ports still in use after stopping:${left}"
-        [ "${status}" -ne 0 ] || status=1
-    fi
-    exit "${status}"
-}
-trap cleanup EXIT
-trap 'exit 130' INT
-trap 'exit 143' TERM
-
-# start <name> <log> <cmd...>: runs cmd in the background and records its pid.
-start() {
-    local name="$1" logfile="$2"
-    shift 2
-    STARTED=true
-    "$@" >"${logfile}" 2>&1 &
-    PIDS+=("$!")
-    NAMES+=("${name}")
-    log "started ${name} (pid $!)"
-}
-
-# wait_port <port> <name> <pid>
-wait_port() {
-    local port="$1" name="$2" pid="$3" waited=0
-    until [ -n "$(listener_pids "${port}")" ]; do
-        kill -0 "${pid}" 2>/dev/null || die "${name} exited before listening on ${port}"
-        [ "${waited}" -lt 300 ] || die "${name} did not listen on ${port} within 30 s"
-        sleep 0.1
-        waited=$((waited + 1))
-    done
-}
-
-# ------------------------------------------------------------------ preparation
-
+preflight
 check_ports_free
-umask 077
-mkdir -p "${WORK:?}" "${OUT_DIR:?}"
-log "run ${RUN_ID}, work directory ${WORK#"${ROOT}/"}"
-
-CIRCUITS="${ROOT:?}/circuits"
-[ -f "${CIRCUITS}/build/main_title_v1_js/main_title_v1.wasm" ] \
-    || die "circuit not built; run script/circuits_build.sh"
-[ -f "${CIRCUITS}/build/phi_r.zkey" ] || die "proving key missing; run script/circuits_setup.sh"
-ZKEY_SHA256="$(shasum -a 256 "${CIRCUITS}/build/phi_r.zkey" | cut -d' ' -f1)"
-[ "${ZKEY_SHA256}" = "$(jq -r .zkeySha256 "${CIRCUITS}/setup/setup.json")" ] \
-    || die "phi_r.zkey does not match circuits/setup/setup.json"
-VK_SHA256="$(shasum -a 256 "${CIRCUITS}/setup/verification_key.json" | cut -d' ' -f1)"
-[ "${VK_SHA256}" = "$(jq -r .verificationKeySha256 "${CIRCUITS}/setup/setup.json")" ] \
-    || die "verification_key.json does not match circuits/setup/setup.json"
-
-log "building"
-(cd "${ROOT:?}" && cargo build -q --release -p pprev-prover -p pprev-notary -p mock-registry --bins)
-(cd "${ROOT:?}/contracts" && forge build -q)
-
-# Notary keys (D19), fresh for each run.
-openssl rand -hex 32 >"${WORK}/attestation.key"
-openssl rand -hex 32 >"${WORK}/statement.key"
-VK_NOTARY="$(cast wallet address --private-key "0x$(cat "${WORK}/statement.key")")"
-
-# ------------------------------------------------------------------ chain and deployment
-
-start anvil "${WORK}/anvil.log" anvil --port "${ANVIL_PORT}" --chain-id "${CHAIN_ID}" \
-    --config-out "${WORK}/anvil.json"
-wait_port "${ANVIL_PORT}" anvil "${PIDS[0]}"
-for i in 0 1 2; do
-    jq -r ".private_keys[${i}]" "${WORK}/anvil.json" >"${WORK}/account${i}.key"
-done
-DEPLOYER_KEY="$(cat "${WORK}/account0.key")"
+init_run e2e
+mkdir -p "${OUT_DIR:?}"
+OUT="${OUT_DIR:?}/${RUN_ID:?}.json"
+build_all
+start_stack
 OWNER_ADDRESS="$(cast wallet address --private-key "$(cat "${WORK}/account1.key")")"
 ATTACKER_ADDRESS="$(cast wallet address --private-key "$(cat "${WORK}/account2.key")")"
-
-log "deploying"
-(cd "${ROOT:?}/contracts" && DEPLOYER_KEY="${DEPLOYER_KEY}" VK_NOTARY="${VK_NOTARY}" \
-    PPREV_POLICY="../${POLICY}" \
-    forge script script/Deploy.s.sol --rpc-url "${RPC}" --broadcast -q) >"${WORK}/deploy.log" 2>&1
-BROADCAST="${ROOT:?}/contracts/broadcast/Deploy.s.sol/${CHAIN_ID}/run-latest.json"
-cp "${BROADCAST}" "${WORK}/deploy-broadcast.json"
-contract_address() {
-    jq -r --arg n "$1" \
-        '[.transactions[] | select(.transactionType == "CREATE" and .contractName == $n)][0].contractAddress' \
-        "${WORK}/deploy-broadcast.json"
-}
-PPREV_ADDRESS="$(contract_address PPREV)"
-VERIFIER_ADDRESS="$(contract_address EcdsaNotaryVerifier)"
-[ "${PPREV_ADDRESS}" != null ] && [ "${VERIFIER_ADDRESS}" != null ] || die "deployment addresses not found"
-DELTA="$(cast call "${PPREV_ADDRESS}" "DELTA()(uint256)" --rpc-url "${RPC}")"
-[ "$(cast call "${VERIFIER_ADDRESS}" "VK_NOTARY()(address)" --rpc-url "${RPC}")" = "${VK_NOTARY}" ] \
-    || die "the verifier does not hold vk_notary"
-log "PPREV ${PPREV_ADDRESS}, EcdsaNotaryVerifier ${VERIFIER_ADDRESS}, Delta ${DELTA} s"
-
-# ------------------------------------------------------------------ registry and notary
-
-cd "${ROOT:?}"
-start mock-registry "${WORK}/registry.log" "${BIN}/mock-registry" \
-    --bind "127.0.0.1:${REGISTRY_PORT}" --ca-out "${WORK}/registry-ca.der"
-wait_port "${REGISTRY_PORT}" mock-registry "${PIDS[1]}"
-
-start pprev-notary "${WORK}/notary.log" "${BIN}/pprev-notary" \
-    --mpc-bind "127.0.0.1:${MPC_PORT}" --verifier-bind "127.0.0.1:${VERIFIER_PORT}" \
-    --registry-ca "${WORK}/registry-ca.der" --policy "${POLICY}" --root "${ROOT}" \
-    --attestation-key "${WORK}/attestation.key" --statement-key "${WORK}/statement.key" \
-    --chain-id "${CHAIN_ID}" --contract "${PPREV_ADDRESS}" \
-    --nonces "${WORK}/nonces.log" --log "${WORK}/notary-events.jsonl"
-wait_port "${MPC_PORT}" pprev-notary "${PIDS[2]}"
-wait_port "${VERIFIER_PORT}" pprev-notary "${PIDS[2]}"
 
 # register <name> <account> <password> [extra args...]: runs the prover; never fails the script.
 register() {
@@ -347,11 +152,6 @@ stop_all
 
 # ------------------------------------------------------------------ record
 
-first_line() { "$@" 2>&1 | head -n 1; }
-lock_version() { awk -v n="$1" '$0 == "name = \"" n "\"" { getline; gsub(/version = |"/, ""); print; exit }' "${ROOT}/Cargo.lock"; }
-DIRTY=false
-[ -z "$(git -C "${ROOT}" status --porcelain)" ] || DIRTY=true
-
 RUNS="{}"
 for name in positive non-owner nonce-reuse expired; do
     RUNS="$(jq -c --arg n "${name}" --slurpfile r "${WORK}/${name}/record.json" '. + {($n): $r[0]}' <<<"${RUNS}")"
@@ -364,8 +164,7 @@ done
 
 jq -n \
     --arg runId "${RUN_ID}" \
-    --arg commit "$(git -C "${ROOT}" rev-parse HEAD)" \
-    --argjson dirty "${DIRTY}" \
+    --argjson prov "$(provenance_json)" \
     --argjson delta "${DELTA}" \
     --argjson checks "${CHECKS}" \
     --argjson runs "${RUNS}" \
@@ -375,20 +174,6 @@ jq -n \
     --arg policy "${POLICY}" --arg property "${PROPERTY}" \
     --arg amount "${AMOUNT_WEI}" --arg collateral "${COLLATERAL_WEI}" --arg share "${SETTLEMENT_SHARE_BPS}" \
     --arg zkey "${ZKEY_SHA256}" --arg vk "${VK_SHA256}" \
-    --arg anvil "$(first_line anvil --version)" \
-    --arg forge "$(first_line forge --version)" \
-    --arg cast "$(first_line cast --version)" \
-    --arg solc "$(awk -F'"' '/^solc_version/ { print $2 }' "${ROOT}/contracts/foundry.toml")" \
-    --arg circom "$(first_line circom --version)" \
-    --arg snarkjs "$(jq -r .version "${CIRCUITS}/node_modules/snarkjs/package.json")" \
-    --arg circomlib "$(jq -r .version "${CIRCUITS}/node_modules/circomlib/package.json")" \
-    --arg node "$(node --version)" \
-    --arg rustc "$(first_line rustc --version)" \
-    --arg tlsn "$(grep -m 1 -o 'git+https://github.com/tlsnotary/tlsn?tag=[^"]*' "${ROOT}/Cargo.lock" | sed 's/.*tag=//')" \
-    --arg alloy "$(lock_version alloy)" \
-    --arg cpu "$(sysctl -n machdep.cpu.brand_string 2>/dev/null || uname -m)" \
-    --arg memBytes "$(sysctl -n hw.memsize 2>/dev/null || echo unknown)" \
-    --arg os "$(sw_vers -productVersion 2>/dev/null || uname -sr)" \
     '
     def ms(x): if x == null then null else (x * 1000 | round) / 1000 end;
     ($runs.positive) as $p
@@ -397,15 +182,11 @@ jq -n \
     | ([$in.tProveMs, $in.tVerifyMs, $in.tSignMs, $in.tInclMs] | add) as $formula
     | {
         runId: $runId,
-        commit: $commit,
-        workingTreeDirty: $dirty,
+        commit: $prov.commit,
+        workingTreeDirty: $prov.workingTreeDirty,
         passed: ($checks | all(.pass)),
-        machine: {cpu: $cpu, memoryBytes: ($memBytes | tonumber? // $memBytes), os: $os},
-        tools: {
-            anvil: $anvil, forge: $forge, cast: $cast, solc: $solc, circom: $circom,
-            snarkjs: $snarkjs, circomlib: $circomlib, node: $node, rustc: $rustc,
-            tlsn: $tlsn, alloy: $alloy
-        },
+        machine: $prov.machine,
+        tools: $prov.tools,
         artifacts: {zkeySha256: $zkey, verificationKeySha256: $vk},
         deployment: {
             chainId: 31337, pprev: $pprev, ecdsaNotaryVerifier: $verifier, vkNotary: $vkNotary,
