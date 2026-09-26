@@ -48,6 +48,8 @@ def main():
     price_path, price = newest("l1_price")
     g16_path, g16 = newest("groth16")
     l2_path, l2 = newest("l2")
+    sum_path, sm = newest("summary")
+    tests_path, tests = newest("tests")
 
     s = off["summary"]
     ops = ["Register", "Apply", "Engage", "Settle", "Expire", "Reclaim", "Cancel"]
@@ -60,8 +62,12 @@ def main():
     stalled = d33["registerRuns"]["stalled"] + d33["sessionOnlyRuns"]["stalled"]
     started = d33["registerRuns"]["sessionsStarted"] + d33["sessionOnlyRuns"]["sessionsStarted"]
     lc = l1["lifecycle"]
-    cost = price["costsUsd"]
-    three = g16["threeVerificationsOnChain"]
+    one = sm["layer1"]
+    budget = sm["deltaBudget"]
+    fg = tests["forge"]
+    cov = tests["coverageContractsSrc"]["Total"]
+    t6 = tests["table6Coverage"]["summary"]
+    cg = tests["cargo"]
 
     E2E = ("script/e2e_register.sh", e2e_path, "~3 min", "no")
     OFF = ("script/measure_offchain.sh", off_path, "~15 min", "no")
@@ -69,6 +75,8 @@ def main():
     PRICE = ("script/l1_price.sh", price_path, "~1 min", "yes: ETH_MAINNET_RPC_URL")
     G16 = ("script/measure_groth16.sh", g16_path, "~1 min", "no")
     L2 = ("script/measure_l2.sh", l2_path, "~4 min", "yes: BASE_SEPOLIA_RPC_URL, BASE_MAINNET_RPC_URL, TESTNET_PRIVATE_KEY")
+    SUM = ("python3 script/derive_summary.py", sum_path, "~1 s", "no")
+    TESTS = ("script/record_tests.sh", tests_path, "~10 min", "no")
 
     rows = [
         ("End-to-end Register: TLSNotary session, phi_R proof, notary signature, transaction; five negative cases",
@@ -83,11 +91,21 @@ def main():
          f"{ms(s['mpcTlsMs'])}; {mb(s['mpcSentBytes']['median'])} sent, {mb(s['mpcReceivedBytes']['median'])} received"),
         ("Peak memory", OFF,
          f"snarkjs {mb(s['snarkjsPeakRssBytes']['median'])}, witness generator {mb(s['witnessPeakRssBytes']['median'])}, prover {mb(s['proverPeakRssBytes']['median'])} (medians)"),
-        ("Freshness budget over 20 runs (medians, local t_incl)", OFF,
-         f"{n(round(off['deltaBudget']['medianSumMs']))} ms, {off['deltaBudget']['medianSumOverDelta'] * 100:.2f}% of Delta"),
         ("MPC-TLS preprocessing stalls (tlsn#1173), recovered by retry", OFF,
          f"{stalled}/{started} sessions ({stalled / started * 100:.2f}%); {d33['sessionOnlyRunsFailed']} runs gave up"),
-        ("Contract test suite", L1, l1["tests"].split(": ", 1)[-1]),
+        ("Contract tests", TESTS,
+         f"{fg['total']} forge tests ({', '.join(f'{k} {v}' for k, v in sorted(fg['byKind'].items()))}), {len(fg['failed'])} failed; "
+         f"invariants {fg['invariantConfig']['runs']} runs x depth {fg['invariantConfig']['depth']}"),
+        ("Table VI coverage (contract conditions)", TESTS,
+         f"{t6['testsPassed']}/{t6['tests']} tests pass, {t6['invariantsHeld']}/{t6['invariants']} invariants hold; "
+         f"every condition has a passing positive and negative test" if tests["table6Coverage"]["exitStatus"] == 0
+         else "conditions without a passing positive and negative test: see the record"),
+        ("Coverage of contracts/src", TESTS,
+         f"lines {cov['lines']['percent']}%, statements {cov['statements']['percent']}%, branches {cov['branches']['percent']}%, "
+         f"functions {cov['functions']['percent']}%"),
+        ("Rust tests", TESTS,
+         f"{cg['workspace']['passed']} passed, {cg['workspace']['failed']} failed, {cg['workspace']['ignored']} ignored; "
+         f"ignored clock-shift tests under libfaketime: {cg['ignoredUnderLibfaketime'].get('passed', 0)} passed"),
         ("On-chain execution gas per operation", L1,
          ", ".join(f"{op} {n(l1['perOperation'][op]['executionGas'])}" for op in ops)),
         ("Lifecycle gas (Register + Apply + Engage + Settle)", L1,
@@ -109,21 +127,30 @@ def main():
          f"priority fee {price['medianPriorityFee']['medianGwei']} gwei, effective {price['effectivePrice']['medianGwei']} gwei (medians)"),
         ("ETH/USD (Chainlink, one reading, used for L1 and L2)", PRICE,
          f"${price['ethUsd']['price']:,.2f} at block {n(price['ethUsd']['block'])}"),
-        ("L1 lifecycle cost", PRICE,
-         f"execution {usd(cost['lifecycle']['execution'])}, receipts {usd(cost['lifecycle']['receipt'])}; deployment {usd(cost['deploymentTransaction']['total'])}"),
+        ("L1 cost per operation (execution gas at the median effective price)", SUM,
+         ", ".join(f"{op} {usd(one['perOperationExecution'][op]['usd'])}" for op in ops)),
+        ("L1 lifecycle and deployment cost", SUM,
+         f"execution {usd(one['lifecycleExecution']['usd'])}; receipts {usd(one['lifecycleReceiptWithRefunds']['usd'])} "
+         f"(without refunds {usd(one['lifecycleReceiptWithoutRefunds']['usd'])}); deployment {usd(one['deploymentTransactions']['total']['usd'])}"),
+        ("L1 lifecycle cost at other gas prices", SUM,
+         ", ".join(f"{k} {usd(v)}" for k, v in one["lifecycleExecutionSensitivity"].items())),
+        ("Freshness budget, medians (Section VII-F formula)", SUM,
+         f"local anvil t_incl: {n(round(budget['localAnvil']['totalMs']))} ms ({budget['localAnvil']['totalOverDelta'] * 100:.2f}% of Delta); "
+         f"Base Sepolia t_incl: {n(round(budget['baseSepolia']['totalMs']))} ms ({budget['baseSepolia']['totalOverDelta'] * 100:.2f}% of Delta)"),
         ("On-chain Groth16 verification of phi_R (9 public inputs)", G16,
          f"{n(g16['verification']['executionGas'])} gas execution; EIP-1108 model {n(g16['eip1108Model']['total'])}"),
-        ("Lifecycle with three predicate verifications on-chain", G16,
-         f"+{n(three['addedExecutionGas'])} gas, x{three['factor']} (assumes phi_A, phi_S verified like phi_R)"),
+        ("Lifecycle with three predicate verifications on-chain", SUM,
+         f"{n(sm['groth16']['lifecycleWithThreeVerificationsGas'])} gas, x{sm['groth16']['factor']} (assumes phi_A, phi_S verified like phi_R)"),
         ("L2 receipt gas per operation (Base Sepolia)", L2,
          ", ".join(f"{op} {n(l2['perOperation'][op]['receiptGas'])}" for op in ops)),
-        ("L2 cost per operation (Base mainnet prices)", L2,
-         ", ".join(f"{op} {usd(l2['perOperation'][op]['mainnet']['usd'])}" for op in ops)),
-        ("L2 lifecycle cost and L1 data share", L2,
-         f"{usd(l2['lifecycle']['usd'])}, {n(l2['lifecycle']['rawTransactionBytes'])} bytes; L1 data {l2['lifecycle']['l1DataShare'] * 100:.2f}% "
+        ("L2 cost per operation (Base mainnet prices)", SUM,
+         ", ".join(f"{op} {usd(sm['layer2']['perOperation'][op]['usd'])}" for op in ops)),
+        ("L2 lifecycle cost and L1 data share", SUM,
+         f"{usd(sm['layer2']['lifecycle']['usd'])}, {n(sm['layer2']['lifecycle']['rawTransactionBytes'])} bytes; "
+         f"L1 data {sm['layer2']['lifecycle']['l1DataShare'] * 100:.2f}% "
          f"(per operation {l2['l1DataShareRange']['min'] * 100:.2f}-{l2['l1DataShareRange']['max'] * 100:.2f}%)"),
         ("Inclusion time t_incl on Base Sepolia (Register, n = 10)", L2, ms(l2["tIncl"]["registers"])),
-        ("L1 against L2 lifecycle cost", L2, f"L1 {l2['comparisonWithL1']['l1OverL2']}x L2"),
+        ("L1 against L2 lifecycle cost (receipt gas, same ETH/USD)", SUM, f"L1 {sm['l1OverL2']['l1OverL2']}x L2"),
     ]
 
     lines = [
