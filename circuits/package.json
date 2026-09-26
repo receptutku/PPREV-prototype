@@ -1,0 +1,10 @@
+{
+  "name": "pprev-circuits",
+  "private": true,
+  "license": "MIT",
+  "description": "phi_R predicate circuit of PPREV (circom, Groth16)",
+  "devDependencies": {
+    "circomlib": "2.0.5",
+    "snarkjs": "0.7.6"
+  }
+}

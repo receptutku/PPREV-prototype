@@ -1,19 +1,24 @@
 # PPREV prototype
 
 Prototype of PPREV, a protocol that verifies real estate transactions over notarised registry data.
-This repository holds the on-chain enforcement layer (`contracts/`) and the attested-submission
-session over a local registry (`mock-registry/`, `offchain/`), each with its test suite.
+This repository holds the on-chain enforcement layer (`contracts/`), the attested-submission
+session over a local registry (`mock-registry/`, `offchain/`), the registration circuit phi_R
+(`circuits/`), and the policy verifier and notary signer (`offchain/`), each with its test suite.
 
 ## Layout
 
 ```
 contracts/        Foundry project: PPREV contract, ECDSA notary verifier, tests, vector script
 mock-registry/    Local HTTPS title registry with a fixed-layout response
-offchain/crates/  pprev-types (layout), pprev-notary (MPC-TLS notary, presentation checks),
-                  pprev-prover (registry login, MPC-TLS session, commitments, presentation)
+circuits/         phi_R in circom (src/), Groth16 setup outputs (setup/)
+offchain/crates/  pprev-types (layout, circuit parameters, field encoding, EIP-712 statements),
+                  pprev-notary (MPC-TLS notary, presentation checks, Groth16 verification,
+                  policy verifier, statement signature, nonce record, mock notary),
+                  pprev-prover (registry login, MPC-TLS session, commitments, presentation,
+                  phi_R witness and proof)
 policies/         Response layout of the title registry
-test-vectors/     EIP-712 and C_tx vectors shared with the off-chain components
-script/           Helper scripts (Table VI coverage report)
+test-vectors/     EIP-712, C_tx, and notary signature vectors shared by the Solidity and Rust code
+script/           Table VI coverage report, circuit build, Groth16 setup
 ```
 
 ## Toolchain
@@ -22,6 +27,9 @@ script/           Helper scripts (Table VI coverage report)
   `bytecode_hash = "ipfs"` (see `contracts/foundry.toml`)
 - Foundry 1.8.3, forge-std v1.16.2 (git submodule)
 - Rust 1.98.1 (`rust-toolchain.toml`), TLSNotary `tlsn` v0.1.0-alpha.15 (git tag), MPC mode
+- circom 2.2.3, circomlib 2.0.5 and snarkjs 0.7.6 (`circuits/package.json`), Node.js
+- arkworks 0.5 (Groth16 verification on BN254), light-poseidon 0.4 (circomlib's Poseidon),
+  alloy 1.7 (EIP-712) and alloy-signer-local 2.5 (statement signature)
 
 ## Build and test
 
@@ -82,6 +90,36 @@ the notary cuts a session that exceeds its preprocessing or session bound. The c
 cargo test --release -p pprev-prover --test time -- --include-ignored
 ```
 
+## Circuit phi_R and policy verifier
+
+phi_R (`circuits/src/phi_r.circom`) opens the three attested SHA-256 commitments (value || 16-byte
+blinder, TLSNotary's convention), checks that the account of the session is a non-empty identifier
+equal to one of the owner slots, and that the committed property identifier, zero-padded to 32
+bytes, is `txData.propertyId`. Its public inputs are the three commitments and
+`txData.propertyId` as 128-bit limbs, and `bind`, the EIP-712 digest of x_R modulo the BN254 scalar
+field order. The main component is generated from the layout (`circuits/src/main_title_v1.circom`).
+
+```
+script/circuits_build.sh   # compile; size in circuits/build/phi_r.info.json
+script/circuits_setup.sh   # Groth16 setup, proving key in circuits/build/phi_r.zkey
+cargo test --release --workspace
+```
+
+The setup takes phase 1 from the PSE perpetual powers of tau (`ppot_0080_17.ptau`, SHA-256 pinned,
+checked with `snarkjs powersoftau verify`, cached in `~/.cache/pprev`). Phase 2 is local and
+single-party: two contributions and a beacon, the hash of a finalised Ethereum block. Whoever ran it
+knows the toxic waste, so the key serves this prototype only. `circuits/setup/` holds the verification
+key, the exported Solidity verifier, one sample proof made with the same key, and the transcript
+`setup.json`. The proving key is not committed; the tests that prove (`pprev-prover` `proof` and
+`policy_verifier`) need a local setup run. `circuits/setup/Groth16Verifier.sol` is the verifier as
+snarkjs exports it and keeps snarkjs' GPL-3.0 license header; the rest of the repository is MIT.
+
+The policy verifier (`pprev_notary::PolicyVerifier`) checks the presentation, recomputes the digest
+of x_R, verifies the proof under the policy's own verifying key with public inputs taken from the
+attestation, records the nonce, and signs x_R with the statement key. The notary holds two keys: the
+attestation key signs TLSNotary attestations, the statement key signs x_R, x_A, x_S. Apply and Settle
+signatures come from a mock notary that checks phi_A and phi_S without circuits.
+
 ## Notation
 
 Code follows Solidity naming conventions. The table maps the paper's notation to code names.
@@ -120,6 +158,14 @@ Code follows Solidity naming conventions. The table maps the paper's notation to
 | $t_{\mathsf{att},\psi}$ (source) | notary clock, attestation extension `pprev.t_att` |
 | $\mathsf{prov}_\psi$ | TLSNotary `Attestation`, shown to the policy verifier as a `Presentation` |
 | $\mathsf{record}_R$ fields committed | `account`, `owners`, `propertyId` byte ranges (`pprev_types::ResponseRanges`) |
+| $\phi_R$ | template `PhiR` in `circuits/src/phi_r.circom` |
+| $\pi_R$ | Groth16 proof (snarkjs `proof.json`), `pprev_notary::Groth16Proof` |
+| binding of $\pi_R$ to $x_R$ | public input `bind` = EIP-712 digest of $x_R$ mod $r_{\mathrm{BN254}}$ |
+| $H_c$ | circomlib's two-input Poseidon, `pprev_notary::mock::counterparty_commitment` |
+| $\mathsf{sk}_{\mathsf{notary}}$ | `pprev_notary::StatementKey` |
+| nonces the notary has signed | `pprev_notary::NonceStore` (append-only file) |
+| policy verifier | `pprev_notary::PolicyVerifier` (Register) |
+| $\phi_A$, $\phi_S$ (mock) | `pprev_notary::mock::MockNotary::sign_apply`, `sign_settle` |
 
 Undeliverable payouts: every payout made by an algorithm forwards `PAYOUT_GAS` (30,000) gas and copies
 no return data; a payout that fails is credited to its recipient and claimed with `withdraw`.

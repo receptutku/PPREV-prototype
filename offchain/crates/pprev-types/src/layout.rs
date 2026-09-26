@@ -245,15 +245,17 @@ impl Layout {
         Ok(self.template()?.ranges)
     }
 
-    /// `txData.propertyId`: the property identifier as ASCII, left-aligned and zero-padded to 32 bytes.
+    /// `txData.propertyId`: the `propertyId` value as the response carries it (padded to its width
+    /// with the padding character), followed by zero bytes up to 32 bytes. phi_R compares the
+    /// committed value with this word.
     pub fn property_id_word(&self, property_id: &str) -> Result<[u8; 32]> {
-        ensure!(property_id.is_ascii(), "property id is not ASCII");
         ensure!(
-            property_id.len() <= self.property_id_width && property_id.len() <= 32,
-            "property id {property_id:?} exceeds its width"
+            self.property_id_width <= 32,
+            "property id width exceeds 32 bytes"
         );
+        let value = self.pad(property_id, self.property_id_width)?;
         let mut word = [0u8; 32];
-        word[..property_id.len()].copy_from_slice(property_id.as_bytes());
+        word[..value.len()].copy_from_slice(value.as_bytes());
         Ok(word)
     }
 }
@@ -394,5 +396,13 @@ mod tests {
         let w = layout().property_id_word("TR-06-CANKAYA-000123").unwrap();
         assert_eq!(&w[..20], b"TR-06-CANKAYA-000123");
         assert!(w[20..].iter().all(|b| *b == 0));
+    }
+
+    #[test]
+    fn property_id_word_keeps_the_value_padding() {
+        let w = layout().property_id_word("TR-06-X").unwrap();
+        assert_eq!(&w[..20], b"TR-06-X             ");
+        assert!(w[20..].iter().all(|b| *b == 0));
+        assert!(layout().property_id_word("TR-06-CANKAYA-0001234").is_err());
     }
 }

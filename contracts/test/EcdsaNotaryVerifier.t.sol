@@ -65,4 +65,31 @@ contract EcdsaNotaryVerifierTest is Test {
         vm.expectRevert(EcdsaNotaryVerifier.InvalidKey.selector);
         new EcdsaNotaryVerifier(address(0));
     }
+
+    /// sigma from the off-chain notary (offchain/crates/pprev-notary/src/sigma.rs) over the register
+    /// digest of test-vectors/eip712.json.
+    function offchainVector() internal view returns (address vk, bytes32 digest, bytes memory sigma) {
+        string memory json = vm.readFile("../test-vectors/notary-signature.json");
+        vk = vm.parseJsonAddress(json, ".vkNotary");
+        digest = vm.parseJsonBytes32(json, ".digest");
+        sigma = vm.parseJsonBytes(json, ".sigma");
+        // The key derivation recorded in the vector, and the contract's register digest.
+        assertEq(vk, vm.addr(uint256(keccak256("pprev.notary.statement-key.test"))));
+        assertEq(digest, vm.parseJsonBytes32(vm.readFile("../test-vectors/eip712.json"), ".register.digest"));
+    }
+
+    function test_Verifier_acceptsOffchainNotarySignature() public {
+        (address vk, bytes32 digest, bytes memory sigma) = offchainVector();
+        assertTrue(new EcdsaNotaryVerifier(vk).verify(digest, sigma));
+    }
+
+    function test_Verifier_rejectsAlteredOffchainNotarySignature() public {
+        (address vk, bytes32 digest, bytes memory sigma) = offchainVector();
+        EcdsaNotaryVerifier offchain = new EcdsaNotaryVerifier(vk);
+        sigma[40] ^= 0x01;
+        assertFalse(offchain.verify(digest, sigma));
+        sigma[40] ^= 0x01;
+        assertFalse(offchain.verify(keccak256(abi.encode(digest)), sigma));
+        assertFalse(verifier.verify(digest, sigma));
+    }
 }

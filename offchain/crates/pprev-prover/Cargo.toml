@@ -17,9 +17,12 @@ hyper = { workspace = true }
 hyper-util = { workspace = true }
 http-body-util = { workspace = true }
 futures = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
 bincode = { workspace = true }
 anyhow = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
 clap = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
@@ -28,4 +31,5 @@ tracing-subscriber = { workspace = true }
 mock-registry = { workspace = true }
 pprev-notary = { workspace = true }
 k256 = { workspace = true }
-sha2 = { workspace = true }
+num-bigint = { workspace = true }
+alloy-primitives = { workspace = true }

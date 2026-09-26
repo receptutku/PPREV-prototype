@@ -1,0 +1,7 @@
+{
+  "description": "sigma over the register digest of eip712.json, signed with a test-only statement key",
+  "digest": "0xb9cb90d431dfd432c52ae789635458de8acdec66e1817a1aa359bc979a151564",
+  "secretKey": "keccak256(\"pprev.notary.statement-key.test\")",
+  "sigma": "0xae9301e3c48ffcedc5e2fb76a80b30fb346ee47eff3569ed5ab18c8d840ee2642836546dea6ebc2503505e87534ec965d946c68353635d16c21bdf79ac39b5e41b",
+  "vkNotary": "0xf26b9a5a69dB5Ab415fA2c913ffE4fb9232D5510"
+}

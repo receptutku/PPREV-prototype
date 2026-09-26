@@ -1,0 +1,45 @@
+{
+  "circuit": "main_title_v1",
+  "r1csSha256": "69268a65d4e44efdf35f42df2a9ba1db27eb31b571475dc252dc20c4b2b9c8e3",
+  "phase1": {
+    "source": "PSE perpetual powers of tau, 80 contributions",
+    "url": "https://pse-trusted-setup-ppot.s3.eu-central-1.amazonaws.com/pot28_0080/ppot_0080_17.ptau",
+    "sha256": "f807e065fde53f72f4bf4d57140fab85b26daa6cc95bdfec7cce93622b3a367c",
+    "snarkjsVerify": "Powers of Tau Ok!"
+  },
+  "phase2": {
+    "trust": "single party: whoever ran this script knows the toxic waste",
+    "contributions": [
+      {
+        "name": "contribution 1",
+        "entropy": "64 bytes from /dev/urandom",
+        "hash": "c99fd3aaf3707282d841f3c9c818d85f4fdc49ea9c2af6ed1ce28fa4c40ff4a2649edfd000c66c499a89e987d76e31bac313f72e4ea7c9270d6e4489b160b320"
+      },
+      {
+        "name": "contribution 2",
+        "entropy": "64 bytes from /dev/urandom",
+        "hash": "4be3eca8d5d6bd8de7c4d049324f9d82021de2c10240ba6c5ea1696762153e3cadc36678d8be1820ac5faa83c31de0bf74857f55cf740c46034ed81a5c069c16"
+      }
+    ],
+    "beacon": {
+      "source": "hash of Ethereum mainnet block 26056841, the latest finalised block at setup time (2026-09-25 20:25:59 UTC)",
+      "value": "7fe8ed7e144034750db2fa59f1d8f9072385f708b1a6647e8d177010717aff65",
+      "iterationsExp": 10,
+      "hash": "bc9db8fc0265bd47dd3072664fc94de9a87a34d9e06fa1162d977e0f7bb792c7a063f9c32c01011b47c35f07194b6016522bc62ee7dc1f822dc57b66b70c0e86"
+    },
+    "snarkjsVerify": "ZKey Ok!"
+  },
+  "zkeySha256": "f5e263f406737d0c2492b7347c7ca6ca7613c4c5333844caddcfa418a59d0748",
+  "verificationKeySha256": "ae1f7cd05194f4886a386326ee1ac539b206c053d008704564e221ec9e006916",
+  "solidityVerifierSha256": "aa970a8fac92d1cf099e99dccf514e82e45147a6119dc5e4a31e6efdae7dbb58",
+  "sample": {
+    "statement": "register message of test-vectors/eip712.json",
+    "snarkjsVerify": "OK!"
+  },
+  "tools": {
+    "snarkjs": "0.7.6",
+    "circom": "circom compiler 2.2.3",
+    "node": "v26.9.0"
+  },
+  "date": "2026-09-26T17:04:47Z"
+}

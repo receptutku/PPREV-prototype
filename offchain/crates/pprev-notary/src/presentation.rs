@@ -4,6 +4,7 @@ use std::ops::Range;
 
 use anyhow::{Context, Result, bail, ensure};
 use pprev_types::Layout;
+use pprev_types::circuit::PhiRPublic;
 use serde::Deserialize;
 use tlsn::attestation::presentation::{Presentation, PresentationOutput};
 use tlsn::attestation::signing::VerifyingKey;
@@ -48,6 +49,23 @@ pub struct Attested {
     pub account_hash: Vec<u8>,
     pub owners_hash: Vec<u8>,
     pub property_id_hash: Vec<u8>,
+}
+
+impl Attested {
+    /// The public side of phi_R: the attested commitments, `txData.propertyId`, and the EIP-712
+    /// digest of x_R. The commitments come from the attestation, never from the prover.
+    pub fn phi_r_public(&self, property_id: [u8; 32], digest: [u8; 32]) -> Result<PhiRPublic> {
+        let word = |hash: &[u8]| -> Result<[u8; 32]> {
+            hash.try_into().context("commitment is not 32 bytes")
+        };
+        Ok(PhiRPublic {
+            account_hash: word(&self.account_hash)?,
+            owners_hash: word(&self.owners_hash)?,
+            property_hash: word(&self.property_id_hash)?,
+            property_id,
+            digest,
+        })
+    }
 }
 
 /// Transcript commitments of a verified attestation.

@@ -9,3 +9,6 @@ publish.workspace = true
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
+num-bigint = { workspace = true }
+alloy-primitives = { workspace = true }
+alloy-sol-types = { workspace = true }

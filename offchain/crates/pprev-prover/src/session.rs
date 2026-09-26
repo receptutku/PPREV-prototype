@@ -2,6 +2,7 @@
 
 use std::future::{Future, IntoFuture};
 use std::net::SocketAddr;
+use std::ops::Range;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
@@ -24,7 +25,9 @@ use tlsn::connection::{HandshakeData, ServerName};
 use tlsn::hash::HashAlgId;
 use tlsn::prover::ProverOutput;
 use tlsn::rangeset::set::RangeSet;
-use tlsn::transcript::{TranscriptCommitConfig, TranscriptCommitmentKind};
+use tlsn::transcript::{
+    Direction, Transcript, TranscriptCommitConfig, TranscriptCommitmentKind, TranscriptSecret,
+};
 use tlsn::webpki::{CertificateDer, RootCertStore};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::compat::{FuturesAsyncReadCompatExt, TokioAsyncReadCompatExt};
@@ -101,10 +104,28 @@ pub struct ProverSetup {
     pub preprocess_timeout: Duration,
 }
 
+/// Plaintext and blinder of one hidden commitment (D3). SHA-256(plaintext || blinder) is the hash
+/// that the attestation records; the circuit opens it privately.
+#[derive(Clone)]
+pub struct FieldOpening {
+    pub range: Range<usize>,
+    pub plaintext: Vec<u8>,
+    pub blinder: [u8; 16],
+}
+
+/// Openings of the three hidden fields, in layout order.
+#[derive(Clone)]
+pub struct HiddenOpenings {
+    pub account: FieldOpening,
+    pub owners: FieldOpening,
+    pub property_id: FieldOpening,
+}
+
 /// A completed notarisation.
 pub struct Notarized {
     pub attestation: Attestation,
     pub secrets: Secrets,
+    pub openings: HiddenOpenings,
     pub request_line_len: usize,
     pub ranges: ResponseRanges,
 }
@@ -125,7 +146,7 @@ where
     // tlsn 0.1.0-alpha.15 does not fail the MPC-TLS leader when the notary closes the session, for
     // example after rejecting the handshake time; the session driver ending first is that failure.
     let preprocessed = AtomicBool::new(false);
-    let (request, secrets) = tokio::select! {
+    let (request, secrets, openings) = tokio::select! {
         result = run_mpc(&mut handle, setup, &ranges, &request_line, &preprocessed) => result?,
         ended = driver_task.running() => {
             let reason = match ended {
@@ -152,6 +173,7 @@ where
     Ok(Notarized {
         attestation,
         secrets,
+        openings,
         request_line_len: request_line.len(),
         ranges,
     })
@@ -165,7 +187,7 @@ async fn run_mpc(
     ranges: &ResponseRanges,
     request_line: &str,
     preprocessed: &AtomicBool,
-) -> Result<(AttestationRequest, Secrets)> {
+) -> Result<(AttestationRequest, Secrets, HiddenOpenings)> {
     let preprocessing = handle.new_prover(ProverConfig::builder().build()?)?.commit(
         MpcTlsConfig::builder()
             .max_sent_data(setup.max_sent)
@@ -278,6 +300,12 @@ async fn run_mpc(
     let prover_transcript = prover.transcript().clone();
     let tls_transcript = prover.tls_transcript().clone();
     prover.close().await?;
+    let [account, owners, property_id] = ranges.hidden();
+    let openings = HiddenOpenings {
+        account: opening(&prover_transcript, &transcript_secrets, account)?,
+        owners: opening(&prover_transcript, &transcript_secrets, owners)?,
+        property_id: opening(&prover_transcript, &transcript_secrets, property_id)?,
+    };
 
     let mut builder = AttestationRequest::builder(&request_config);
     builder
@@ -295,7 +323,31 @@ async fn run_mpc(
         })
         .transcript(prover_transcript)
         .transcript_commitments(transcript_secrets, transcript_commitments);
-    Ok(builder.build(&CryptoProvider::default())?)
+    let (request, secrets) = builder.build(&CryptoProvider::default())?;
+    Ok((request, secrets, openings))
+}
+
+/// Plaintext and blinder of the received-direction hash commitment to `range`.
+fn opening(
+    transcript: &Transcript,
+    secrets: &[TranscriptSecret],
+    range: Range<usize>,
+) -> Result<FieldOpening> {
+    let idx = RangeSet::from(range.clone());
+    let blinder = secrets
+        .iter()
+        .find_map(|secret| match secret {
+            TranscriptSecret::Hash(h) if h.direction == Direction::Received && h.idx == idx => {
+                <[u8; 16]>::try_from(h.blinder.as_bytes()).ok()
+            }
+            _ => None,
+        })
+        .with_context(|| format!("no hash commitment secret for {range:?}"))?;
+    Ok(FieldOpening {
+        plaintext: transcript.received()[range.clone()].to_vec(),
+        range,
+        blinder,
+    })
 }
 
 /// Runs [`notarize`] on a new notary connection from `connect` until it succeeds, retrying at most
