@@ -1,0 +1,24 @@
+# RED: session.rs at e709bfdc83eff321a2bb1436458b48bd71fa8518 (before the fix), tests/retry.rs with the new test; 2026-10-21T13:55:19Z
+# sha256 session.rs a06b8332d7e07a521155a8c250848e717463c2636c73d12b3facfdfe01f5cad1 retry.rs ddb01122b174564970f22fe7ee7bb007d20afeb2de6c9e3dc48b765770a8d431
+   Compiling pprev-prover v0.1.0 (/Users/receptutku/src/pprev-int/offchain/crates/pprev-prover)
+    Finished `release` profile [optimized + debuginfo] target(s) in 39.50s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 1 test
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... FAILED
+
+failures:
+
+---- a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it stdout ----
+
+thread 'a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it' (22397858) panicked at offchain/crates/pprev-prover/tests/retry.rs:40:9:
+round 0: io error: commitment protocol failed to send request caused by: (Stream 9b8074e2/ec2bd03bf86b935f): connection is closed: (Stream 9b8074e2/ec2bd03bf86b935f): connection is closed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p pprev-prover --test retry`

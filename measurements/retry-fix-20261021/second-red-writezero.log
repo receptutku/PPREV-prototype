@@ -1,0 +1,270 @@
+# GREEN: working tree with the fix; 2026-10-21T13:56:09Z
+# sha256 session.rs 5d241db3c71c97f1019ad66583bb6729bd784c2311e656352829dd2b30e1699f retry.rs ddb01122b174564970f22fe7ee7bb007d20afeb2de6c9e3dc48b765770a8d431
+   Compiling pprev-prover v0.1.0 (/Users/receptutku/src/pprev-int/offchain/crates/pprev-prover)
+    Finished `release` profile [optimized + debuginfo] target(s) in 10.03s
+     Running unittests src/lib.rs (/Users/receptutku/src/pprev-int/target/release/deps/pprev_prover-04c23aed9543cb39)
+
+running 9 tests
+test session::tests::closures_are_recognised_through_wrappers ... ok
+test session::tests::failures_are_classified_by_type ... ok
+test session::tests::other_failures_are_not_closures ... ok
+test session::tests::a_closure_failure_is_a_stall_without_the_driver ... ok
+test session::tests::a_final_failure_stays_final_even_when_the_driver_ended_cleanly ... ok
+test session::tests::a_lossy_failure_is_a_stall_only_if_the_driver_shows_the_closure ... ok
+test session::tests::a_driver_panic_or_protocol_error_is_not_a_cut ... ok
+test session::tests::a_driver_end_without_a_prover_failure_is_a_stall_only_if_it_is_a_closure ... ok
+test session::tests::the_driver_ending_cleanly_or_with_a_closure_is_a_cut ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+## retry suite run 1
+   Compiling pprev-prover v0.1.0 (/Users/receptutku/src/pprev-int/offchain/crates/pprev-prover)
+    Finished `release` profile [optimized + debuginfo] target(s) in 40.13s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... FAILED
+test errors_after_preprocessing_are_not_retried ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+failures:
+
+---- a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it stdout ----
+
+thread 'a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it' (22400010) panicked at offchain/crates/pprev-prover/tests/retry.rs:40:9:
+round 0: io error: commitment protocol failed to send request caused by: (Stream 9f7c0703/ec2bd03bf86b935f): connection is closed: (Stream 9f7c0703/ec2bd03bf86b935f): connection is closed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+error: test failed, to rerun pass `-p pprev-prover --test retry`
+## retry suite run 2
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.70s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... FAILED
+test errors_after_preprocessing_are_not_retried ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+failures:
+
+---- a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it stdout ----
+
+thread 'a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it' (22400327) panicked at offchain/crates/pprev-prover/tests/retry.rs:40:9:
+round 0: io error: commitment protocol failed to send request caused by: (Stream 10d4daa2/ec2bd03bf86b935f): connection is closed: (Stream 10d4daa2/ec2bd03bf86b935f): connection is closed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+error: test failed, to rerun pass `-p pprev-prover --test retry`
+## retry suite run 3
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.22s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+test errors_after_preprocessing_are_not_retried ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 4
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.24s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... FAILED
+test errors_after_preprocessing_are_not_retried ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+failures:
+
+---- a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it stdout ----
+
+thread 'a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it' (22401329) panicked at offchain/crates/pprev-prover/tests/retry.rs:40:9:
+round 4: io error: commitment protocol failed to send request caused by: (Stream f160239c/ec2bd03bf86b935f): connection is closed: (Stream f160239c/ec2bd03bf86b935f): connection is closed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+error: test failed, to rerun pass `-p pprev-prover --test retry`
+## retry suite run 5
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.22s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+test errors_after_preprocessing_are_not_retried ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 6
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.24s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... FAILED
+test errors_after_preprocessing_are_not_retried ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+failures:
+
+---- a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it stdout ----
+
+thread 'a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it' (22402462) panicked at offchain/crates/pprev-prover/tests/retry.rs:40:9:
+round 0: io error: commitment protocol failed to send request caused by: (Stream 0aaf3364/ec2bd03bf86b935f): connection is closed: (Stream 0aaf3364/ec2bd03bf86b935f): connection is closed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+error: test failed, to rerun pass `-p pprev-prover --test retry`
+## retry suite run 7
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.22s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+test errors_after_preprocessing_are_not_retried ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.02s
+
+## retry suite run 8
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.25s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... FAILED
+test errors_after_preprocessing_are_not_retried ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+failures:
+
+---- a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it stdout ----
+
+thread 'a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it' (22403561) panicked at offchain/crates/pprev-prover/tests/retry.rs:40:9:
+round 16: io error: commitment protocol failed to send request caused by: (Stream 98b12dc2/ec2bd03bf86b935f): connection is closed: (Stream 98b12dc2/ec2bd03bf86b935f): connection is closed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+error: test failed, to rerun pass `-p pprev-prover --test retry`
+## retry suite run 9
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.22s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... FAILED
+test errors_after_preprocessing_are_not_retried ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+failures:
+
+---- a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it stdout ----
+
+thread 'a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it' (22404018) panicked at offchain/crates/pprev-prover/tests/retry.rs:40:9:
+round 44: io error: commitment protocol failed to send request caused by: (Stream cb569e64/ec2bd03bf86b935f): connection is closed: (Stream cb569e64/ec2bd03bf86b935f): connection is closed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+error: test failed, to rerun pass `-p pprev-prover --test retry`
+## retry suite run 10
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.23s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... FAILED
+test errors_after_preprocessing_are_not_retried ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+failures:
+
+---- a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it stdout ----
+
+thread 'a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it' (22404684) panicked at offchain/crates/pprev-prover/tests/retry.rs:40:9:
+round 44: io error: commitment protocol failed to send request caused by: (Stream 43eab746/ec2bd03bf86b935f): connection is closed: (Stream 43eab746/ec2bd03bf86b935f): connection is closed
+
+
+failures:
+    a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+error: test failed, to rerun pass `-p pprev-prover --test retry`

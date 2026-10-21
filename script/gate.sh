@@ -11,7 +11,11 @@ OUT="${ROOT}/measurements/gate/${RUN_ID}"
 mkdir -p "${OUT:?}"
 cd "${ROOT}" || exit 1
 
-hashes() { git ls-files -z | xargs -0 shasum -a 256; }
+# Tracked files, with each submodule by its checked-out commit instead of its directory.
+hashes() {
+    git ls-files -s | awk '$1 != "160000" { print $4 }' | tr '\n' '\0' | xargs -0 shasum -a 256
+    git submodule status
+}
 hashes >"${OUT}/source-before.sha256"
 DIRTY="$(git status --porcelain --untracked-files=no | wc -l | tr -d ' ')"
 
@@ -30,10 +34,10 @@ step() {
 
 step cargo-fmt bash -c 'cd offchain && cargo fmt --all --check'
 step cargo-clippy bash -c 'cd offchain && cargo clippy --workspace --all-targets --release -- -D warnings'
-step cargo-test bash -c 'cd offchain && cargo test --workspace --release'
+step cargo-test bash -c 'cd offchain && cargo test --workspace --release --no-fail-fast'
 step forge-fmt bash -c 'cd contracts && forge fmt --check'
 step forge-test bash -c 'cd contracts && forge test'
-step python-helpers bash -c 'cd script/lib && python3 -I -m unittest -v test_wan_support'
+step python-helpers python3 -I script/lib/test_wan_support.py -v
 step shell-syntax bash -c 'for f in script/*.sh script/lib/*.sh; do bash -n "$f" || exit 1; done'
 
 hashes >"${OUT}/source-after.sha256"

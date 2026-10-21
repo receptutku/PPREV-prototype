@@ -1,0 +1,72 @@
+{
+  "runId": "20261021T133451Z",
+  "commit": "e709bfdc83eff321a2bb1436458b48bd71fa8518",
+  "trackedFilesModified": 0,
+  "sourceUnchanged": true,
+  "steps": [
+    {
+      "step": "cargo-fmt",
+      "exitCode": 0,
+      "seconds": 1,
+      "command": "bash -c cd offchain && cargo fmt --all --check",
+      "log": "cargo-fmt.log"
+    },
+    {
+      "step": "cargo-clippy",
+      "exitCode": 0,
+      "seconds": 64,
+      "command": "bash -c cd offchain && cargo clippy --workspace --all-targets --release -- -D warnings",
+      "log": "cargo-clippy.log"
+    },
+    {
+      "step": "cargo-test",
+      "exitCode": 101,
+      "seconds": 274,
+      "command": "bash -c cd offchain && cargo test --workspace --release",
+      "log": "cargo-test.log"
+    },
+    {
+      "step": "forge-fmt",
+      "exitCode": 0,
+      "seconds": 0,
+      "command": "bash -c cd contracts && forge fmt --check",
+      "log": "forge-fmt.log"
+    },
+    {
+      "step": "forge-test",
+      "exitCode": 0,
+      "seconds": 20,
+      "command": "bash -c cd contracts && forge test",
+      "log": "forge-test.log"
+    },
+    {
+      "step": "python-helpers",
+      "exitCode": 1,
+      "seconds": 0,
+      "command": "bash -c cd script/lib && python3 -I -m unittest -v test_wan_support",
+      "log": "python-helpers.log"
+    },
+    {
+      "step": "shell-syntax",
+      "exitCode": 0,
+      "seconds": 0,
+      "command": "bash -c for f in script/*.sh script/lib/*.sh; do bash -n \"$f\" || exit 1; done",
+      "log": "shell-syntax.log"
+    }
+  ],
+  "rust": {
+    "suites": 26,
+    "passed": 139,
+    "failed": 1,
+    "ignored": 0
+  },
+  "forge": {
+    "passed": 245,
+    "failed": 0,
+    "skipped": 0
+  },
+  "pythonHelpers": {
+    "ran": 1
+  },
+  "pass": false
+}

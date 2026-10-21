@@ -1,0 +1,194 @@
+# GREEN: working tree with the fix (WriteZero added); 2026-10-21T13:58:51Z
+# sha256 session.rs 5aa89d0193d8fdef7af96c9242cd462006f81a786dbf0b8a59e68bf10921323d retry.rs ddb01122b174564970f22fe7ee7bb007d20afeb2de6c9e3dc48b765770a8d431
+   Compiling pprev-prover v0.1.0 (/Users/receptutku/src/pprev-int/offchain/crates/pprev-prover)
+    Finished `release` profile [optimized + debuginfo] target(s) in 10.51s
+     Running unittests src/lib.rs (/Users/receptutku/src/pprev-int/target/release/deps/pprev_prover-04c23aed9543cb39)
+
+running 9 tests
+test session::tests::failures_are_classified_by_type ... ok
+test session::tests::other_failures_are_not_closures ... ok
+test session::tests::closures_are_recognised_through_wrappers ... ok
+test session::tests::a_closure_failure_is_a_stall_without_the_driver ... ok
+test session::tests::a_final_failure_stays_final_even_when_the_driver_ended_cleanly ... ok
+test session::tests::the_driver_ending_cleanly_or_with_a_closure_is_a_cut ... ok
+test session::tests::a_lossy_failure_is_a_stall_only_if_the_driver_shows_the_closure ... ok
+test session::tests::a_driver_panic_or_protocol_error_is_not_a_cut ... ok
+test session::tests::a_driver_end_without_a_prover_failure_is_a_stall_only_if_it_is_a_closure ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+## retry suite run 1
+   Compiling pprev-prover v0.1.0 (/Users/receptutku/src/pprev-int/offchain/crates/pprev-prover)
+    Finished `release` profile [optimized + debuginfo] target(s) in 38.63s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+test errors_after_preprocessing_are_not_retried ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.02s
+
+## retry suite run 2
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.73s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+test errors_after_preprocessing_are_not_retried ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 3
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.24s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+test errors_after_preprocessing_are_not_retried ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 4
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.22s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+test errors_after_preprocessing_are_not_retried ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 5
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.25s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+test errors_after_preprocessing_are_not_retried ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 6
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.22s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+test errors_after_preprocessing_are_not_retried ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... FAILED
+
+failures:
+
+---- prover_retries_when_the_notary_cuts_preprocessing stdout ----
+
+thread 'prover_retries_when_the_notary_cuts_preprocessing' (22412451) panicked at offchain/crates/pprev-prover/tests/retry.rs:111:5:
+assertion `left == right` failed
+  left: 3
+ right: 2
+
+
+failures:
+    prover_retries_when_the_notary_cuts_preprocessing
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.34s
+
+error: test failed, to rerun pass `-p pprev-prover --test retry`
+## retry suite run 7
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.25s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+test errors_after_preprocessing_are_not_retried ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 8
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.22s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+test errors_after_preprocessing_are_not_retried ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 9
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.22s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+test errors_after_preprocessing_are_not_retried ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 10
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.25s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+test errors_after_preprocessing_are_not_retried ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+

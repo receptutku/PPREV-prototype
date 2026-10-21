@@ -223,19 +223,34 @@ where
 
     // tlsn 0.1.0-alpha.15 does not fail the MPC-TLS leader when the notary closes the session, for
     // example after rejecting the handshake time; the session driver ending first is that failure.
+    // A cut during preprocessing shows either way, in either order: as the driver ending, or as
+    // preprocessing failing. Before preprocessing completes nothing has reached the registry, so a
+    // cut there is retried; see `decide` for what counts as one.
     let preprocessed = AtomicBool::new(false);
-    let (request, secrets, (openings, request_opening, structure)) = tokio::select! {
-        result = run_mpc(&mut handle, setup, &preprocessed) => result?,
-        ended = driver_task.running() => {
-            let reason = match ended {
-                Ok(Ok(_)) => "connection closed".to_string(),
-                Ok(Err(e)) => format!("{e:#}"),
-                Err(e) => format!("{e:#}"),
-            };
-            if !preprocessed.load(Ordering::SeqCst) {
-                return Err(PreprocessingStalled(format!("the notary closed the session: {reason}")).into());
+    let (request, secrets, (openings, request_opening, structure)) = {
+        let mpc = run_mpc(&mut handle, setup, &preprocessed);
+        tokio::pin!(mpc);
+        tokio::select! {
+            // A result that is ready wins over the driver's end, so a rejection is not lost.
+            biased;
+            result = &mut mpc => match result {
+                Err(e) if !preprocessed.load(Ordering::SeqCst)
+                    && e.downcast_ref::<PreprocessingStalled>().is_none() =>
+                {
+                    let failure = failure_of(&e);
+                    let ended = match failure {
+                        Failure::Lossy => tokio::time::timeout(CUT_GRACE, driver_task.running())
+                            .await
+                            .ok(),
+                        Failure::Final | Failure::Closure => None,
+                    };
+                    return Err(decide(Some((e, failure)), ended.as_ref()));
+                }
+                result => result?,
+            },
+            ended = driver_task.running() => {
+                return Err(after_driver_end(ended, &mut mpc, &preprocessed).await);
             }
-            anyhow::bail!("the notary closed the session before notarisation completed: {reason}");
         }
     };
 
@@ -258,6 +273,160 @@ where
     })
 }
 
+/// How long a failed preprocessing waits for the session driver to show whether the notary closed
+/// the connection.
+const CUT_GRACE: Duration = Duration::from_secs(2);
+
+type DriverOutput<S> = Result<Result<S, tlsn::Error>, tokio::task::JoinError>;
+
+/// The error of a session whose driver ended before the prover finished. Before preprocessing
+/// completed, the prover's own failure, if it follows within CUT_GRACE, decides with the driver's
+/// end (a hung leader leaves the driver alone); the phase is read again after that wait, since
+/// preprocessing may complete during it. After preprocessing, the session is lost.
+async fn after_driver_end<S, T, F>(
+    ended: DriverOutput<S>,
+    mpc: F,
+    preprocessed: &AtomicBool,
+) -> anyhow::Error
+where
+    F: Future<Output = Result<T>>,
+{
+    let lost = |ended: &DriverOutput<S>| {
+        anyhow::anyhow!(
+            "the notary closed the session before notarisation completed: {}",
+            describe(ended)
+        )
+    };
+    if preprocessed.load(Ordering::SeqCst) {
+        return lost(&ended);
+    }
+    let outcome = tokio::time::timeout(CUT_GRACE, mpc).await;
+    if preprocessed.load(Ordering::SeqCst) {
+        return match outcome {
+            Ok(Err(e)) => e.context(lost(&ended)),
+            _ => lost(&ended),
+        };
+    }
+    let failed = match outcome {
+        Ok(Err(e)) if e.downcast_ref::<PreprocessingStalled>().is_some() => return e,
+        Ok(Err(e)) => {
+            let failure = failure_of(&e);
+            Some((e, failure))
+        }
+        Ok(Ok(_)) => return anyhow::anyhow!("the session ended while the prover still ran"),
+        Err(_) => None,
+    };
+    decide(failed, Some(&ended))
+}
+
+/// How a failure before preprocessing completed bears on a cut.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Failure {
+    /// A rejection, a configuration error, or any failure that is not a transport's: never a cut.
+    Final,
+    /// The failure shows the connection closing.
+    Closure,
+    /// tlsn's internal error, which is how it reports an OT setup whose peer went away ("insufficient
+    /// RCOTs setup"), without a transport source or a public discriminator: an ambiguous internal
+    /// failure, taken as a cut only if the driver independently shows the closure within CUT_GRACE.
+    /// A genuine internal fault accompanied by a closure is then retried too, within the bound.
+    Lossy,
+}
+
+fn failure_of(e: &anyhow::Error) -> Failure {
+    let tlsn = e
+        .chain()
+        .find_map(|link| link.downcast_ref::<tlsn::Error>());
+    if tlsn.is_some_and(|t| t.is_user() || t.is_config()) {
+        return Failure::Final;
+    }
+    if e.chain().any(is_closure) {
+        return Failure::Closure;
+    }
+    if tlsn.is_some_and(tlsn::Error::is_internal) {
+        return Failure::Lossy;
+    }
+    Failure::Final
+}
+
+/// The error of a session that failed before preprocessing completed, from the prover's failure (if
+/// it came) and the driver's end (if it came): a retryable stall if the notary closed the connection,
+/// and the failure itself otherwise. A final failure stays final whatever the driver did.
+fn decide<S>(
+    failed: Option<(anyhow::Error, Failure)>,
+    ended: Option<&DriverOutput<S>>,
+) -> anyhow::Error {
+    let stall = |reason: String| -> anyhow::Error {
+        PreprocessingStalled(format!("the notary closed the session: {reason}")).into()
+    };
+    let closed = ended.and_then(closure);
+    // A driver that panicked or failed otherwise than by a closure is final, whatever the prover saw.
+    if let (Some(ended), None) = (ended, &closed) {
+        let driver = anyhow::anyhow!("the session driver failed: {}", describe(ended));
+        return match failed {
+            Some((e, _)) => e.context(driver),
+            None => driver,
+        };
+    }
+    match (failed, closed) {
+        (Some((e, Failure::Final)), _) => e,
+        (Some((e, Failure::Closure)), _) => stall(format!("{e:#}")),
+        (Some((e, Failure::Lossy)), Some(reason)) => stall(format!(
+            "{reason}, with an ambiguous internal preprocessing failure: {e:#}"
+        )),
+        (Some((e, Failure::Lossy)), None) => e,
+        (None, Some(reason)) => stall(reason),
+        (None, None) => anyhow::anyhow!("preprocessing failed without an error"),
+    }
+}
+
+/// Why the session driver's end is a closed connection, if it is: it ended cleanly, or with a
+/// closure in its error. A panic or any other driver error is not a closure.
+fn closure<S>(ended: &DriverOutput<S>) -> Option<String> {
+    match ended {
+        Ok(Ok(_)) => Some("connection closed".to_string()),
+        Ok(Err(e)) if error_chain(e).any(is_closure) => Some(format!("{e:#}")),
+        _ => None,
+    }
+}
+
+fn describe<S>(ended: &DriverOutput<S>) -> String {
+    match ended {
+        Ok(Ok(_)) => "connection closed".to_string(),
+        Ok(Err(e)) => format!("{e:#}"),
+        Err(e) => format!("{e:#}"),
+    }
+}
+
+fn error_chain<'a>(
+    e: &'a (dyn std::error::Error + 'static),
+) -> impl Iterator<Item = &'a (dyn std::error::Error + 'static)> {
+    std::iter::successors(Some(e), |e| e.source())
+}
+
+/// One link of an error chain that shows the connection closing: an end of stream, reset, abort,
+/// broken pipe, or missing connection; a write to a closed connection, which the multiplexer reports
+/// as WriteZero (from a stream, and from its frame writer when the socket accepts nothing); or the
+/// multiplexer's closed connection.
+fn is_closure(e: &(dyn std::error::Error + 'static)) -> bool {
+    use std::io::ErrorKind::*;
+    if let Some(io) = e.downcast_ref::<std::io::Error>() {
+        return matches!(
+            io.kind(),
+            UnexpectedEof
+                | ConnectionReset
+                | ConnectionAborted
+                | BrokenPipe
+                | NotConnected
+                | WriteZero
+        );
+    }
+    matches!(
+        e.downcast_ref::<tlsn_mux::ConnectionError>(),
+        Some(tlsn_mux::ConnectionError::Closed)
+    )
+}
+
 /// MPC-TLS part of a notarisation: preprocessing, the TLS session with the registry, the request,
 /// commitments, and the attestation request.
 async fn run_mpc(
@@ -277,14 +446,16 @@ async fn run_mpc(
             .max_recv_data(setup.max_recv)
             .build()?,
     );
-    let prover = tokio::time::timeout(setup.preprocess_timeout, preprocessing)
-        .await
-        .map_err(|_| {
-            PreprocessingStalled(format!(
+    let prover = match tokio::time::timeout(setup.preprocess_timeout, preprocessing).await {
+        Err(_) => {
+            return Err(PreprocessingStalled(format!(
                 "did not finish within {:?}",
                 setup.preprocess_timeout
             ))
-        })??;
+            .into());
+        }
+        Ok(result) => result?,
+    };
     preprocessed.store(true, Ordering::SeqCst);
 
     let server_name = ServerName::Dns(shape.server_name.as_str().try_into()?);
@@ -590,4 +761,183 @@ fn build_presentation(
         .identity_proof(secrets.identity_proof())
         .transcript_proof(transcript_proof);
     Ok(presentation.build()?)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::{Error as IoError, ErrorKind};
+
+    use tlsn_mux::ConnectionError;
+
+    use super::*;
+
+    fn io(kind: ErrorKind) -> IoError {
+        IoError::from(kind)
+    }
+
+    fn closed(e: anyhow::Error) -> bool {
+        e.chain().any(is_closure)
+    }
+
+    fn driver<F>(output: F) -> DriverGuard<Result<(), tlsn::Error>>
+    where
+        F: Future<Output = Result<(), tlsn::Error>> + Send + 'static,
+    {
+        DriverGuard(Some(tokio::spawn(output)))
+    }
+
+    fn stalled(e: &anyhow::Error) -> bool {
+        e.downcast_ref::<PreprocessingStalled>().is_some()
+    }
+
+    #[test]
+    fn closures_are_recognised_through_wrappers() {
+        for kind in [
+            ErrorKind::UnexpectedEof,
+            ErrorKind::ConnectionReset,
+            ErrorKind::ConnectionAborted,
+            ErrorKind::BrokenPipe,
+            ErrorKind::NotConnected,
+            ErrorKind::WriteZero,
+        ] {
+            assert!(closed(anyhow::Error::from(io(kind))), "{kind:?}");
+            assert!(closed(
+                Err::<(), _>(io(kind)).context("preprocessing").unwrap_err()
+            ));
+            assert!(
+                closed(tlsn::Error::from(io(kind)).into()),
+                "{kind:?} in tlsn"
+            );
+            assert!(closed(
+                tlsn::Error::from(ConnectionError::Io(io(kind))).into()
+            ));
+        }
+        assert!(closed(tlsn::Error::from(ConnectionError::Closed).into()));
+    }
+
+    #[test]
+    fn other_failures_are_not_closures() {
+        for kind in [
+            ErrorKind::InvalidData,
+            ErrorKind::InvalidInput,
+            ErrorKind::PermissionDenied,
+            ErrorKind::TimedOut,
+            ErrorKind::Other,
+        ] {
+            assert!(!closed(anyhow::Error::from(io(kind))), "{kind:?}");
+            assert!(
+                !closed(tlsn::Error::from(io(kind)).into()),
+                "{kind:?} in tlsn"
+            );
+        }
+        assert!(!closed(
+            tlsn::Error::from(ConnectionError::TooManyStreams).into()
+        ));
+        assert!(!closed(
+            tlsn::Error::from(ConnectionError::DuplicateStreamId).into()
+        ));
+        assert!(!closed(anyhow::anyhow!(
+            "commitment protocol rejected by verifier"
+        )));
+        assert!(!closed(PreprocessingStalled("x".into()).into()));
+    }
+
+    #[tokio::test]
+    async fn the_driver_ending_cleanly_or_with_a_closure_is_a_cut() {
+        let ok: DriverOutput<()> = driver(async { Ok(()) }).join().await;
+        assert!(closure(&ok).is_some());
+        let eof = driver(async { Err(io(ErrorKind::UnexpectedEof).into()) })
+            .join()
+            .await;
+        assert!(closure(&eof).is_some());
+        let mux = driver(async { Err(ConnectionError::Closed.into()) })
+            .join()
+            .await;
+        assert!(closure(&mux).is_some());
+    }
+
+    #[tokio::test]
+    async fn a_driver_panic_or_protocol_error_is_not_a_cut() {
+        let panicked = driver(async { panic!("driver bug") }).join().await;
+        assert!(closure(&panicked).is_none());
+        let streams = driver(async { Err(ConnectionError::TooManyStreams.into()) })
+            .join()
+            .await;
+        assert!(closure(&streams).is_none());
+        let data = driver(async { Err(io(ErrorKind::InvalidData).into()) })
+            .join()
+            .await;
+        assert!(closure(&data).is_none());
+    }
+
+    #[test]
+    fn failures_are_classified_by_type() {
+        assert_eq!(
+            failure_of(&io(ErrorKind::UnexpectedEof).into()),
+            Failure::Closure
+        );
+        assert_eq!(
+            failure_of(&tlsn::Error::from(ConnectionError::Closed).into()),
+            Failure::Closure
+        );
+        assert_eq!(
+            failure_of(&tlsn::Error::from(io(ErrorKind::InvalidData)).into()),
+            Failure::Final
+        );
+        assert_eq!(
+            failure_of(&tlsn::Error::from(ConnectionError::TooManyStreams).into()),
+            Failure::Final
+        );
+        assert_eq!(failure_of(&anyhow::anyhow!("bad config")), Failure::Final);
+    }
+
+    fn final_error() -> (anyhow::Error, Failure) {
+        let e = anyhow::anyhow!("commitment protocol rejected by verifier");
+        (e, Failure::Final)
+    }
+
+    fn lossy() -> (anyhow::Error, Failure) {
+        let e = anyhow::anyhow!("insufficient RCOTs setup");
+        (e, Failure::Lossy)
+    }
+
+    #[tokio::test]
+    async fn a_final_failure_stays_final_even_when_the_driver_ended_cleanly() {
+        let clean = driver(async { Ok(()) }).join().await;
+        let e = decide(Some(final_error()), Some(&clean));
+        assert!(!stalled(&e), "{e:#}");
+        assert_eq!(format!("{e}"), "commitment protocol rejected by verifier");
+    }
+
+    #[tokio::test]
+    async fn a_closure_failure_is_a_stall_without_the_driver() {
+        let e: anyhow::Error = tlsn::Error::from(io(ErrorKind::UnexpectedEof)).into();
+        let e = decide::<()>(Some((e, Failure::Closure)), None);
+        assert!(stalled(&e), "{e:#}");
+    }
+
+    #[tokio::test]
+    async fn a_lossy_failure_is_a_stall_only_if_the_driver_shows_the_closure() {
+        let clean = driver(async { Ok(()) }).join().await;
+        assert!(stalled(&decide(Some(lossy()), Some(&clean))));
+        let streams = driver(async { Err(ConnectionError::TooManyStreams.into()) })
+            .join()
+            .await;
+        assert!(!stalled(&decide(Some(lossy()), Some(&streams))));
+        let panicked = driver(async { panic!("driver bug") }).join().await;
+        assert!(!stalled(&decide(Some(lossy()), Some(&panicked))));
+        assert!(!stalled(&decide::<()>(Some(lossy()), None)));
+    }
+
+    #[tokio::test]
+    async fn a_driver_end_without_a_prover_failure_is_a_stall_only_if_it_is_a_closure() {
+        let clean = driver(async { Ok(()) }).join().await;
+        assert!(stalled(&decide(None, Some(&clean))));
+        let panicked = driver(async { panic!("driver bug") }).join().await;
+        assert!(!stalled(&decide(None, Some(&panicked))));
+        let data = driver(async { Err(io(ErrorKind::InvalidData).into()) })
+            .join()
+            .await;
+        assert!(!stalled(&decide(None, Some(&data))));
+    }
 }

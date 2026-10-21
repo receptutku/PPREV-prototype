@@ -18,6 +18,8 @@ pprev-notary = { path = "offchain/crates/pprev-notary" }
 mock-registry = { path = "mock-registry" }
 
 tlsn = { git = "https://github.com/tlsnotary/tlsn", tag = "v0.1.0-alpha.15" }
+# The multiplexer tlsn v0.1.0-alpha.15 pins (Cargo.lock), for its typed closed-connection error.
+tlsn-mux = { git = "https://github.com/tlsnotary/tlsn-utils", rev = "64722f7" }
 k256 = { version = "0.13", features = ["ecdsa"] }
 
 tokio = { version = "1", features = ["full"] }

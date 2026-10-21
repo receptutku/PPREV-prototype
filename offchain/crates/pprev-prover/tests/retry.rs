@@ -27,6 +27,23 @@ fn silent_peer(held: &mut Vec<tokio::io::DuplexStream>) -> tokio::io::DuplexStre
     near
 }
 
+/// A notary that closes the connection at once fails the preprocessing future or ends the session
+/// driver, whichever the prover observes first. Either is the same cut, before any byte reached the
+/// registry, and must be a retryable stall; repeated so that both orders occur.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it() {
+    let e = env(OWNER, PROPERTY).await.unwrap();
+    for round in 0..50 {
+        let (far, near) = tokio::io::duplex(1 << 16);
+        drop(far);
+        let err = err_of(notarize(near, &e.setup).await);
+        assert!(
+            err.downcast_ref::<PreprocessingStalled>().is_some(),
+            "round {round}: {err:#}"
+        );
+    }
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn prover_times_out_a_stalled_preprocessing() {
     let mut e = env(OWNER, PROPERTY).await.unwrap();
@@ -91,9 +108,19 @@ async fn prover_retries_when_the_notary_cuts_preprocessing() {
     )
     .await
     .unwrap();
-    assert_eq!(stats.attempts, 2);
+    // The cut is the first stall. A later attempt may still hit the upstream preprocessing deadlock
+    // (tlsnotary/tlsn#1173) under load and time out, which is the retry this test does not test;
+    // any further stall must be that timeout.
+    assert_eq!(stats.stalls.len() as u32 + 1, stats.attempts);
     assert!(
         stats.stalls[0].contains("the notary closed the session"),
+        "{:?}",
+        stats.stalls
+    );
+    assert!(
+        stats.stalls[1..]
+            .iter()
+            .all(|s| s.contains("did not finish within")),
         "{:?}",
         stats.stalls
     );

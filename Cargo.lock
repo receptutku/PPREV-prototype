@@ -4194,6 +4194,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "tlsn",
+ "tlsn-mux",
  "tokio",
  "tokio-rustls",
  "tokio-util",
