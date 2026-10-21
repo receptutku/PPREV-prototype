@@ -118,6 +118,10 @@ pub struct ShapeSetup {
     pub max_recv: usize,
     /// Bound on MPC-TLS preprocessing before the attempt counts as stalled (D33).
     pub preprocess_timeout: Duration,
+    /// Request an attestation signed with the Ethereum-compatible algorithm (secp256k1 over
+    /// Keccak-256) and a Keccak-256 Merkle tree over its fields, which a contract can check; the
+    /// notary must accept it. Otherwise tlsn's defaults (secp256k1 over SHA-256, BLAKE3).
+    pub eth_attestation: bool,
 }
 
 impl ProverSetup {
@@ -130,6 +134,7 @@ impl ProverSetup {
             max_sent: self.max_sent,
             max_recv: self.max_recv,
             preprocess_timeout: self.preprocess_timeout,
+            eth_attestation: false,
         })
     }
 }
@@ -167,6 +172,18 @@ pub struct NotarizedShape {
     pub secrets: Secrets,
     pub openings: Vec<FieldOpening>,
     pub shape: ResponseShape,
+    /// Openings of the two revealed commitments: the request line, and the response structure (the
+    /// revealed ranges, concatenated in order). A verifier that checks the commitments itself, as
+    /// the integrated on-chain baseline does, needs their blinders.
+    pub request: CommittedOpening,
+    pub structure: CommittedOpening,
+}
+
+/// Plaintext and blinder of one commitment to a set of ranges: SHA-256(plaintext || blinder).
+#[derive(Clone, Debug)]
+pub struct CommittedOpening {
+    pub plaintext: Vec<u8>,
+    pub blinder: [u8; 16],
 }
 
 /// Runs the prover's half of one MPC-TLS session with the notary on `notary`, sends the title
@@ -207,7 +224,7 @@ where
     // tlsn 0.1.0-alpha.15 does not fail the MPC-TLS leader when the notary closes the session, for
     // example after rejecting the handshake time; the session driver ending first is that failure.
     let preprocessed = AtomicBool::new(false);
-    let (request, secrets, openings) = tokio::select! {
+    let (request, secrets, (openings, request_opening, structure)) = tokio::select! {
         result = run_mpc(&mut handle, setup, &preprocessed) => result?,
         ended = driver_task.running() => {
             let reason = match ended {
@@ -236,6 +253,8 @@ where
         secrets,
         openings,
         shape: setup.shape.clone(),
+        request: request_opening,
+        structure,
     })
 }
 
@@ -245,7 +264,11 @@ async fn run_mpc(
     handle: &mut tlsn::SessionHandle,
     setup: &ShapeSetup,
     preprocessed: &AtomicBool,
-) -> Result<(AttestationRequest, Secrets, Vec<FieldOpening>)> {
+) -> Result<(
+    AttestationRequest,
+    Secrets,
+    (Vec<FieldOpening>, CommittedOpening, CommittedOpening),
+)> {
     let shape = &setup.shape;
     let request_line = shape.request_line.as_str();
     let preprocessing = handle.new_prover(ProverConfig::builder().build()?)?.commit(
@@ -344,6 +367,11 @@ async fn run_mpc(
 
     let mut request_config = RequestConfig::builder();
     request_config.transcript_commit(transcript_commit);
+    if setup.eth_attestation {
+        request_config
+            .signature_alg(tlsn::attestation::signing::SignatureAlgId::SECP256K1ETH)
+            .hash_alg(HashAlgId::KECCAK256);
+    }
     let request_config = request_config.build()?;
 
     let mut prove_config = ProveConfig::builder(prover.transcript());
@@ -365,6 +393,18 @@ async fn run_mpc(
         .iter()
         .map(|r| opening(&prover_transcript, &transcript_secrets, r.clone()))
         .collect::<Result<Vec<_>>>()?;
+    let request_opening = committed_opening(
+        &prover_transcript,
+        &transcript_secrets,
+        Direction::Sent,
+        &RangeSet::from(0..request_line.len()),
+    )?;
+    let structure = committed_opening(
+        &prover_transcript,
+        &transcript_secrets,
+        Direction::Received,
+        &RangeSet::from(shape.revealed.clone()),
+    )?;
 
     let mut builder = AttestationRequest::builder(&request_config);
     builder
@@ -383,7 +423,32 @@ async fn run_mpc(
         .transcript(prover_transcript)
         .transcript_commitments(transcript_secrets, transcript_commitments);
     let (request, secrets) = builder.build(&CryptoProvider::default())?;
-    Ok((request, secrets, openings))
+    Ok((request, secrets, (openings, request_opening, structure)))
+}
+
+/// Plaintext (the ranges of `idx`, concatenated in order) and blinder of the hash commitment to
+/// `idx` in `direction`.
+fn committed_opening(
+    transcript: &Transcript,
+    secrets: &[TranscriptSecret],
+    direction: Direction,
+    idx: &RangeSet<usize>,
+) -> Result<CommittedOpening> {
+    let blinder = secrets
+        .iter()
+        .find_map(|secret| match secret {
+            TranscriptSecret::Hash(h) if h.direction == direction && &h.idx == idx => {
+                <[u8; 16]>::try_from(h.blinder.as_bytes()).ok()
+            }
+            _ => None,
+        })
+        .with_context(|| format!("no hash commitment secret for {direction:?} {idx:?}"))?;
+    let data = match direction {
+        Direction::Sent => transcript.sent(),
+        Direction::Received => transcript.received(),
+    };
+    let plaintext = idx.iter_values().map(|i| data[i]).collect();
+    Ok(CommittedOpening { plaintext, blinder })
 }
 
 /// Plaintext and blinder of the received-direction hash commitment to `range`.

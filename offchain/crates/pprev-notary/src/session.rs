@@ -67,6 +67,10 @@ pub struct NotaryConfig {
     pub preprocess_timeout: Duration,
     /// Bound on the whole session (D33).
     pub session_timeout: Duration,
+    /// Also accept attestation requests for the Ethereum-compatible signature (secp256k1 over
+    /// Keccak-256, `r || s || v`) with the same key, for the integrated on-chain verification
+    /// baseline. The prover's request picks the algorithm.
+    pub eth_attestation: bool,
 }
 
 impl NotaryConfig {
@@ -77,6 +81,7 @@ impl NotaryConfig {
             clock: unix_now,
             preprocess_timeout: DEFAULT_PREPROCESS_TIMEOUT,
             session_timeout: DEFAULT_SESSION_TIMEOUT,
+            eth_attestation: false,
         }
     }
 }
@@ -176,6 +181,9 @@ where
     provider
         .signer
         .set_signer(Box::new(Secp256k1Signer::new(&config.attestation_key)?));
+    if config.eth_attestation {
+        provider.signer.set_secp256k1eth(&config.attestation_key)?;
+    }
     let mut att_config = AttestationConfig::builder();
     att_config.supported_signature_algs(Vec::from_iter(provider.signer.supported_algs()));
     let att_config = att_config.build()?;

@@ -5,6 +5,7 @@
 pub mod chain;
 pub mod circuit;
 pub mod counting;
+pub mod e1;
 pub mod login;
 pub mod phases;
 pub mod probe;
@@ -13,7 +14,8 @@ pub mod session;
 
 pub use login::login;
 pub use session::{
-    DEFAULT_MAX_RETRIES, DEFAULT_PREPROCESS_TIMEOUT, FieldOpening, HiddenOpenings, NotarizeStats,
-    Notarized, NotarizedShape, PreprocessingStalled, ProverSetup, ShapeSetup, notarize,
-    notarize_shape, notarize_shape_with_retries, notarize_with_retries, present, present_shape,
+    CommittedOpening, DEFAULT_MAX_RETRIES, DEFAULT_PREPROCESS_TIMEOUT, FieldOpening,
+    HiddenOpenings, NotarizeStats, Notarized, NotarizedShape, PreprocessingStalled, ProverSetup,
+    ShapeSetup, notarize, notarize_shape, notarize_shape_with_retries, notarize_with_retries,
+    present, present_shape,
 };

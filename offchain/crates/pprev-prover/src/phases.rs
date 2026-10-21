@@ -198,6 +198,7 @@ async fn attest(session: &SessionConfig, shape: ResponseShape) -> Result<Atteste
         max_sent: session.max_sent,
         max_recv: session.max_recv,
         preprocess_timeout: session.preprocess_timeout,
+        eth_attestation: false,
     };
     let notary_addr = session.notary;
     let mut attempt_started = Vec::new();

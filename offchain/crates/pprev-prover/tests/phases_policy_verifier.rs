@@ -182,6 +182,7 @@ async fn notarize(account: (&str, &str), layout: &RecordLayout, subject: &str) -
         max_sent: MAX_SENT,
         max_recv: MAX_RECV,
         preprocess_timeout: TEST_PREPROCESS_TIMEOUT,
+        eth_attestation: false,
     };
     let mut config = NotaryConfig::new(ATTESTATION_KEY, vec![ca_der.clone()]);
     config.preprocess_timeout = TEST_PREPROCESS_TIMEOUT;

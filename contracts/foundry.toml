@@ -12,7 +12,9 @@ via_ir = false
 evm_version = "cancun"
 bytecode_hash = "ipfs"
 
-fs_permissions = [{ access = "read-write", path = "../test-vectors" }, { access = "read", path = "../policies" }, { access = "read-write", path = "../target/measure" }, { access = "read-write", path = "../target/l2" }]
+allow_paths = ["../circuits/setup"]
+remappings = ["forge-std/=lib/forge-std/src/", "pprev-circuits/=../circuits/setup/"]
+fs_permissions = [{ access = "read", path = "./test/baseline/fixtures" }, { access = "read-write", path = "../test-vectors" }, { access = "read", path = "../policies" }, { access = "read-write", path = "../target/measure" }, { access = "read-write", path = "../target/l2" }]
 
 [fuzz]
 runs = 256
