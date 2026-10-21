@@ -7,3 +7,5 @@ PLAN.md
 target/
 circuits/node_modules/
 circuits/build/
+__pycache__/
+*.pyc

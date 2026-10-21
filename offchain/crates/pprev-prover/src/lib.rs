@@ -6,6 +6,7 @@ pub mod chain;
 pub mod circuit;
 pub mod counting;
 pub mod login;
+pub mod netem;
 pub mod phases;
 pub mod probe;
 pub mod register;
