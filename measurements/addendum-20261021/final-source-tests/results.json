@@ -1,0 +1,9 @@
+{
+  "passed": 164,
+  "failed": 0,
+  "ignored": 3,
+  "sourceFreezeMatches": true,
+  "scope": "Release workspace suite after borrowed-proof metadata and public portal probe changes. The freeze excludes its own enclosing manifest to avoid a recursive hash dependency. Prior measured circuit/gas campaigns remain separately identified.",
+  "command": "cargo test --release --workspace --no-fail-fast --offline",
+  "reportedExitCode": 0
+}

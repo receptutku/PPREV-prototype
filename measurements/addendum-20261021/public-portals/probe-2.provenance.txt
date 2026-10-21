@@ -1,0 +1,6 @@
+commit f46eda471da98c05f99981b772e56b6ef720daad (branch wip-2026-10-21-as-package), working tree dirty: 2 files
+3dc4e4d783a00d0e1c7a1cc9ce37e94096ce8ba15ec897da83233a14d43ec623  offchain/crates/pprev-prover/src/probe.rs
+28aeff474d442e72e2d131bfc3846a6e6431f61afce2dc174f523f35ed7f07ef  offchain/crates/pprev-prover/src/bin/probe-portal.rs
+604a30d2aa48a96e8d2b54ff611fae942202f21e7f830e17998af987388f7dfe  target/release/probe-portal
+command: target/release/probe-portal --out probe-2.json https://parselsorgu.tkgm.gov.tr/robots.txt https://eservices.landregistry.gov.uk/robots.txt https://www.turkiye.gov.tr/tapu-bilgileri-sorgulama
+note: probe-1.json (www.turkiye.gov.tr/robots.txt) was taken with the first version of the probe (no difference positions, no plain-fetch timeout/cap); it is not repeated.

@@ -1,0 +1,39 @@
+{
+  "probes": [
+    {
+      "error": null,
+      "host": "www.turkiye.gov.tr",
+      "maxRecv": 2529,
+      "maxSent": 1024,
+      "notarised": {
+        "attestationMs": 61.867166000000005,
+        "certChainLen": 3,
+        "mpcTlsMs": 7725.752625,
+        "presentationVerified": true,
+        "receivedBytes": 481,
+        "sameBytesAsPlain": false,
+        "sameLengthAsPlain": true,
+        "sentBytes": 184,
+        "statusLine": "HTTP/1.1 200 OK",
+        "tAtt": 1792574597,
+        "tlsVersion": "V1_2"
+      },
+      "path": "/robots.txt",
+      "plain": [
+        {
+          "bytes": 481,
+          "contentType": "text/plain",
+          "statusLine": "HTTP/1.1 200 OK"
+        },
+        {
+          "bytes": 481,
+          "contentType": "text/plain",
+          "statusLine": "HTTP/1.1 200 OK"
+        }
+      ],
+      "plainIdentical": false
+    }
+  ],
+  "unixTime": 1792574597,
+  "userAgent": "pprev-probe/0.1 (research prototype; one request per run)"
+}

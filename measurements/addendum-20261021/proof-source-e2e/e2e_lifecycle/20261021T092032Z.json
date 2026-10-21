@@ -1,0 +1,1052 @@
+{
+  "runId": "20261021T092032Z",
+  "commit": "2f9a9cc6637d8f516c56c943f003b49904888c9d",
+  "workingTreeDirty": true,
+  "passed": true,
+  "machine": {
+    "cpu": "Apple M2",
+    "memoryBytes": 17179869184,
+    "os": "26.6.2",
+    "powerSource": "Battery Power"
+  },
+  "tools": {
+    "anvil": "anvil Version: 1.8.3",
+    "forge": "forge Version: 1.8.3",
+    "cast": "cast Version: 1.8.3",
+    "solc": "0.8.36",
+    "circom": "circom compiler 2.2.3",
+    "snarkjs": "0.7.6",
+    "circomlib": "2.0.5",
+    "node": "v26.9.0",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "tlsn": "v0.1.0-alpha.15#47aee45b53e06648c1b2ad3689b367b8c923fdec",
+    "alloy": "2.5.0"
+  },
+  "circuits": {
+    "phiR": {
+      "zkeySha256": "f5e263f406737d0c2492b7347c7ca6ca7613c4c5333844caddcfa418a59d0748",
+      "verificationKeySha256": "ae1f7cd05194f4886a386326ee1ac539b206c053d008704564e221ec9e006916"
+    },
+    "phiA": {
+      "constraints": 59963,
+      "zkeySha256": "1867088245853e2975bd9e7e070ddae04c9e87730d09b7b593f1ef907172294a",
+      "verificationKeySha256": "157bb2d4f144c2de04a9b4ee8ffb6b52699707fd23f47bc1d8cfc9c6913594b5",
+      "phase2": "single party, local to this prototype: whoever ran this script knows the toxic waste"
+    },
+    "phiS": {
+      "constraints": 89257,
+      "zkeySha256": "49d5c4cceeec89b845fd090f662b15bb7aab28e76ef74bc80296c2136cc05f0f",
+      "verificationKeySha256": "f72e695584614404e163e4a09ae3728ddc5c3d4c2e97bf811c2a656a56383164",
+      "phase2": "single party, local to this prototype: whoever ran this script knows the toxic waste"
+    }
+  },
+  "deployment": {
+    "chainId": 31337,
+    "pprev": "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
+    "vkNotary": "0x71a4AC94Aea217f66f83b84e43ce8dd0CDeb08ba",
+    "deltaS": 300,
+    "tauLockS": 1209600,
+    "policy": "policies/rental-v1.json",
+    "registryUtcOffsetS": 10800,
+    "notationDate": "2026-10-21",
+    "blockProduction": "anvil automine (one block per transaction)"
+  },
+  "statement": {
+    "property": "TR-06-CANKAYA-000123",
+    "amountWei": "1000000000000000000",
+    "collateralWei": "500000000000000000",
+    "depositWei": "50000000000000000"
+  },
+  "singleRun": {
+    "note": "one run per phase; not a timing distribution",
+    "register": {
+      "tProveMs": 2923.933,
+      "tVerifyMs": 1.792,
+      "tSignMs": 4.215,
+      "tInclMs": 14.308,
+      "mpcTlsMs": 316.902,
+      "groth16VerifyMs": 1.258,
+      "gasUsed": 208239,
+      "attempts": 1
+    },
+    "apply": {
+      "tProveMs": 1757.954,
+      "tVerifyMs": 1.578,
+      "tSignMs": 5.67,
+      "tInclMs": 13.771,
+      "mpcTlsMs": 281.044,
+      "groth16VerifyMs": 1.201,
+      "gasUsed": 193736,
+      "attempts": 1
+    },
+    "settle": {
+      "tProveMs": 2847.952,
+      "tVerifyMs": 1.823,
+      "tSignMs": 11.559,
+      "tInclMs": 13.685,
+      "mpcTlsMs": 288.347,
+      "groth16VerifyMs": 1.425,
+      "gasUsed": 110648,
+      "attempts": 1
+    },
+    "engage": {
+      "gasUsed": 113137,
+      "tInclMs": 14.047
+    }
+  },
+  "checks": [
+    {
+      "name": "register: listing registered",
+      "expected": "registered",
+      "observed": "registered",
+      "pass": true
+    },
+    {
+      "name": "apply: Applied",
+      "expected": "included",
+      "observed": "included",
+      "pass": true
+    },
+    {
+      "name": "apply: Applied.cB is the submitted c_B",
+      "expected": "0x12f7b63c9cb34f28a531156e299bb63c147b3abf3cf963688aa98a920ecad708",
+      "observed": "0x12f7b63c9cb34f28a531156e299bb63c147b3abf3cf963688aa98a920ecad708",
+      "pass": true
+    },
+    {
+      "name": "apply: application Pending (1)",
+      "expected": "1",
+      "observed": "1",
+      "pass": true
+    },
+    {
+      "name": "apply: consumed(eta_A)",
+      "expected": "true",
+      "observed": "true",
+      "pass": true
+    },
+    {
+      "name": "apply-poor: phi_A has no witness below the income multiple",
+      "expected": "false",
+      "observed": "false (template PhiA line 83)",
+      "pass": true
+    },
+    {
+      "name": "apply-poor: borrowed proof refused",
+      "expected": "refused: ...does not verify...",
+      "observed": "refused: the phi_A proof does not verify for this statement and attestation",
+      "pass": true
+    },
+    {
+      "name": "apply-identity: c_B naming another account has no witness",
+      "expected": "noWitness: ...PhiA...",
+      "observed": "noWitness: phi_A has no witness for this input: assertion failed in template PhiA at line 73",
+      "pass": true
+    },
+    {
+      "name": "apply-nonce: policy verifier refuses a signed nonce",
+      "expected": "refused: ...already been signed...",
+      "observed": "refused: nonce 0x9040e167989c3e93f3fb2bb26998d79ef447938d94b536bd4357324e70072bf4 has already been signed",
+      "pass": true
+    },
+    {
+      "name": "apply-replay: same payload reverts",
+      "expected": "reverted: NonceConsumed",
+      "observed": "reverted: NonceConsumed(NonceConsumed { eta: 0x9040e167989c3e93f3fb2bb26998d79ef447938d94b536bd4357324e70072bf4 })",
+      "pass": true
+    },
+    {
+      "name": "engage: expiresAt = block time + tau_lock",
+      "expected": "1793784045",
+      "observed": "1793784045",
+      "pass": true
+    },
+    {
+      "name": "engage: txState(txId) == Locked (2)",
+      "expected": "2",
+      "observed": "2",
+      "pass": true
+    },
+    {
+      "name": "settle: sigma_S for the notation of the engagement day",
+      "expected": "signed",
+      "observed": "signed",
+      "pass": true
+    },
+    {
+      "name": "settle-stale: phi_S has no witness before the engagement day",
+      "expected": "template PhiS ...",
+      "observed": "template PhiS line 101",
+      "pass": true
+    },
+    {
+      "name": "settle-stale: borrowed proof refused",
+      "expected": "refused: ...does not verify...",
+      "observed": "refused: the phi_S proof does not verify for this statement and attestation",
+      "pass": true
+    },
+    {
+      "name": "settle-property: notation on another property has no witness",
+      "expected": "noWitness: ...PhiS...",
+      "observed": "noWitness: phi_S has no witness for this input: assertion failed in template PhiS at line 76",
+      "pass": true
+    },
+    {
+      "name": "settle-tenant: notation of another tenant has no witness",
+      "expected": "noWitness: ...PhiS...",
+      "observed": "noWitness: phi_S has no witness for this input: assertion failed in template PhiS at line 91",
+      "pass": true
+    },
+    {
+      "name": "settle-other: payload from another account reverts",
+      "expected": "reverted: NotListingOwner",
+      "observed": "reverted: NotListingOwner(NotListingOwner)",
+      "pass": true
+    },
+    {
+      "name": "settle-submit: Settled",
+      "expected": "included",
+      "observed": "included",
+      "pass": true
+    },
+    {
+      "name": "settle-submit: txState(txId) == Settled (3)",
+      "expected": "3",
+      "observed": "3",
+      "pass": true
+    },
+    {
+      "name": "settle-submit: owner receives the collateral (share 0)",
+      "expected": "500000000000000000",
+      "observed": "500000000000000000",
+      "pass": true
+    },
+    {
+      "name": "settle-submit: tenant receives the deposit",
+      "expected": "50000000000000000",
+      "observed": "50000000000000000",
+      "pass": true
+    },
+    {
+      "name": "settle-submit: tenant balance grows by the deposit",
+      "expected": "50000000000000000",
+      "observed": "50000000000000000",
+      "pass": true
+    },
+    {
+      "name": "settle-submit: contract holds nothing",
+      "expected": "0",
+      "observed": "0",
+      "pass": true
+    },
+    {
+      "name": "settle-replay: same payload reverts",
+      "expected": "reverted: NotLocked",
+      "observed": "reverted: NotLocked(NotLocked { txId: 1 })",
+      "pass": true
+    }
+  ],
+  "runs": {
+    "register": {
+      "outcome": "registered",
+      "reason": null,
+      "account": "ACC-000000000001",
+      "property": "TR-06-CANKAYA-000123",
+      "submitter": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+      "policyIdR": "0xdaa0cc8bee0f7a38b19d419dc9c099dca2411eecb84dda8c97bb9d1c0df7ff13",
+      "cTx": "0x6611113d5c3b09039031f026cf1a687faf4bb1c2ced7348b04ac3e9a0b34047d",
+      "eta": "0xd60edec01b5a8624e8dd933ea573d6791d098d1dbd5ce3eab20189b9a02284fd",
+      "tAtt": 1792574437,
+      "notarization": {
+        "attempts": 1,
+        "stalls": []
+      },
+      "witness": {
+        "satisfied": true,
+        "failedAssertion": null
+      },
+      "proofSource": "own",
+      "timings": {
+        "outsideDelta": {
+          "loginMs": 2.811708,
+          "mpcTlsMs": 316.90208399999995
+        },
+        "insideDelta": {
+          "presentationMs": 0.036917,
+          "readTAttMs": 0.199542,
+          "witnessMs": 294.256959,
+          "snarkjsProveMs": 2629.6757079999998,
+          "tProveMs": 2923.9326669999996,
+          "tVerifyMs": 1.7922920000000002,
+          "tSignMs": 4.215208,
+          "tInclMs": 14.30825
+        },
+        "verifier": {
+          "decodeMs": 0.13020800000000002,
+          "presentationMs": 0.398167,
+          "groth16Ms": 1.2579170000000002,
+          "verifyMs": 1.6620840000000001,
+          "signMs": 4.215208
+        },
+        "verifierRoundTripMs": 6.764333,
+        "afterAttestationMs": 2948.395958,
+        "attestationArrivalMinusTAttMs": 557
+      },
+      "resources": {
+        "mpcTraffic": {
+          "sentBytes": 30200490,
+          "receivedBytes": 3804750
+        },
+        "witnessPeakRssBytes": null,
+        "snarkjsPeakRssBytes": null,
+        "proverPeakRssBytes": 242941952
+      },
+      "payload": {
+        "chainId": 31337,
+        "contract": "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
+        "submitter": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+        "cTx": "0x6611113d5c3b09039031f026cf1a687faf4bb1c2ced7348b04ac3e9a0b34047d",
+        "propertyId": "0x54522d30362d43414e4b4159412d303030313233000000000000000000000000",
+        "amount": "0xde0b6b3a7640000",
+        "settlementShare": "0x0",
+        "policyIdR": "0xdaa0cc8bee0f7a38b19d419dc9c099dca2411eecb84dda8c97bb9d1c0df7ff13",
+        "r": "0x0b1b394909532d133d7b370f384cb286e21d978f08a06f4101e5fa30b09d921e",
+        "sigmaR": "0x5b6320bba5920f70c86b91693b0c6453daf5fa2cf433ad7e6815dfe73de4f56f2e27f3d565f440adc461c7b270378fffa1d5754781d63ad0c24e83284a732da11c",
+        "etaR": "0xd60edec01b5a8624e8dd933ea573d6791d098d1dbd5ce3eab20189b9a02284fd",
+        "tAttR": 1792574437,
+        "collateral": "0x6f05b59d3b20000"
+      },
+      "submission": {
+        "outcome": "included",
+        "txHash": "0x0eefd854cf47c9fdbd7078db675f287547244401e529f707afe03d4fec8729de",
+        "blockNumber": 2,
+        "blockTimestamp": 1792574440,
+        "gasUsed": 208239,
+        "tInclMs": 14.30825,
+        "event": {
+          "txId": "0x1",
+          "owner": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+          "cTx": "0x6611113d5c3b09039031f026cf1a687faf4bb1c2ced7348b04ac3e9a0b34047d",
+          "policyIdR": "0xdaa0cc8bee0f7a38b19d419dc9c099dca2411eecb84dda8c97bb9d1c0df7ff13",
+          "propertyId": "0x54522d30362d43414e4b4159412d303030313233000000000000000000000000",
+          "amount": "0xde0b6b3a7640000",
+          "settlementShare": "0x0",
+          "r": "0x0b1b394909532d133d7b370f384cb286e21d978f08a06f4101e5fa30b09d921e",
+          "collateral": "0x6f05b59d3b20000"
+        }
+      }
+    },
+    "apply": {
+      "phase": "apply",
+      "outcome": "included",
+      "reason": null,
+      "account": "ACC-000000000003",
+      "submitter": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+      "policyId": "0xc7d242e17f56ef174eebde468e1693a3dba0c9abdabdd687b7fcf8724e571fa7",
+      "eta": "0x9040e167989c3e93f3fb2bb26998d79ef447938d94b536bd4357324e70072bf4",
+      "tAtt": 1792574440,
+      "publicInputs": [
+        "103779011548702706535965810432001031153",
+        "232445791060248753611297657947989842946",
+        "53478824706435608659247441308344001398",
+        "64679148850755270580219858982877974837",
+        "8579300251433452864249710656170726472179445117915254137741248401195318040328",
+        "1000000000000000000",
+        "2889219938217858709340670044754009668009475022533477025997240727727318892870"
+      ],
+      "notarization": {
+        "attempts": 1,
+        "stalls": []
+      },
+      "witness": {
+        "satisfied": true,
+        "failedAssertion": null
+      },
+      "proofSource": "own",
+      "timings": {
+        "outsideDelta": {
+          "loginMs": 0.700542,
+          "mpcTlsMs": 281.04416599999996
+        },
+        "insideDelta": {
+          "presentationMs": 0.039916999999999994,
+          "readTAttMs": 0.204541,
+          "witnessMs": 206.605209,
+          "snarkjsProveMs": 1551.34875,
+          "tProveMs": 1757.9539590000002,
+          "tVerifyMs": 1.5784590000000003,
+          "tSignMs": 5.670332999999999,
+          "tInclMs": 13.770624999999999
+        },
+        "verifier": {
+          "decodeMs": 0.128667,
+          "presentationMs": 0.241583,
+          "groth16Ms": 1.200875,
+          "verifyMs": 1.4497920000000002,
+          "signMs": 5.670332999999999
+        },
+        "verifierRoundTripMs": 7.944916999999999,
+        "afterAttestationMs": 1781.8585420000002,
+        "attestationArrivalMinusTAttMs": 822
+      },
+      "resources": {
+        "mpcTraffic": {
+          "sentBytes": 30165923,
+          "receivedBytes": 3805023
+        },
+        "witnessPeakRssBytes": null,
+        "snarkjsPeakRssBytes": null,
+        "proverPeakRssBytes": null
+      },
+      "payload": {
+        "chainId": 31337,
+        "contract": "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
+        "submitter": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+        "txId": "0x1",
+        "propertyId": "0x54522d30362d43414e4b4159412d303030313233000000000000000000000000",
+        "amount": "0xde0b6b3a7640000",
+        "settlementShare": "0x0",
+        "r": "0x0b1b394909532d133d7b370f384cb286e21d978f08a06f4101e5fa30b09d921e",
+        "cB": "0x12f7b63c9cb34f28a531156e299bb63c147b3abf3cf963688aa98a920ecad708",
+        "sigmaA": "0x5e191514008fcba4c6323265948277a3aae14154cae2529981270bcb71aea34c4670e6b2cc0f0ae4c81bf769ddff63607b94ff7f10db03aabcc5b57a7462ad3a1c",
+        "etaA": "0x9040e167989c3e93f3fb2bb26998d79ef447938d94b536bd4357324e70072bf4",
+        "tAttA": 1792574440,
+        "deposit": "0xb1a2bc2ec50000",
+        "identifier": "ACC-000000000003",
+        "salt": "0x1bfdc44b60038611c9421f4850accf0dc8ec5f3157cfeb778cdd6e12bb0c6436"
+      },
+      "submission": {
+        "outcome": "included",
+        "txHash": "0x07756ee760489edf3829be0fe236923f176faa51e3a4052e7db50b11b941470e",
+        "blockNumber": 3,
+        "blockTimestamp": 1792574442,
+        "gasUsed": 193736,
+        "tInclMs": 13.770624999999999,
+        "event": {
+          "appId": "0x1",
+          "txId": "0x1",
+          "applicant": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+          "cB": "0x12f7b63c9cb34f28a531156e299bb63c147b3abf3cf963688aa98a920ecad708",
+          "deposit": "0xb1a2bc2ec50000"
+        }
+      }
+    },
+    "apply-poor": {
+      "phase": "apply",
+      "outcome": "refused",
+      "reason": "the phi_A proof does not verify for this statement and attestation",
+      "account": "ACC-000000000002",
+      "submitter": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "policyId": "0xc7d242e17f56ef174eebde468e1693a3dba0c9abdabdd687b7fcf8724e571fa7",
+      "eta": "0x5daec9856585231faea4bb112c964cac3748c6e2cf8feddecb9c081eac92e85c",
+      "tAtt": 1792574442,
+      "publicInputs": [
+        "261241432511103564843089503964086426062",
+        "66307968333999425359568052653544527651",
+        "173814234823177702058642585083410446032",
+        "188882900015275226025048252910898709777",
+        "2316222038328457199190421642591507391417088818880677076904742052978968289950",
+        "1000000000000000000",
+        "2363986596837866240504133853190537709992849495514741214086019487088740413470"
+      ],
+      "notarization": {
+        "attempts": 1,
+        "stalls": []
+      },
+      "witness": {
+        "satisfied": false,
+        "failedAssertion": "template PhiA line 83"
+      },
+      "proofSource": "borrowed:sha256:e8a8eef8b0e240ab80f73038afb4d1e69a32fbad70b0bec8d862ce4ed4f7ab80",
+      "timings": {
+        "outsideDelta": {
+          "loginMs": 0.785916,
+          "mpcTlsMs": 281.456459
+        },
+        "insideDelta": {
+          "presentationMs": 0.031333,
+          "readTAttMs": 0.21420799999999998,
+          "witnessMs": null,
+          "snarkjsProveMs": null,
+          "tProveMs": null,
+          "tVerifyMs": null,
+          "tSignMs": null,
+          "tInclMs": null
+        },
+        "verifier": null,
+        "verifierRoundTripMs": 2.253583,
+        "afterAttestationMs": 191.18775,
+        "attestationArrivalMinusTAttMs": 968
+      },
+      "resources": {
+        "mpcTraffic": {
+          "sentBytes": 30165811,
+          "receivedBytes": 3804841
+        },
+        "witnessPeakRssBytes": null,
+        "snarkjsPeakRssBytes": null,
+        "proverPeakRssBytes": null
+      },
+      "payload": null,
+      "submission": null
+    },
+    "apply-identity": {
+      "phase": "apply",
+      "outcome": "noWitness",
+      "reason": "phi_A has no witness for this input: assertion failed in template PhiA at line 73",
+      "account": "ACC-000000000003",
+      "submitter": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+      "policyId": "0xc7d242e17f56ef174eebde468e1693a3dba0c9abdabdd687b7fcf8724e571fa7",
+      "eta": "0x4af1374cc44a03bdfb663464f17a0d5079b8aa715c03ea4a7660affa0de524b7",
+      "tAtt": 1792574443,
+      "publicInputs": [
+        "258423118753416180405842525838453238179",
+        "161594867097682313885043915723483581153",
+        "41989646322461487687227014797586577248",
+        "335209368049553242686382696057640042513",
+        "4707031720609159490455865857518443745966098873471488831904522518843973968506",
+        "1000000000000000000",
+        "11857858037207366690709812153050680806605091545938126402651730714205604496161"
+      ],
+      "notarization": {
+        "attempts": 1,
+        "stalls": []
+      },
+      "witness": {
+        "satisfied": false,
+        "failedAssertion": "template PhiA line 73"
+      },
+      "proofSource": "own",
+      "timings": {
+        "outsideDelta": {
+          "loginMs": 0.827375,
+          "mpcTlsMs": 277.551625
+        },
+        "insideDelta": {
+          "presentationMs": 0.036375000000000005,
+          "readTAttMs": 0.22229100000000002,
+          "witnessMs": null,
+          "snarkjsProveMs": null,
+          "tProveMs": null,
+          "tVerifyMs": null,
+          "tSignMs": null,
+          "tInclMs": null
+        },
+        "verifier": null,
+        "verifierRoundTripMs": null,
+        "afterAttestationMs": 188.11849999999998,
+        "attestationArrivalMinusTAttMs": 463
+      },
+      "resources": {
+        "mpcTraffic": {
+          "sentBytes": 30165909,
+          "receivedBytes": 3805009
+        },
+        "witnessPeakRssBytes": null,
+        "snarkjsPeakRssBytes": null,
+        "proverPeakRssBytes": null
+      },
+      "payload": null,
+      "submission": null
+    },
+    "apply-nonce": {
+      "phase": "apply",
+      "outcome": "refused",
+      "reason": "nonce 0x9040e167989c3e93f3fb2bb26998d79ef447938d94b536bd4357324e70072bf4 has already been signed",
+      "account": "ACC-000000000003",
+      "submitter": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+      "policyId": "0xc7d242e17f56ef174eebde468e1693a3dba0c9abdabdd687b7fcf8724e571fa7",
+      "eta": "0x9040e167989c3e93f3fb2bb26998d79ef447938d94b536bd4357324e70072bf4",
+      "tAtt": 1792574443,
+      "publicInputs": [
+        "168583307134059044718826875902822984374",
+        "155802960550433195625964281716007501501",
+        "216515398366713812663281817630947882866",
+        "200744733077698602468595964484308279648",
+        "1646552057112480010260338387396872985397853338456268973730463977325677655190",
+        "1000000000000000000",
+        "5952290663155633675753509445174844904726141248175399565320247418435323674715"
+      ],
+      "notarization": {
+        "attempts": 1,
+        "stalls": []
+      },
+      "witness": {
+        "satisfied": true,
+        "failedAssertion": null
+      },
+      "proofSource": "own",
+      "timings": {
+        "outsideDelta": {
+          "loginMs": 0.8402919999999999,
+          "mpcTlsMs": 297.493541
+        },
+        "insideDelta": {
+          "presentationMs": 0.036875000000000005,
+          "readTAttMs": 0.207958,
+          "witnessMs": 199.406875,
+          "snarkjsProveMs": 1565.0837499999998,
+          "tProveMs": 1764.490625,
+          "tVerifyMs": null,
+          "tSignMs": null,
+          "tInclMs": null
+        },
+        "verifier": null,
+        "verifierRoundTripMs": 0.725792,
+        "afterAttestationMs": 1765.6594590000002,
+        "attestationArrivalMinusTAttMs": 969
+      },
+      "resources": {
+        "mpcTraffic": {
+          "sentBytes": 30165965,
+          "receivedBytes": 3804071
+        },
+        "witnessPeakRssBytes": null,
+        "snarkjsPeakRssBytes": null,
+        "proverPeakRssBytes": null
+      },
+      "payload": null,
+      "submission": null
+    },
+    "settle": {
+      "phase": "settle",
+      "outcome": "signed",
+      "reason": null,
+      "account": "ACC-000000000001",
+      "submitter": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+      "policyId": "0xb38cc709c7cd13f94c911939e95c29ae3a86a975244fc56bd65a31516419b108",
+      "eta": "0xde27ef0d939c2574d0e4192a9585ab6a2bc5982f236e72e351dd2859d31ad3ff",
+      "tAtt": 1792574446,
+      "publicInputs": [
+        "69231225743801342828967931646856938046",
+        "177497518045314801221293658263477997847",
+        "38335446254453693225827195287276048474",
+        "16202494592603928330784571488714468833",
+        "154450729557413980678191967509337562508",
+        "77496307245448762825048119581225064929",
+        "112081836516483663994786259770125660208",
+        "64058384504860639264183147846894092288",
+        "8579300251433452864249710656170726472179445117915254137741248401195318040328",
+        "20261021",
+        "6193508137864469513806534237259226289089003186428347407797286532690936422403"
+      ],
+      "notarization": {
+        "attempts": 1,
+        "stalls": []
+      },
+      "witness": {
+        "satisfied": true,
+        "failedAssertion": null
+      },
+      "proofSource": "own",
+      "timings": {
+        "outsideDelta": {
+          "loginMs": 0.69425,
+          "mpcTlsMs": 288.347125
+        },
+        "insideDelta": {
+          "presentationMs": 0.035457999999999996,
+          "readTAttMs": 0.204167,
+          "witnessMs": 257.032667,
+          "snarkjsProveMs": 2590.919542,
+          "tProveMs": 2847.952209,
+          "tVerifyMs": 1.823,
+          "tSignMs": 11.558916,
+          "tInclMs": null
+        },
+        "verifier": {
+          "decodeMs": 0.134375,
+          "presentationMs": 0.255667,
+          "groth16Ms": 1.425208,
+          "verifyMs": 1.688625,
+          "signMs": 11.558916
+        },
+        "verifierRoundTripMs": 14.178791,
+        "afterAttestationMs": 2863.036416,
+        "attestationArrivalMinusTAttMs": 115
+      },
+      "resources": {
+        "mpcTraffic": {
+          "sentBytes": 30181467,
+          "receivedBytes": 3804377
+        },
+        "witnessPeakRssBytes": null,
+        "snarkjsPeakRssBytes": null,
+        "proverPeakRssBytes": null
+      },
+      "payload": {
+        "chainId": 31337,
+        "contract": "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
+        "submitter": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+        "engId": "0x1",
+        "propertyId": "0x54522d30362d43414e4b4159412d303030313233000000000000000000000000",
+        "amount": "0xde0b6b3a7640000",
+        "settlementShare": "0x0",
+        "r": "0x0b1b394909532d133d7b370f384cb286e21d978f08a06f4101e5fa30b09d921e",
+        "sigmaS": "0xb908dfa590570bc2e5ed3e498b6efe49b56f6484bbc9e3d5cb7dbdebc891951158f309864aafe7c9453261f6ae016da0f6eb07c2c5a81c3df7eae15e72dfc43b1b",
+        "etaS": "0xde27ef0d939c2574d0e4192a9585ab6a2bc5982f236e72e351dd2859d31ad3ff",
+        "tAttS": 1792574446
+      },
+      "submission": null
+    },
+    "settle-stale": {
+      "phase": "settle",
+      "outcome": "refused",
+      "reason": "the phi_S proof does not verify for this statement and attestation",
+      "account": "ACC-000000000001",
+      "submitter": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+      "policyId": "0xb38cc709c7cd13f94c911939e95c29ae3a86a975244fc56bd65a31516419b108",
+      "eta": "0x0745a267b501499f9b467338948c7cf186f4319ae583982f6cecd0faab53de75",
+      "tAtt": 1792574449,
+      "publicInputs": [
+        "216384701248993478081638870573784545246",
+        "323370215844874195175239429656820203244",
+        "78154859117477060055425553415652131790",
+        "34142160754262935595196561833929661000",
+        "294627681649093932884269354156950275173",
+        "250930532677278661802664998070575039737",
+        "112081836516483663994786259770125660208",
+        "64058384504860639264183147846894092288",
+        "8579300251433452864249710656170726472179445117915254137741248401195318040328",
+        "20261021",
+        "7904228736065369968147393936879822499874800007335223142749296487024615922875"
+      ],
+      "notarization": {
+        "attempts": 1,
+        "stalls": []
+      },
+      "witness": {
+        "satisfied": false,
+        "failedAssertion": "template PhiS line 101"
+      },
+      "proofSource": "borrowed:sha256:33405428b5fb19446575d1c93d5de773b53f88d5601998b12f23e8397668b0b7",
+      "timings": {
+        "outsideDelta": {
+          "loginMs": 0.7282919999999999,
+          "mpcTlsMs": 296.2375
+        },
+        "insideDelta": {
+          "presentationMs": 0.088292,
+          "readTAttMs": 0.214416,
+          "witnessMs": null,
+          "snarkjsProveMs": null,
+          "tProveMs": null,
+          "tVerifyMs": null,
+          "tSignMs": null,
+          "tInclMs": null
+        },
+        "verifier": null,
+        "verifierRoundTripMs": 2.386458,
+        "afterAttestationMs": 252.832208,
+        "attestationArrivalMinusTAttMs": 294
+      },
+      "resources": {
+        "mpcTraffic": {
+          "sentBytes": 30181369,
+          "receivedBytes": 3804657
+        },
+        "witnessPeakRssBytes": null,
+        "snarkjsPeakRssBytes": null,
+        "proverPeakRssBytes": null
+      },
+      "payload": null,
+      "submission": null
+    },
+    "settle-property": {
+      "phase": "settle",
+      "outcome": "noWitness",
+      "reason": "phi_S has no witness for this input: assertion failed in template PhiS at line 76",
+      "account": "ACC-000000000001",
+      "submitter": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+      "policyId": "0xb38cc709c7cd13f94c911939e95c29ae3a86a975244fc56bd65a31516419b108",
+      "eta": "0x8b70ce5952e0f16d8a6830b3b3566a01069503dd46c99600208ff08ff9bf98bb",
+      "tAtt": 1792574449,
+      "publicInputs": [
+        "320838141710855524694709625576994319334",
+        "78313828120429715726502877699053106370",
+        "256774358159152620153301383146373767913",
+        "278949415155433463996629183513575515097",
+        "308914102044719132783640333195144348063",
+        "171956896805786875151279828905146942065",
+        "112081836516483663994786259770125660208",
+        "64058384504860639264183147846894092288",
+        "8579300251433452864249710656170726472179445117915254137741248401195318040328",
+        "20261021",
+        "16331368875567314935669630853412595450719735978526390720427471887712135848901"
+      ],
+      "notarization": {
+        "attempts": 1,
+        "stalls": []
+      },
+      "witness": {
+        "satisfied": false,
+        "failedAssertion": "template PhiS line 76"
+      },
+      "proofSource": "own",
+      "timings": {
+        "outsideDelta": {
+          "loginMs": 0.708167,
+          "mpcTlsMs": 281.182916
+        },
+        "insideDelta": {
+          "presentationMs": 0.039833,
+          "readTAttMs": 0.205708,
+          "witnessMs": null,
+          "snarkjsProveMs": null,
+          "tProveMs": null,
+          "tVerifyMs": null,
+          "tSignMs": null,
+          "tInclMs": null
+        },
+        "verifier": null,
+        "verifierRoundTripMs": null,
+        "afterAttestationMs": 228.258709,
+        "attestationArrivalMinusTAttMs": 852
+      },
+      "resources": {
+        "mpcTraffic": {
+          "sentBytes": 30181397,
+          "receivedBytes": 3804755
+        },
+        "witnessPeakRssBytes": null,
+        "snarkjsPeakRssBytes": null,
+        "proverPeakRssBytes": null
+      },
+      "payload": null,
+      "submission": null
+    },
+    "settle-tenant": {
+      "phase": "settle",
+      "outcome": "noWitness",
+      "reason": "phi_S has no witness for this input: assertion failed in template PhiS at line 91",
+      "account": "ACC-000000000001",
+      "submitter": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+      "policyId": "0xb38cc709c7cd13f94c911939e95c29ae3a86a975244fc56bd65a31516419b108",
+      "eta": "0x1243de10ac399bd60c5da55b8dcb7cfb03ffc9c70d4a50504b0da1a483c01f71",
+      "tAtt": 1792574450,
+      "publicInputs": [
+        "60141625179714443274561939815413764638",
+        "83074898714092997807427239871628910677",
+        "311240805717396813121166487334008198747",
+        "339182769656737492877472030365564962777",
+        "137595069848519247089412388516601019478",
+        "52429731318086114900931691627440396969",
+        "112081836516483663994786259770125660208",
+        "64058384504860639264183147846894092288",
+        "8579300251433452864249710656170726472179445117915254137741248401195318040328",
+        "20261021",
+        "5770594536876358339387935268306626334114687605596595989290767522112947882856"
+      ],
+      "notarization": {
+        "attempts": 1,
+        "stalls": []
+      },
+      "witness": {
+        "satisfied": false,
+        "failedAssertion": "template PhiS line 91"
+      },
+      "proofSource": "own",
+      "timings": {
+        "outsideDelta": {
+          "loginMs": 0.846791,
+          "mpcTlsMs": 282.041667
+        },
+        "insideDelta": {
+          "presentationMs": 0.045375,
+          "readTAttMs": 0.20433300000000001,
+          "witnessMs": null,
+          "snarkjsProveMs": null,
+          "tProveMs": null,
+          "tVerifyMs": null,
+          "tSignMs": null,
+          "tInclMs": null
+        },
+        "verifier": null,
+        "verifierRoundTripMs": null,
+        "afterAttestationMs": 242.293583,
+        "attestationArrivalMinusTAttMs": 380
+      },
+      "resources": {
+        "mpcTraffic": {
+          "sentBytes": 30181467,
+          "receivedBytes": 3805063
+        },
+        "witnessPeakRssBytes": null,
+        "snarkjsPeakRssBytes": null,
+        "proverPeakRssBytes": null
+      },
+      "payload": null,
+      "submission": null
+    }
+  },
+  "transactions": {
+    "apply-replay": {
+      "outcome": "reverted",
+      "error": "NonceConsumed(NonceConsumed { eta: 0x9040e167989c3e93f3fb2bb26998d79ef447938d94b536bd4357324e70072bf4 })"
+    },
+    "engage": {
+      "outcome": "included",
+      "txHash": "0xb8bc704e81d8ed3f902d519cccd873650df1091f074075f2e90de6c2b26087d0",
+      "blockNumber": 4,
+      "blockTimestamp": 1792574445,
+      "gasUsed": 113137,
+      "tInclMs": 14.047125000000001,
+      "event": {
+        "engId": "0x1",
+        "txId": "0x1",
+        "appId": "0x1",
+        "expiresAt": "0x6aeaf8ed"
+      }
+    },
+    "settle-other": {
+      "outcome": "reverted",
+      "error": "NotListingOwner(NotListingOwner)"
+    },
+    "settle-submit": {
+      "outcome": "included",
+      "txHash": "0xda775ccf36c82d8a40d668a467b2afb9da6ca7604b4e36fdcec25fe2151aaf06",
+      "blockNumber": 5,
+      "blockTimestamp": 1792574450,
+      "gasUsed": 110648,
+      "tInclMs": 13.684625,
+      "event": {
+        "engId": "0x1",
+        "txId": "0x1",
+        "toOwner": "0x6f05b59d3b20000",
+        "toCounterparty": "0xb1a2bc2ec50000"
+      }
+    },
+    "settle-replay": {
+      "outcome": "reverted",
+      "error": "NotLocked(NotLocked { txId: 1 })"
+    }
+  },
+  "notaryEvents": [
+    {
+      "connectionTime": 1792574437,
+      "durationMs": 316.445584,
+      "event": "session",
+      "outcome": "attested",
+      "tAtt": 1792574437,
+      "unixMs": 1792574437557
+    },
+    {
+      "decodeMs": 0.13020800000000002,
+      "event": "register",
+      "outcome": "signed",
+      "timings": {
+        "groth16Ms": 1.2579170000000002,
+        "presentationMs": 0.398167,
+        "signMs": 4.215208,
+        "verifyMs": 1.6620840000000001
+      },
+      "unixMs": 1792574440488
+    },
+    {
+      "connectionTime": 1792574440,
+      "durationMs": 280.666959,
+      "event": "session",
+      "outcome": "attested",
+      "tAtt": 1792574440,
+      "unixMs": 1792574440822
+    },
+    {
+      "decodeMs": 0.128667,
+      "event": "apply",
+      "outcome": "signed",
+      "timings": {
+        "groth16Ms": 1.200875,
+        "presentationMs": 0.241583,
+        "signMs": 5.670332999999999,
+        "verifyMs": 1.4497920000000002
+      },
+      "unixMs": 1792574442588
+    },
+    {
+      "connectionTime": 1792574442,
+      "durationMs": 281.126459,
+      "event": "session",
+      "outcome": "attested",
+      "tAtt": 1792574442,
+      "unixMs": 1792574442968
+    },
+    {
+      "event": "apply",
+      "outcome": "refused",
+      "reason": "the phi_A proof does not verify for this statement and attestation",
+      "unixMs": 1792574443159
+    },
+    {
+      "connectionTime": 1792574443,
+      "durationMs": 277.145167,
+      "event": "session",
+      "outcome": "attested",
+      "tAtt": 1792574443,
+      "unixMs": 1792574443463
+    },
+    {
+      "connectionTime": 1792574443,
+      "durationMs": 297.151709,
+      "event": "session",
+      "outcome": "attested",
+      "tAtt": 1792574443,
+      "unixMs": 1792574443969
+    },
+    {
+      "event": "apply",
+      "outcome": "refused",
+      "reason": "nonce 0x9040e167989c3e93f3fb2bb26998d79ef447938d94b536bd4357324e70072bf4 has already been signed",
+      "unixMs": 1792574445734
+    },
+    {
+      "connectionTime": 1792574446,
+      "durationMs": 288.022667,
+      "event": "session",
+      "outcome": "attested",
+      "tAtt": 1792574446,
+      "unixMs": 1792574446115
+    },
+    {
+      "decodeMs": 0.134375,
+      "event": "settle",
+      "outcome": "signed",
+      "timings": {
+        "groth16Ms": 1.425208,
+        "presentationMs": 0.255667,
+        "signMs": 11.558916,
+        "verifyMs": 1.688625
+      },
+      "unixMs": 1792574448977
+    },
+    {
+      "connectionTime": 1792574449,
+      "durationMs": 295.926167,
+      "event": "session",
+      "outcome": "attested",
+      "tAtt": 1792574449,
+      "unixMs": 1792574449294
+    },
+    {
+      "event": "settle",
+      "outcome": "refused",
+      "reason": "the phi_S proof does not verify for this statement and attestation",
+      "unixMs": 1792574449547
+    },
+    {
+      "connectionTime": 1792574449,
+      "durationMs": 280.8405,
+      "event": "session",
+      "outcome": "attested",
+      "tAtt": 1792574449,
+      "unixMs": 1792574449852
+    },
+    {
+      "connectionTime": 1792574450,
+      "durationMs": 281.60225,
+      "event": "session",
+      "outcome": "attested",
+      "tAtt": 1792574450,
+      "unixMs": 1792574450380
+    }
+  ]
+}

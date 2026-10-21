@@ -1,14 +1,19 @@
 //! A notarised session against a public HTTPS page of a production server (no login, no account).
 //!
-//! It answers what the mock registry cannot: whether TLSNotary's MPC mode completes against a real
-//! portal (TLS 1.2, ECDHE over P-256, AES-128-GCM, a certificate chain to a public root), how large
-//! the response is against the session's `max_recv_data`, and whether two identical requests get
-//! responses of the same length and bytes, the precondition of a fixed layout. The probe keeps no
-//! response content: the record holds lengths, the status line, the Content-Type, and timings.
+//! It is a transport experiment: whether TLSNotary's MPC mode completes against a production server
+//! (TLS 1.2, ECDHE over P-256, AES-128-GCM, a certificate chain to a public root), how large the
+//! response is against the session's `max_recv_data`, and whether repeated identical requests got
+//! responses of the same length and bytes, and where they differed. Equal responses for these
+//! requests say nothing general about layout stability, and differing ones do not rule out fixed
+//! field offsets. The probe keeps no response content: the record holds lengths, positions of
+//! differences, the status line, the Content-Type, and timings.
 //!
-//! The notary runs in the same process with the Mozilla root store; the prover commits to the
+//! The notary runs in the same process with a fixed, public attestation key and the Mozilla root
+//! store, so the run is no evidence of an independent notary deployment. The prover commits to the
 //! request line (revealed) and to the whole response (hidden), obtains an attestation, and checks a
 //! presentation of it as the policy verifier would: attestation key, server identity, and t_att.
+//! tlsn's API does not expose the negotiated cipher suite; its MPC mode offers only
+//! `TLS_ECDHE_{ECDSA,RSA}_WITH_AES_128_GCM_SHA256`, so a completed session used one of these.
 
 use std::future::IntoFuture;
 use std::sync::Arc;
@@ -142,6 +147,8 @@ fn difference(a: &[u8], b: &[u8]) -> Option<Difference> {
 #[serde(rename_all = "camelCase")]
 pub struct Notarised {
     pub tls_version: String,
+    /// Not exposed by tlsn's API; see the module documentation.
+    pub cipher_suite: Option<String>,
     pub cert_chain_len: usize,
     pub sent_bytes: usize,
     pub received_bytes: usize,
@@ -202,8 +209,9 @@ fn observe(bytes: &[u8]) -> Observed {
     }
 }
 
-/// One ordinary HTTPS request with rustls and the Mozilla roots; returns the raw response bytes.
-async fn plain_fetch(target: &ProbeTarget) -> Result<Vec<u8>> {
+/// One ordinary HTTPS request with rustls and the Mozilla roots; returns the raw response bytes,
+/// failing above `cap` bytes.
+async fn plain_fetch(target: &ProbeTarget, cap: usize) -> Result<Vec<u8>> {
     let mut roots = rustls::RootCertStore::empty();
     for der in mozilla_roots() {
         roots.add(rustls_pki_types::CertificateDer::from(der))?;
@@ -229,11 +237,12 @@ async fn plain_fetch(target: &ProbeTarget) -> Result<Vec<u8>> {
     tls.write_all(raw.as_bytes()).await?;
     let mut out = Vec::new();
     // Servers often close without close_notify; the bytes read until then are the response.
-    match tls.read_to_end(&mut out).await {
+    match (&mut tls).take(cap as u64 + 1).read_to_end(&mut out).await {
         Ok(_) => {}
         Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof && !out.is_empty() => {}
         Err(e) => return Err(e.into()),
     }
+    ensure!(out.len() <= cap, "the response exceeds {cap} bytes");
     Ok(out)
 }
 
@@ -258,13 +267,17 @@ pub async fn probe(
     };
     let mut plain = Vec::new();
     for _ in 0..2 {
-        match plain_fetch(target).await {
-            Ok(bytes) => {
+        match tokio::time::timeout(timeout, plain_fetch(target, max_recv_cap)).await {
+            Ok(Ok(bytes)) => {
                 record.plain.push(observe(&bytes));
                 plain.push(bytes);
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 record.error = Some(format!("plain request: {e:#}"));
+                return record;
+            }
+            Err(_) => {
+                record.error = Some(format!("plain request: no response within {timeout:?}"));
                 return record;
             }
         }
@@ -273,7 +286,7 @@ pub async fn probe(
     record.plain_difference = difference(&plain[0], &plain[1]);
     let first = plain.swap_remove(0);
     record.max_sent = 1024;
-    record.max_recv = first.len() + margin;
+    record.max_recv = first.len().saturating_add(margin);
     if record.max_recv > max_recv_cap {
         record.error = Some(format!(
             "the response has {} bytes; with the margin it exceeds the cap of {max_recv_cap}",
@@ -438,6 +451,7 @@ async fn notarised_fetch(
     Ok((
         Notarised {
             tls_version: format!("{:?}", tls_transcript.version()),
+            cipher_suite: None,
             cert_chain_len: tls_transcript.server_cert_chain().map_or(0, |c| c.len()),
             sent_bytes: output.connection_info.transcript_length.sent as usize,
             received_bytes: received.len(),

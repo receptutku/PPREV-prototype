@@ -1,0 +1,131 @@
+{
+  "probes": [
+    {
+      "error": null,
+      "host": "parselsorgu.tkgm.gov.tr",
+      "maxRecv": 3041,
+      "maxSent": 1024,
+      "notarised": {
+        "attestationMs": 165.753042,
+        "certChainLen": 3,
+        "cipherSuite": null,
+        "differenceFromPlain": {
+          "differingBytes": 2,
+          "differingInBody": 0,
+          "differingInHead": 2,
+          "headBytes": 843,
+          "runs": [
+            [
+              283,
+              285
+            ]
+          ]
+        },
+        "mpcTlsMs": 375.182625,
+        "presentationVerified": true,
+        "receivedBytes": 993,
+        "sameBytesAsPlain": false,
+        "sameLengthAsPlain": true,
+        "sentBytes": 189,
+        "statusLine": "HTTP/1.1 302 Redirect",
+        "tAtt": 1792581220,
+        "tlsVersion": "V1_2"
+      },
+      "path": "/robots.txt",
+      "plain": [
+        {
+          "bytes": 993,
+          "contentType": "text/html; charset=UTF-8",
+          "statusLine": "HTTP/1.1 302 Redirect"
+        },
+        {
+          "bytes": 993,
+          "contentType": "text/html; charset=UTF-8",
+          "statusLine": "HTTP/1.1 302 Redirect"
+        }
+      ],
+      "plainDifference": {
+        "differingBytes": 0,
+        "differingInBody": 0,
+        "differingInHead": 0,
+        "headBytes": 843,
+        "runs": []
+      },
+      "plainIdentical": true
+    },
+    {
+      "error": null,
+      "host": "eservices.landregistry.gov.uk",
+      "maxRecv": 3131,
+      "maxSent": 1024,
+      "notarised": {
+        "attestationMs": 148.888417,
+        "certChainLen": 3,
+        "cipherSuite": null,
+        "differenceFromPlain": null,
+        "mpcTlsMs": 335.362083,
+        "presentationVerified": true,
+        "receivedBytes": 958,
+        "sameBytesAsPlain": false,
+        "sameLengthAsPlain": false,
+        "sentBytes": 195,
+        "statusLine": "HTTP/1.1 200 OK",
+        "tAtt": 1792581221,
+        "tlsVersion": "V1_2"
+      },
+      "path": "/robots.txt",
+      "plain": [
+        {
+          "bytes": 1083,
+          "contentType": "text/plain",
+          "statusLine": "HTTP/1.1 200 OK"
+        },
+        {
+          "bytes": 958,
+          "contentType": "text/plain",
+          "statusLine": "HTTP/1.1 200 OK"
+        }
+      ],
+      "plainDifference": null,
+      "plainIdentical": false
+    },
+    {
+      "error": null,
+      "host": "www.turkiye.gov.tr",
+      "maxRecv": 20034,
+      "maxSent": 1024,
+      "notarised": {
+        "attestationMs": 2806.086875,
+        "certChainLen": 3,
+        "cipherSuite": null,
+        "differenceFromPlain": null,
+        "mpcTlsMs": 453.030125,
+        "presentationVerified": true,
+        "receivedBytes": 17984,
+        "sameBytesAsPlain": false,
+        "sameLengthAsPlain": false,
+        "sentBytes": 198,
+        "statusLine": "HTTP/1.1 200 OK",
+        "tAtt": 1792581225,
+        "tlsVersion": "V1_2"
+      },
+      "path": "/tapu-bilgileri-sorgulama",
+      "plain": [
+        {
+          "bytes": 17986,
+          "contentType": "text/html; charset=UTF-8",
+          "statusLine": "HTTP/1.1 200 OK"
+        },
+        {
+          "bytes": 17997,
+          "contentType": "text/html; charset=UTF-8",
+          "statusLine": "HTTP/1.1 200 OK"
+        }
+      ],
+      "plainDifference": null,
+      "plainIdentical": false
+    }
+  ],
+  "unixTime": 1792581225,
+  "userAgent": "pprev-probe/0.1 (research prototype; one request per run)"
+}

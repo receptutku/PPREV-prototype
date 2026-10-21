@@ -39,8 +39,8 @@ What the artifact contains:
     key, records the nonce (one store for all phases), and signs the statement with the notary key;
   - the prover's client for Register, Apply, Engage, and Settle, including the transactions.
 - **End-to-end scripts** on a local chain: `script/e2e_register.sh` (Register with five negative
-  cases) and `script/e2e_lifecycle.sh` (Register, Apply, Engage, Settle with eleven negative
-  cases), and the **measurement scripts** with their committed records (`measurements/`).
+  cases) and `script/e2e_lifecycle.sh` (Register, Apply, Engage, Settle with nine negative
+  scenarios), and the **measurement scripts** with their committed records (`measurements/`).
 
 What it does not contain:
 
@@ -83,6 +83,7 @@ Disk: about 10 GB free (Rust build about 7 GB, circuit builds about 210 MB, prov
 ```
 git clone --recurse-submodules <repository-url> pprev-prototype
 cd pprev-prototype
+cp .env.example .env            # then set the beacon for the phi_R setup, see below
 nvm install && nvm use          # Node.js from .nvmrc (or install v26.9.0 otherwise)
 (cd circuits && npm ci)         # snarkjs, circomlib
 cargo build --release           # prover, notary, mock registry
@@ -91,8 +92,21 @@ script/circuits_build.sh        # compile phi_R
 script/circuits_setup.sh        # phi_R setup (downloads the 200 MB phase-1 file once)
 script/circuits_build_as.sh     # compile phi_A and phi_S
 script/circuits_setup_as.sh     # phi_A and phi_S setup, sample proofs, exported verifiers
-cp .env.example .env            # only for the steps that need a network, see below
 ```
+
+Both setup scripts finish phase 2 with a random beacon. `script/circuits_setup.sh` stops unless one
+is configured: `ETH_MAINNET_RPC_URL` in `.env` (the hash of the latest finalised mainnet block), or
+`PPREV_BEACON` with 64 hex digits and `PPREV_BEACON_SOURCE` describing where they came from, both
+in the environment of the script. For a local trial run that needs no public randomness:
+
+```
+export PPREV_BEACON="$(openssl rand -hex 32)" PPREV_BEACON_SOURCE="local random bytes, not public"
+script/circuits_setup.sh
+```
+
+The transcript then records that source, and the key is no more trustworthy than its phase 2.
+`script/circuits_setup_as.sh` takes the same settings and, without either, uses 32 random bytes and
+records exactly that.
 
 `script/circuits_setup.sh` runs once and takes about 65 minutes on the tested machine: almost all of
 it is `snarkjs powersoftau verify` checking the phase-1 file ending at ceremony contribution 0080,
@@ -110,7 +124,8 @@ Solidity verifiers. The phi_R key is not touched.
 Every setup produces new proving keys (`circuits/build/phi_{r,a,s}.zkey`, not in the repository) and
 rewrites the matching files under `circuits/setup/`: verification key, Solidity verifier, sample
 proof, and the transcript `setup.json` with the contribution hashes, the beacon and its source, and
-the SHA-256 of every output. The end-to-end and measurement scripts check the keys against these
+the SHA-256 of the R1CS, the phase-1 file, the proving key, the verification key, and the Solidity
+verifier. The end-to-end and measurement scripts check the keys against these
 transcripts. The measurement scripts refuse a dirty working tree, so commit the new files locally
 before measuring, or run with `PPREV_ALLOW_DIRTY=1 PPREV_MEASUREMENTS_DIR=<dir>`. A new key changes
 the proofs, the verifier constants, and calldata, so exact gas and timing results must be measured
@@ -120,7 +135,7 @@ again for it.
 
 | Variable | Used by |
 |---|---|
-| `ETH_MAINNET_RPC_URL` | `script/l1_price.sh`; optional beacon of both setup scripts (or set `PPREV_BEACON` and `PPREV_BEACON_SOURCE`; without either, `circuits_setup_as.sh` uses 32 random bytes and records that) |
+| `ETH_MAINNET_RPC_URL` | `script/l1_price.sh`; the beacon of both setup scripts, unless `PPREV_BEACON` is set (see above) |
 | `BASE_MAINNET_RPC_URL` | `script/measure_l2.sh` (price parameters of one block) |
 | `BASE_SEPOLIA_RPC_URL` | `script/measure_l2.sh` (the campaign's transactions) |
 | `TESTNET_PRIVATE_KEY` | `script/measure_l2.sh`: a Base Sepolia test wallet, never one with real funds |
@@ -144,7 +159,7 @@ script/e2e_lifecycle.sh
 |---|---|
 | `forge test` | `206 tests passed, 0 failed, 0 skipped (206 total tests)`; the tests record breaks the count down by kind |
 | `python3 script/table6_coverage.py` | `Tests: 205/205 passed; invariants: 4/4 held.` and `Conditions without a passing positive and negative test: none.` |
-| `cargo test --release --workspace` | 162 passed, 0 failed, 3 ignored (the ignored clock-shift tests need libfaketime: `cargo test --release -p pprev-prover --test time -- --include-ignored`) |
+| `cargo test --release --workspace` | 164 passed, 0 failed, 3 ignored (the ignored clock-shift tests need libfaketime: `cargo test --release -p pprev-prover --test time -- --include-ignored`) |
 | `script/e2e_register.sh` | `checks: 19/19 passed`; a record in `measurements/e2e_register/` |
 | `script/e2e_lifecycle.sh` | `checks: 25/25 passed`; a record in `measurements/e2e_lifecycle/` |
 
@@ -237,11 +252,15 @@ python3 measurements/addendum-20261021/check_as_witnesses.py . \
 python3 measurements/addendum-20261021/check_as_proofs.py . circuits/setup/phi_a/verification_key.json \
     circuits/setup/phi_a/sample/public.json circuits/setup/phi_a/sample/proof.json \
     circuits/setup/phi_s/verification_key.json target/as-proofs-a
-bash measurements/addendum-20261021/measure_groth16_phase.sh . phi_a     # and phi_s
+python3 measurements/addendum-20261021/check_as_proofs.py . circuits/setup/phi_s/verification_key.json \
+    circuits/setup/phi_s/sample/public.json circuits/setup/phi_s/sample/proof.json \
+    circuits/setup/phi_a/verification_key.json target/as-proofs-s
+bash measurements/addendum-20261021/measure_groth16_phase.sh . phi_a
+bash measurements/addendum-20261021/measure_groth16_phase.sh . phi_s
 ```
 
-The independent checks passed 28 witness and R1CS cases and 22 proof-verification cases: valid
-baselines, every public input changed by one, and the other phase's key. The three standalone
+The independent checks passed 28 witness and R1CS cases and 22 proof-verification cases (9 for
+phi_A, 13 for phi_S): valid baselines, every public input changed by one, and the other phase's key. The three standalone
 verifiers execute 726,294 gas together. Added to the 538,976-gas lifecycle of Section 5.2, they give
 1,265,270 gas, 2.3475 times as much. This is an additive, partial model: it keeps the signature
 checks and leaves out attestation verification, the extra calldata and intrinsic gas, and the
