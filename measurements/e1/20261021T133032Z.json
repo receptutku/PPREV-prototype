@@ -1,0 +1,148 @@
+{
+  "runId": "20261021T133032Z",
+  "commit": "daa24d35fd0f9ce4bbfca71ab57048d1fa8d9dc6",
+  "workingTreeDirty": false,
+  "machine": {
+    "cpu": "Apple M2",
+    "memoryBytes": 17179869184,
+    "os": "26.6.2",
+    "powerSource": "AC Power"
+  },
+  "tools": {
+    "anvil": "anvil Version: 1.8.3",
+    "forge": "forge Version: 1.8.3",
+    "cast": "cast Version: 1.8.3",
+    "solc": "0.8.36",
+    "circom": "circom compiler 2.2.3",
+    "snarkjs": "0.7.6",
+    "circomlib": "2.0.5",
+    "node": "v26.9.0",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "tlsn": "v0.1.0-alpha.15#47aee45b53e06648c1b2ad3689b367b8c923fdec",
+    "alloy": "2.5.0"
+  },
+  "scope": "Each attested phase's submission checked on-chain except the server identity (certificate chain and DNS name), which an off-chain attestor signs over the signed attestation header; the notary remains trusted for TLS session authenticity. Measurement baseline, not part of PPREV.",
+  "identitySignatures": "test-key signatures issued by the fixture generator after verifying the presentation (certificate chain against the mock registry's CA, DNS name); not an end-to-end identity service",
+  "inputs": {
+    "script/measure_e1.sh": "2ecfe5bf599d1eb618224c672d0e813288532d9d6742aba40eaaf5bdb2e78f8a",
+    "script/lib/common.sh": "15724d9f1ab19afd92b618b24d4228b06f257ee1061152d2920fca08be743231",
+    "contracts/foundry.toml": "b379f3a827a8e675757517a6711f312b045d4a4c094294acf7852fac0ece4b4f",
+    "contracts/script/E1Measure.s.sol": "3eabcc30487a839d576bc3984ab122bc4441305fc459e6444dc1b70591fa0b94",
+    "contracts/src/baseline/IntegratedApplyVerifier.sol": "9a32bd7239da75d0f0c3fbfc8310b9eeb2a6189acd0d8a2a10c04cedf9dbabcf",
+    "contracts/src/baseline/IntegratedRegisterVerifier.sol": "e77c06cfe201ac5ece9bce5143b8a0491cb2d04d1acec627736fda26d346bfab",
+    "contracts/src/baseline/IntegratedSettleVerifier.sol": "69197d1315581d8d209788fd8e28fc79ef95437f957aa850afdf54c2503e9e4a",
+    "contracts/src/baseline/IntegratedVerifierBase.sol": "5d334d4c939c798fb3db22f754e3a117759d8929a83206f6955be40ea898addb",
+    "contracts/src/PPREVEncoding.sol": "ab8ef67516002c768525c125d58ea6e0c5987f64ce1da410e681b080d8767a3a",
+    "contracts/src/PPREVTypes.sol": "d99347a9a027350e12d7998a64a7b1a0a65c3d7ceef67a1278a60b8b6c3a5132",
+    "contracts/test/baseline/E1Fixtures.sol": "5531778d552735c2f1b1f785fedb604cfced5b65b5dd9ecfa5b2d1426a5935f0",
+    "contracts/test/baseline/fixtures/apply.json": "b789dea7526a26c03be70b348972cc680d07ee072a4d14b8c5e2ff05714008cd",
+    "contracts/test/baseline/fixtures/register.json": "ec941ba2f2cabfbad2f16ecf9caf77beff86d3076fcf6202ef1d78719eec5d43",
+    "contracts/test/baseline/fixtures/settle.json": "e24a13b5f77e703a2797afdab74f975faffda4f07802ae5f27bd230687519352",
+    "circuits/setup/setup.json": "ad42f3cdc7e9d0bfc994acd620957b3117a4953a0220d75161a775a0615ae3db",
+    "circuits/setup/phi_a/setup.json": "2a7b4f83b2a6910299d93d29a91172b8aab280c582355881b8b939c80e3085e1",
+    "circuits/setup/phi_s/setup.json": "52dc170c071571be86ca0c16d831f71e77fde8149637f1849c6a7aea3276778a",
+    "circuits/setup/Groth16Verifier.sol": "aa970a8fac92d1cf099e99dccf514e82e45147a6119dc5e4a31e6efdae7dbb58",
+    "circuits/setup/phi_a/Groth16Verifier.sol": "968052413b777320263d0fecf81b11361f961a6dd186c626af0bc2cadf6dfdcb",
+    "circuits/setup/phi_s/Groth16Verifier.sol": "87c094c0f0e62aebdf59168cc55927ced349651221d7fd2d4e8b70199cdea246",
+    "contracts/out/IntegratedApplyVerifier.sol/IntegratedApplyVerifier.json": "db935c10e69202a6a4582079d51e17a085e9a1b9c8901e7ddc82e7e0bd9d59ca",
+    "contracts/out/IntegratedRegisterVerifier.sol/IntegratedRegisterVerifier.json": "82aad3248fcbd2a848fd54807197f72c765aaf9c4297c7149190ee5266bd479a",
+    "contracts/out/IntegratedSettleVerifier.sol/IntegratedSettleVerifier.json": "1e7d13ac93dcd4e727cd5e2b5676a672262ca143a61ae90dbe3e7c37972e0218",
+    "contracts/out/E1Measure.s.sol/E1Measure.json": "548bfe16aec5d53ad6e8f066717693fd6549c2a2f24875aba1db93d8cbeb999a",
+    "contracts/out/Groth16Verifier.sol/Groth16Verifier.json": "081bf0716514d5610630bb80906e6dc718727ce626561549c70b4560fee22239",
+    "contracts/out/phi_a/Groth16Verifier.sol/Groth16Verifier.json": "45d0ac8e0f7f1b9ae3195b2c5a184424a7fce02560551eeddff125f8731a48a6",
+    "contracts/out/phi_s/Groth16Verifier.sol/Groth16Verifier.json": "ddcab1794d22b3dc0f602ac1c43613aa26afa86086b2412e46fe7399bcf3e4b7",
+    "measurements/l1/20260926T194331Z.json": "95d2afaa8289dc396e2d9081a71ca70d51c9091ceec20c62a87b950be419f678"
+  },
+  "inputsUnchangedDuringRun": true,
+  "phases": {
+    "register": {
+      "fixture": {
+        "path": "contracts/test/baseline/fixtures/register.json",
+        "sha256": "ec941ba2f2cabfbad2f16ecf9caf77beff86d3076fcf6202ef1d78719eec5d43"
+      },
+      "anvilHardfork": "Osaka",
+      "checks": {
+        "validSubmissionAccepted": true,
+        "changedSubmitterRejectedWithBadProof": true,
+        "transactionReturnedTrue": true,
+        "transactionGasLimit": 3000000
+      },
+      "receiptGas": 351127,
+      "intrinsicGas": 21000,
+      "calldataBytes": 2948,
+      "calldataGas": 25424,
+      "eip7623FloorGas": 84560,
+      "executionGas": 304703,
+      "predicateVerifierCallGas": 242098,
+      "executionGasExcludingPredicateCall": 62605,
+      "baselineRuntimeBytes": 7794,
+      "placedRuntimeCodeKeccak": "0x4c6693d68ed1d458c5ec2f7b55b2a3a34f47fac72eae35caf503d48b40967427",
+      "ecdsaMarginalInL1Record": 3574
+    },
+    "apply": {
+      "fixture": {
+        "path": "contracts/test/baseline/fixtures/apply.json",
+        "sha256": "b789dea7526a26c03be70b348972cc680d07ee072a4d14b8c5e2ff05714008cd"
+      },
+      "anvilHardfork": "Osaka",
+      "checks": {
+        "validSubmissionAccepted": true,
+        "changedSubmitterRejectedWithBadProof": true,
+        "transactionReturnedTrue": true,
+        "transactionGasLimit": 3000000
+      },
+      "receiptGas": 325448,
+      "intrinsicGas": 21000,
+      "calldataBytes": 2820,
+      "calldataGas": 24360,
+      "eip7623FloorGas": 81900,
+      "executionGas": 280088,
+      "predicateVerifierCallGas": 228804,
+      "executionGasExcludingPredicateCall": 51284,
+      "baselineRuntimeBytes": 7673,
+      "placedRuntimeCodeKeccak": "0x09282c157c5b4a7a2381e2b21e248bbcede91ef450242ce0ee9e19d498462ed2",
+      "ecdsaMarginalInL1Record": 3594
+    },
+    "settle": {
+      "fixture": {
+        "path": "contracts/test/baseline/fixtures/settle.json",
+        "sha256": "e24a13b5f77e703a2797afdab74f975faffda4f07802ae5f27bd230687519352"
+      },
+      "anvilHardfork": "Osaka",
+      "checks": {
+        "validSubmissionAccepted": true,
+        "changedSubmitterRejectedWithBadProof": true,
+        "transactionReturnedTrue": true,
+        "transactionGasLimit": 3000000
+      },
+      "receiptGas": 369988,
+      "intrinsicGas": 21000,
+      "calldataBytes": 3268,
+      "calldataGas": 27292,
+      "eip7623FloorGas": 89230,
+      "executionGas": 321696,
+      "predicateVerifierCallGas": 255392,
+      "executionGasExcludingPredicateCall": 66304,
+      "baselineRuntimeBytes": 9176,
+      "placedRuntimeCodeKeccak": "0x6c9a55f2390da32bf66934c165fb951785e6e811a8983abeded34e084692655b",
+      "ecdsaMarginalInL1Record": 3582
+    }
+  },
+  "lifecycleCompositionalEstimate": {
+    "note": "estimate, not a measurement: verify() is a view without nonce, state, or caller handling; no integrated lifecycle contract was executed",
+    "l1Record": "measurements/l1/20260926T194331Z.json",
+    "pprevExecutionGas": 538976,
+    "integratedVerificationExecutionGas": 906487,
+    "additive": {
+      "executionGas": 1445463,
+      "factor": 2.681869,
+      "model": "PPREV lifecycle plus the three integrated verifications; signature checks kept"
+    },
+    "replacement": {
+      "executionGas": 1434713,
+      "factor": 2.661924,
+      "model": "additive minus the ECDSA marginal of each attested operation (L1 record)"
+    },
+    "notModelled": "calldata, storage, and deployment differences of an integrated contract"
+  }
+}
