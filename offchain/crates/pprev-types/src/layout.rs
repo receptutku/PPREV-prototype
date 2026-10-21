@@ -140,20 +140,7 @@ impl Layout {
     /// Pads `value` to `width` with the padding character; rejects values that are too long or that
     /// could break the JSON template.
     pub fn pad(&self, value: &str, width: usize) -> Result<String> {
-        ensure!(value.is_ascii(), "value {value:?} is not ASCII");
-        ensure!(
-            !value.contains(['"', '\\']),
-            "value {value:?} contains a quote or backslash"
-        );
-        if value.len() > width {
-            bail!("value {value:?} is longer than its width {width}");
-        }
-        let mut out = value.to_string();
-        out.extend(std::iter::repeat_n(
-            self.padding.chars().next().unwrap_or(' '),
-            width - value.len(),
-        ));
-        Ok(out)
+        pad_value(&self.padding, value, width)
     }
 
     /// Renders the full HTTP response for `account` viewing `record`, with the byte range of every
@@ -245,6 +232,21 @@ impl Layout {
         Ok(self.template()?.ranges)
     }
 
+    /// The notarised exchange for `property_id`: request line, response template, and the revealed
+    /// and hidden ranges, the hidden ones in the order account, owners, propertyId.
+    pub fn shape(&self, property_id: &str) -> Result<ResponseShape> {
+        let template = self.template()?;
+        Ok(ResponseShape {
+            server_name: self.server_name.clone(),
+            path: self.path(property_id),
+            request_line: self.request_line(property_id),
+            len: template.ranges.len,
+            revealed: template.ranges.revealed(),
+            hidden: template.ranges.hidden().to_vec(),
+            template: template.bytes,
+        })
+    }
+
     /// `txData.propertyId`: the `propertyId` value as the response carries it (padded to its width
     /// with the padding character), followed by zero bytes up to 32 bytes. phi_R compares the
     /// committed value with this word.
@@ -260,26 +262,67 @@ impl Layout {
     }
 }
 
+/// One notarised exchange as the prover and the policy verifier see it, whatever the layout: the
+/// request line, the response of an empty record (the reference for every revealed byte), and the
+/// ranges that the presentation reveals and that stay hidden behind hash commitments (D3, D26).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ResponseShape {
+    pub server_name: String,
+    /// Request target.
+    pub path: String,
+    /// First line of the notarised request, without CRLF.
+    pub request_line: String,
+    pub template: Vec<u8>,
+    /// Total response length (head and body).
+    pub len: usize,
+    pub revealed: Vec<Range<usize>>,
+    /// Hidden field values, in the layout's order.
+    pub hidden: Vec<Range<usize>>,
+}
+
+/// Pads `value` to `width` with `padding`; rejects values that are too long or that could break
+/// the JSON template.
+pub(crate) fn pad_value(padding: &str, value: &str, width: usize) -> Result<String> {
+    ensure!(value.is_ascii(), "value {value:?} is not ASCII");
+    ensure!(
+        !value.contains(['"', '\\']),
+        "value {value:?} contains a quote or backslash"
+    );
+    ensure!(
+        !value.bytes().any(|b| b.is_ascii_control()),
+        "value {value:?} contains a control character"
+    );
+    if value.len() > width {
+        bail!("value {value:?} is longer than its width {width}");
+    }
+    let mut out = value.to_string();
+    out.extend(std::iter::repeat_n(
+        padding.chars().next().unwrap_or(' '),
+        width - value.len(),
+    ));
+    Ok(out)
+}
+
 /// Appends template pieces and reports where each landed.
 #[derive(Default)]
-struct Writer {
-    bytes: Vec<u8>,
+pub(crate) struct Writer {
+    pub(crate) bytes: Vec<u8>,
 }
 
 impl Writer {
-    fn lit(&mut self, s: &str) -> Range<usize> {
+    pub(crate) fn lit(&mut self, s: &str) -> Range<usize> {
         let start = self.bytes.len();
         self.bytes.extend_from_slice(s.as_bytes());
         start..self.bytes.len()
     }
 
     /// Writes `"name":` and returns its range.
-    fn key(&mut self, name: &str) -> Range<usize> {
+    pub(crate) fn key(&mut self, name: &str) -> Range<usize> {
         self.lit(&format!("\"{name}\":"))
     }
 
     /// Writes a quoted value and returns the range of the value without quotes.
-    fn string(&mut self, value: &str) -> Range<usize> {
+    pub(crate) fn string(&mut self, value: &str) -> Range<usize> {
         self.lit("\"");
         let range = self.lit(value);
         self.lit("\"");
@@ -389,6 +432,13 @@ mod tests {
             l.render_response("ACC-000000000001", &record(&["1", "2", "3", "4", "5"]))
                 .is_err()
         );
+        for bad in [
+            "ACC-0000000000\n1",
+            "ACC-0000000000\u{0}1",
+            "ACC-0000000000\u{7f}1",
+        ] {
+            assert!(l.render_response(bad, &record(&[])).is_err(), "{bad:?}");
+        }
     }
 
     #[test]

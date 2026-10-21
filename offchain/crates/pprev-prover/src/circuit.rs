@@ -1,4 +1,4 @@
-//! Witness of phi_R (Section VI-A) and the circom witness generator (D22).
+//! Witnesses of phi_R, phi_A, and phi_S (Section VI-A) and the circom witness generator (D22).
 
 use std::fmt;
 use std::ops::Range;
@@ -7,8 +7,8 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, bail, ensure};
-use pprev_types::circuit::PhiRPublic;
-use pprev_types::{Layout, TitleRecord};
+use pprev_types::circuit::{PhiAPublic, PhiRPublic, PhiSPublic};
+use pprev_types::{Layout, RecordLayout, TitleRecord};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -16,6 +16,10 @@ use crate::session::{FieldOpening, HiddenOpenings};
 
 /// Name of the compiled main component for the title-v1 layout.
 pub const CIRCUIT_NAME: &str = "main_title_v1";
+
+/// Names of the compiled main components of phi_A (income-v1) and phi_S (tenancy-v1).
+pub const PHI_A_CIRCUIT_NAME: &str = "main_income_v1";
+pub const PHI_S_CIRCUIT_NAME: &str = "main_tenancy_v1";
 
 /// SHA-256(plaintext || blinder): the TLSNotary plaintext hash that phi_R opens.
 pub fn commitment(opening: &FieldOpening) -> [u8; 32] {
@@ -36,6 +40,16 @@ pub fn public_of(openings: &HiddenOpenings, property_id: [u8; 32], digest: [u8; 
         property_id,
         digest,
     }
+}
+
+/// Reads a borrowed `proof.json` (negative tests) and names its provenance by content, not by path:
+/// `borrowed:sha256:<hex digest of the file's bytes>`. Records then carry no local path.
+pub fn read_borrowed_proof(path: &Path) -> Result<(String, String)> {
+    let bytes = std::fs::read(path).with_context(|| format!("reading {}", path.display()))?;
+    let source = format!("borrowed:sha256:{}", hex::encode(Sha256::digest(&bytes)));
+    let json =
+        String::from_utf8(bytes).with_context(|| format!("{} is not UTF-8", path.display()))?;
+    Ok((json, source))
 }
 
 /// A blinder derived from a label, for samples and tests.
@@ -67,6 +81,129 @@ pub fn rendered_openings(
         owners: open(r.owners.clone(), owners_blinder),
         property_id: open(r.property_id.clone(), property_blinder),
     })
+}
+
+/// Openings of the hidden fields (account, then every field) of the response that `layout` renders
+/// for `account` viewing a record with `values`, with one blinder per hidden field. For samples and
+/// tests, where no notarised session exists.
+pub fn record_openings(
+    layout: &RecordLayout,
+    account: &str,
+    values: &[&str],
+    blinders: &[[u8; 16]],
+) -> Result<Vec<FieldOpening>> {
+    let rendered = layout.render_response(account, values)?;
+    let hidden = rendered.ranges.hidden();
+    ensure!(
+        blinders.len() == hidden.len(),
+        "{} blinders for {} hidden fields",
+        blinders.len(),
+        hidden.len()
+    );
+    Ok(hidden
+        .into_iter()
+        .zip(blinders)
+        .map(|(range, blinder)| FieldOpening {
+            plaintext: rendered.bytes[range.clone()].to_vec(),
+            range,
+            blinder: *blinder,
+        })
+        .collect())
+}
+
+/// c_B's opening as a circuit input: the salt, a field element, in decimal.
+fn salt_input(salt: &[u8; 32]) -> String {
+    num_bigint::BigUint::from_bytes_be(salt).to_str_radix(10)
+}
+
+/// Input of the phi_A circuit in the JSON form that circom's witness generator reads. Field names
+/// are the signal names of `circuits/src/phi_a.circom`.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhiAInput {
+    pub account_hash: [String; 2],
+    pub income_hash: [String; 2],
+    pub c_b: String,
+    pub amount: String,
+    pub bind: String,
+    pub account: Vec<u8>,
+    pub income: Vec<u8>,
+    pub account_blinder: [u8; 16],
+    pub income_blinder: [u8; 16],
+    pub salt: String,
+}
+
+impl PhiAInput {
+    /// `openings` are those of the eligibility response, account first; `salt` opens c_B.
+    pub fn new(public: &PhiAPublic, openings: &[FieldOpening], salt: &[u8; 32]) -> Result<Self> {
+        let [account, income] = openings else {
+            bail!("phi_A opens two fields, got {}", openings.len());
+        };
+        let p = public.inputs();
+        Ok(Self {
+            account_hash: [p[0].clone(), p[1].clone()],
+            income_hash: [p[2].clone(), p[3].clone()],
+            c_b: p[4].clone(),
+            amount: p[5].clone(),
+            bind: p[6].clone(),
+            account: account.plaintext.clone(),
+            income: income.plaintext.clone(),
+            account_blinder: account.blinder,
+            income_blinder: income.blinder,
+            salt: salt_input(salt),
+        })
+    }
+}
+
+/// Input of the phi_S circuit in the JSON form that circom's witness generator reads. Field names
+/// are the signal names of `circuits/src/phi_s.circom`.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhiSInput {
+    pub property_hash: [String; 2],
+    pub tenant_hash: [String; 2],
+    pub date_hash: [String; 2],
+    pub property_id: [String; 2],
+    pub c_b: String,
+    pub engagement_day: String,
+    pub bind: String,
+    pub property: Vec<u8>,
+    pub tenant: Vec<u8>,
+    pub date: Vec<u8>,
+    pub property_blinder: [u8; 16],
+    pub tenant_blinder: [u8; 16],
+    pub date_blinder: [u8; 16],
+    pub salt: String,
+}
+
+impl PhiSInput {
+    /// `openings` are those of the tenancy response: account, propertyId, tenant, recordDate; phi_S
+    /// does not read the account. `salt` opens c_B.
+    pub fn new(public: &PhiSPublic, openings: &[FieldOpening], salt: &[u8; 32]) -> Result<Self> {
+        let [_account, property, tenant, date] = openings else {
+            bail!(
+                "the tenancy layout has four hidden fields, got {}",
+                openings.len()
+            );
+        };
+        let p = public.inputs();
+        Ok(Self {
+            property_hash: [p[0].clone(), p[1].clone()],
+            tenant_hash: [p[2].clone(), p[3].clone()],
+            date_hash: [p[4].clone(), p[5].clone()],
+            property_id: [p[6].clone(), p[7].clone()],
+            c_b: p[8].clone(),
+            engagement_day: p[9].clone(),
+            bind: p[10].clone(),
+            property: property.plaintext.clone(),
+            tenant: tenant.plaintext.clone(),
+            date: date.plaintext.clone(),
+            property_blinder: property.blinder,
+            tenant_blinder: tenant.blinder,
+            date_blinder: date.blinder,
+            salt: salt_input(salt),
+        })
+    }
 }
 
 /// Input of the phi_R circuit in the JSON form that circom's witness generator reads. Field names
@@ -106,19 +243,52 @@ impl PhiRInput {
     }
 }
 
-/// Files of the compiled circuit (`script/circuits_build.sh`) under the `circuits/` directory.
+/// Files of a compiled circuit (`script/circuits_build.sh`, `script/circuits_build_as.sh`) under
+/// the `circuits/` directory.
 #[derive(Clone, Debug)]
 pub struct CircuitFiles {
     pub circuits_dir: PathBuf,
+    /// Compiled main component.
+    pub name: String,
+    /// Proving key, relative to the build directory.
+    pub zkey_file: String,
+    /// Verification key, relative to `circuits/`.
+    pub verification_key_file: String,
     /// Run the witness generator and snarkjs under `/usr/bin/time -l` and report their peak
     /// resident set size.
     pub measure_rss: bool,
 }
 
 impl CircuitFiles {
+    /// The phi_R circuit.
     pub fn new(circuits_dir: impl Into<PathBuf>) -> Self {
         Self {
             circuits_dir: circuits_dir.into(),
+            name: CIRCUIT_NAME.into(),
+            zkey_file: "phi_r.zkey".into(),
+            verification_key_file: "setup/verification_key.json".into(),
+            measure_rss: false,
+        }
+    }
+
+    /// The phi_A circuit.
+    pub fn phi_a(circuits_dir: impl Into<PathBuf>) -> Self {
+        Self {
+            circuits_dir: circuits_dir.into(),
+            name: PHI_A_CIRCUIT_NAME.into(),
+            zkey_file: "phi_a.zkey".into(),
+            verification_key_file: "setup/phi_a/verification_key.json".into(),
+            measure_rss: false,
+        }
+    }
+
+    /// The phi_S circuit.
+    pub fn phi_s(circuits_dir: impl Into<PathBuf>) -> Self {
+        Self {
+            circuits_dir: circuits_dir.into(),
+            name: PHI_S_CIRCUIT_NAME.into(),
+            zkey_file: "phi_s.zkey".into(),
+            verification_key_file: "setup/phi_s/verification_key.json".into(),
             measure_rss: false,
         }
     }
@@ -145,25 +315,25 @@ impl CircuitFiles {
 
     pub fn wasm(&self) -> PathBuf {
         self.build_dir()
-            .join(format!("{CIRCUIT_NAME}_js/{CIRCUIT_NAME}.wasm"))
+            .join(format!("{name}_js/{name}.wasm", name = self.name))
     }
 
     pub fn witness_generator(&self) -> PathBuf {
         self.build_dir()
-            .join(format!("{CIRCUIT_NAME}_js/generate_witness.js"))
+            .join(format!("{}_js/generate_witness.js", self.name))
     }
 
     pub fn snarkjs(&self) -> PathBuf {
         self.circuits_dir.join("node_modules/.bin/snarkjs")
     }
 
-    /// Proving key of `script/circuits_setup.sh`.
+    /// Proving key of `script/circuits_setup.sh` or `script/circuits_setup_as.sh`.
     pub fn zkey(&self) -> PathBuf {
-        self.build_dir().join("phi_r.zkey")
+        self.build_dir().join(&self.zkey_file)
     }
 
     pub fn verification_key(&self) -> PathBuf {
-        self.circuits_dir.join("setup/verification_key.json")
+        self.circuits_dir.join(&self.verification_key_file)
     }
 }
 
@@ -279,7 +449,8 @@ pub struct ProveTimings {
     pub prove_peak_rss_bytes: Option<u64>,
 }
 
-/// A phi_R proof as snarkjs writes it, with the public inputs and the phase timings.
+/// A proof (of phi_R, phi_A, or phi_S) as snarkjs writes it, with the public inputs and the phase
+/// timings.
 #[derive(Clone, Debug)]
 pub struct PhiRProof {
     /// Contents of snarkjs' `proof.json`.
@@ -295,7 +466,7 @@ fn millis(d: Duration) -> f64 {
 
 /// Generates the witness with circom's wasm and a Groth16 proof with `snarkjs groth16 prove`, each
 /// as a child process (D22), writing intermediate files into `dir`.
-pub fn prove(files: &CircuitFiles, input: &PhiRInput, dir: &Path) -> Result<PhiRProof> {
+pub fn prove(files: &CircuitFiles, input: &impl Serialize, dir: &Path) -> Result<PhiRProof> {
     let zkey = files.zkey();
     ensure!(
         zkey.exists(),
@@ -345,6 +516,25 @@ pub fn prove(files: &CircuitFiles, input: &PhiRInput, dir: &Path) -> Result<PhiR
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_borrowed_proof_is_named_by_its_digest_not_its_path() {
+        let dir = std::env::temp_dir().join(format!("pprev-borrowed-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("proof.json");
+        std::fs::write(&path, b"{\"pi_a\":[]}").unwrap();
+        let (json, source) = read_borrowed_proof(&path).unwrap();
+        assert_eq!(json, "{\"pi_a\":[]}");
+        assert_eq!(
+            source,
+            format!(
+                "borrowed:sha256:{}",
+                hex::encode(Sha256::digest(b"{\"pi_a\":[]}"))
+            )
+        );
+        assert!(!source.contains(dir.to_str().unwrap()) && !source.contains('/'));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn reads_the_peak_rss_of_time_l() {

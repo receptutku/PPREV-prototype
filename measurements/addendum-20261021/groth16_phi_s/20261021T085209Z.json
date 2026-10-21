@@ -1,0 +1,64 @@
+{
+  "runId": "20261021T085209Z",
+  "commit": "2f9a9cc6637d8f516c56c943f003b49904888c9d",
+  "workingTreeDirty": true,
+  "machine": {
+    "cpu": "Apple M2",
+    "memoryBytes": 17179869184,
+    "os": "26.6.2",
+    "powerSource": "Battery Power"
+  },
+  "tools": {
+    "anvil": "anvil Version: 1.8.3",
+    "forge": "forge Version: 1.8.3",
+    "cast": "cast Version: 1.8.3",
+    "solc": "0.8.36",
+    "circom": "circom compiler 2.2.3",
+    "snarkjs": "0.7.6",
+    "circomlib": "2.0.5",
+    "node": "v26.9.0",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "tlsn": "v0.1.0-alpha.15#47aee45b53e06648c1b2ad3689b367b8c923fdec",
+    "alloy": "2.5.0"
+  },
+  "parameters": {
+    "publicInputs": 11,
+    "anvilHardfork": "Osaka",
+    "phase": "phi_s",
+    "proof": "circuits/setup/phi_s/sample",
+    "verifier": "circuits/setup/phi_s/Groth16Verifier.sol",
+    "sourceSha256": {
+      "circuits/setup/phi_s/Groth16Verifier.sol": "87c094c0f0e62aebdf59168cc55927ced349651221d7fd2d4e8b70199cdea246",
+      "circuits/setup/phi_s/verification_key.json": "f72e695584614404e163e4a09ae3728ddc5c3d4c2e97bf811c2a656a56383164",
+      "circuits/setup/phi_s/sample/public.json": "f23f6f0b833595454e0686867d86bfa7afce4a53c184c2e91c49f385dd42c20b",
+      "circuits/setup/phi_s/sample/proof.json": "b4c254413df80ccf141a36f64a400321b5d8828e9ba4ac4ecf92506591b5a405"
+    }
+  },
+  "checks": {
+    "validProofAccepted": true,
+    "changedPublicInputRejected": true,
+    "transactionReturnedTrue": true,
+    "transactionGasLimit": 1000000
+  },
+  "verification": {
+    "receiptGas": 284168,
+    "intrinsicGas": 21000,
+    "calldataBytes": 612,
+    "calldataGas": 7776,
+    "executionGas": 255392,
+    "transactionHash": "0x23aa6b3e68dae6a8846388a9df7c4716991d8d3ad698d1fa6eeee3f22b0cea5e"
+  },
+  "eip1108Model": {
+    "pairing": 181000,
+    "publicInputMsm": 67650,
+    "total": 248650,
+    "executionMinusModel": 6742,
+    "modelShareOfExecution": 0.9736
+  },
+  "deployment": {
+    "transactionGas": 547705,
+    "initcodeBytes": 2316,
+    "runtimeBytes": 2288,
+    "calldataGas": 36468
+  }
+}

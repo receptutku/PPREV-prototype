@@ -1,0 +1,9 @@
+{
+  "record": "measurements/e2e_register/20260926T201218Z.json",
+  "originalSha256": "62269c8a00f399836e4eb6b5f3e33f18a8f97b1576f2beea561045f5b3ae376d",
+  "distributedSha256": "2612c18c5281d37689c049b2374ce2f7b45a40c78369cac9a70da1de78255403",
+  "changedJsonPointers": [
+    "/runs/non-owner/proofSource"
+  ],
+  "transformation": "Removed the machine-specific path prefix from proofSource. All measurement values, checks, statements and proof data are unchanged. The original bytes are identified by originalSha256."
+}

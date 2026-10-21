@@ -1,0 +1,104 @@
+{
+  "scope": "Groth16 public-input binding and phase-key separation only.",
+  "sourceSha256": {
+    "circuits/setup/phi_s/verification_key.json": "f72e695584614404e163e4a09ae3728ddc5c3d4c2e97bf811c2a656a56383164",
+    "circuits/setup/phi_s/sample/public.json": "f23f6f0b833595454e0686867d86bfa7afce4a53c184c2e91c49f385dd42c20b",
+    "circuits/setup/phi_s/sample/proof.json": "b4c254413df80ccf141a36f64a400321b5d8828e9ba4ac4ecf92506591b5a405",
+    "circuits/setup/phi_a/verification_key.json": "157bb2d4f144c2de04a9b4ee8ffb6b52699707fd23f47bc1d8cfc9c6913594b5"
+  },
+  "cases": [
+    {
+      "case": "baseline",
+      "expectedAccepted": true,
+      "observedAccepted": true,
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "case": "wrong_phase_key",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_0",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_1",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_2",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_3",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_4",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_5",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_6",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_7",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_8",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_9",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_10",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    }
+  ],
+  "passed": 13,
+  "total": 13
+}

@@ -1,0 +1,17 @@
+[32;22m[INFO]  [39;1msnarkJS[0m: WITNESS CHECKING STARTED
+[32;22m[INFO]  [39;1msnarkJS[0m: > Reading r1cs file
+[32;22m[INFO]  [39;1msnarkJS[0m: > Reading witness file
+[32;22m[INFO]  [39;1msnarkJS[0m: ----------------------------
+[32;22m[INFO]  [39;1msnarkJS[0m:   WITNESS CHECK
+[32;22m[INFO]  [39;1msnarkJS[0m:   Curve:          bn128
+[32;22m[INFO]  [39;1msnarkJS[0m:   Vars (wires):   88301
+[32;22m[INFO]  [39;1msnarkJS[0m:   Outputs:        0
+[32;22m[INFO]  [39;1msnarkJS[0m:   Public Inputs:  11
+[32;22m[INFO]  [39;1msnarkJS[0m:   Private Inputs: 95
+[32;22m[INFO]  [39;1msnarkJS[0m:   Labels:         617338
+[32;22m[INFO]  [39;1msnarkJS[0m:   Constraints:    89257
+[32;22m[INFO]  [39;1msnarkJS[0m:   Custom Gates:   false
+[32;22m[INFO]  [39;1msnarkJS[0m: ----------------------------
+[32;22m[INFO]  [39;1msnarkJS[0m: > Checking witness correctness
+[32;22m[INFO]  [39;1msnarkJS[0m: WITNESS IS CORRECT
+[32;22m[INFO]  [39;1msnarkJS[0m: WITNESS CHECKING FINISHED SUCCESSFULLY

@@ -3,8 +3,8 @@
 use std::ops::Range;
 
 use anyhow::{Context, Result, bail, ensure};
-use pprev_types::Layout;
 use pprev_types::circuit::PhiRPublic;
+use pprev_types::{Layout, ResponseShape};
 use serde::Deserialize;
 use tlsn::attestation::presentation::{Presentation, PresentationOutput};
 use tlsn::attestation::signing::VerifyingKey;
@@ -29,6 +29,27 @@ pub struct Expectation<'a> {
     pub property_id: &'a str,
     /// Upper bound on `t_att - ConnectionInfo.time` (D29).
     pub max_session_secs: u64,
+}
+
+/// What the policy verifier expects of a presentation, for any response layout.
+pub struct ShapeExpectation<'a> {
+    /// Request line, response template, revealed and hidden ranges of the notarised exchange.
+    pub shape: &'a ResponseShape,
+    /// The notary's attestation key (D19).
+    pub attestation_key: &'a VerifyingKey,
+    /// Roots trusted for the registry's certificate.
+    pub root_certs: &'a [Vec<u8>],
+    /// Upper bound on `t_att - ConnectionInfo.time` (D29).
+    pub max_session_secs: u64,
+}
+
+/// Values the policy verifier takes from an accepted presentation, for any response layout.
+#[derive(Clone, Debug)]
+pub struct AttestedShape {
+    pub t_att: u64,
+    pub connection_time: u64,
+    /// SHA-256(value ‖ blinder) of the hidden fields, in the shape's order.
+    pub hidden_hashes: Vec<[u8; 32]>,
 }
 
 /// A transcript commitment as the attestation body records it.
@@ -150,6 +171,37 @@ pub fn check_times(t_att: u64, connection_time: u64, max_session_secs: u64) -> R
 /// Checks a presentation against the policy's layout (Section 3.4 of the plan) and returns t_att and
 /// the hashes of the hidden fields.
 pub fn check_presentation(presentation: Presentation, exp: &Expectation<'_>) -> Result<Attested> {
+    let shape = exp.layout.shape(exp.property_id)?;
+    let attested = check_shape(
+        presentation,
+        &ShapeExpectation {
+            shape: &shape,
+            attestation_key: exp.attestation_key,
+            root_certs: exp.root_certs,
+            max_session_secs: exp.max_session_secs,
+        },
+    )?;
+    let [account, owners, property_id] = attested
+        .hidden_hashes
+        .try_into()
+        .map_err(|_| anyhow::anyhow!("the title layout has three hidden fields"))?;
+    Ok(Attested {
+        t_att: attested.t_att,
+        connection_time: attested.connection_time,
+        account_hash: account.to_vec(),
+        owners_hash: owners.to_vec(),
+        property_id_hash: property_id.to_vec(),
+    })
+}
+
+/// Checks a presentation against a response shape: attestation key and signature, server identity,
+/// t_att against the handshake time, response length, exactly the revealed request line and
+/// response structure, and exactly one SHA-256 commitment per revealed and hidden range. Returns
+/// t_att and the hashes of the hidden fields.
+pub fn check_shape(
+    presentation: Presentation,
+    exp: &ShapeExpectation<'_>,
+) -> Result<AttestedShape> {
     ensure!(
         presentation.verifying_key() == exp.attestation_key,
         "attestation key is not trusted"
@@ -169,14 +221,12 @@ pub fn check_presentation(presentation: Presentation, exp: &Expectation<'_>) -> 
         .verify(&provider)
         .context("presentation does not verify")?;
 
-    let layout = exp.layout;
-    let template = layout.template()?;
-    let ranges = &template.ranges;
+    let shape = exp.shape;
 
     // Source identity.
     match &output.server_name {
-        Some(ServerName::Dns(name)) if name.as_str() == layout.server_name => {}
-        other => bail!("server identity {other:?} is not {}", layout.server_name),
+        Some(ServerName::Dns(name)) if name.as_str() == shape.server_name => {}
+        other => bail!("server identity {other:?} is not {}", shape.server_name),
     }
 
     // t_att (D29): the notary's clock, consistent with the prover-reported handshake time.
@@ -186,10 +236,10 @@ pub fn check_presentation(presentation: Presentation, exp: &Expectation<'_>) -> 
 
     // The response has the layout's length.
     ensure!(
-        output.connection_info.transcript_length.received as usize == ranges.len,
+        output.connection_info.transcript_length.received as usize == shape.len,
         "received {} bytes, the layout has {}",
         output.connection_info.transcript_length.received,
-        ranges.len
+        shape.len
     );
 
     // Revealed bytes (D26): exactly the request line and the response structure.
@@ -197,7 +247,7 @@ pub fn check_presentation(presentation: Presentation, exp: &Expectation<'_>) -> 
         .transcript
         .as_ref()
         .context("presentation reveals no transcript")?;
-    let request_line = layout.request_line(exp.property_id);
+    let request_line = &shape.request_line;
     ensure!(
         transcript.sent_authed() == &RangeSet::from(0..request_line.len()),
         "revealed request ranges differ from the layout"
@@ -206,28 +256,30 @@ pub fn check_presentation(presentation: Presentation, exp: &Expectation<'_>) -> 
         &transcript.sent_unsafe()[..request_line.len()] == request_line.as_bytes(),
         "revealed request line is not {request_line:?}"
     );
-    let revealed = ranges.revealed();
+    let revealed = shape.revealed.clone();
     ensure!(
         transcript.received_authed() == &RangeSet::from(revealed.clone()),
         "revealed response ranges differ from the layout"
     );
     for r in &revealed {
         ensure!(
-            transcript.received_unsafe()[r.clone()] == template.bytes[r.clone()],
+            transcript.received_unsafe()[r.clone()] == shape.template[r.clone()],
             "revealed response bytes at {r:?} differ from the layout"
         );
     }
 
     // Commitments (D3): exactly the layout's, all SHA-256.
     let commitments = attested_commitments(&output.attestation)?;
-    let hidden = ranges.hidden();
-    let expected: Vec<(Direction, RangeSet<usize>)> = vec![
+    let mut expected: Vec<(Direction, RangeSet<usize>)> = vec![
         (Direction::Sent, RangeSet::from(0..request_line.len())),
         (Direction::Received, RangeSet::from(revealed)),
-        (Direction::Received, RangeSet::from(hidden[0].clone())),
-        (Direction::Received, RangeSet::from(hidden[1].clone())),
-        (Direction::Received, RangeSet::from(hidden[2].clone())),
     ];
+    expected.extend(
+        shape
+            .hidden
+            .iter()
+            .map(|r| (Direction::Received, RangeSet::from(r.clone()))),
+    );
     ensure!(
         commitments.len() == expected.len(),
         "attestation has {} commitments, the layout has {}",
@@ -245,21 +297,20 @@ pub fn check_presentation(presentation: Presentation, exp: &Expectation<'_>) -> 
         commitments.iter().all(|c| c.alg == HashAlgId::SHA256),
         "commitments must use SHA-256"
     );
-    let hash_of = |r: &Range<usize>| -> Vec<u8> {
+    let hash_of = |r: &Range<usize>| -> Result<[u8; 32]> {
         let idx = RangeSet::from(r.clone());
-        commitments
+        let hash = commitments
             .iter()
             .find(|c| c.direction == Direction::Received && c.idx == idx)
-            .map(|c| c.hash.clone())
-            .expect("presence checked above")
+            .map(|c| c.hash.as_slice())
+            .expect("presence checked above");
+        hash.try_into().context("commitment is not 32 bytes")
     };
 
-    Ok(Attested {
+    Ok(AttestedShape {
         t_att,
         connection_time,
-        account_hash: hash_of(&hidden[0]),
-        owners_hash: hash_of(&hidden[1]),
-        property_id_hash: hash_of(&hidden[2]),
+        hidden_hashes: shape.hidden.iter().map(hash_of).collect::<Result<_>>()?,
     })
 }
 

@@ -1,0 +1,76 @@
+{
+  "scope": "Groth16 public-input binding and phase-key separation only.",
+  "sourceSha256": {
+    "circuits/setup/phi_a/verification_key.json": "157bb2d4f144c2de04a9b4ee8ffb6b52699707fd23f47bc1d8cfc9c6913594b5",
+    "circuits/setup/phi_a/sample/public.json": "a3cceb4e417198b51902547dd83bf7bbd0e95e5f8e83886693129246c7e9ab93",
+    "circuits/setup/phi_a/sample/proof.json": "dbef5db0d37f2387aa78d3d6f86c642f6fbb27782c6344209ed1f3d6354e9a15",
+    "circuits/setup/phi_s/verification_key.json": "f72e695584614404e163e4a09ae3728ddc5c3d4c2e97bf811c2a656a56383164"
+  },
+  "cases": [
+    {
+      "case": "baseline",
+      "expectedAccepted": true,
+      "observedAccepted": true,
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "case": "wrong_phase_key",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_0",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_1",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_2",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_3",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_4",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_5",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    },
+    {
+      "case": "public_changed_6",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "exitCode": 1,
+      "pass": true
+    }
+  ],
+  "passed": 9,
+  "total": 9
+}

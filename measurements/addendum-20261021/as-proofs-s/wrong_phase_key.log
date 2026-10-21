@@ -1,0 +1,5 @@
+[31;22m[ERROR] [39;1msnarkJS[0m: TypeError: Cannot read properties of undefined (reading '0')
+    at WasmCurve.fromObject (circuits/node_modules/ffjavascript/build/main.cjs:4208:38)
+    at groth16Verify$1 (circuits/node_modules/snarkjs/build/cli.cjs:6181:32)
+    at async Object.groth16Verify [as action] (circuits/node_modules/snarkjs/build/cli.cjs:13058:21)
+    at async clProcessor (circuits/node_modules/snarkjs/build/cli.cjs:519:27)

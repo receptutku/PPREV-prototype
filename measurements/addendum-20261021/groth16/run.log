@@ -1,0 +1,6 @@
+[groth16] run 20261021T081521Z, work directory target/groth16/20261021T081521Z
+[groth16] started anvil (pid 15476)
+[groth16] record: measurements/addendum-20261021/groth16/20261021T081521Z.json
+verification: execution 242098, receipt 270162; EIP-1108 model 236350
+three verifications: +726294 on 538976 = x2.3475
+verifier runtime 2098 B, deployment 506627 gas

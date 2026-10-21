@@ -9,6 +9,17 @@
     "layout": "policies/layouts/title-v1.json",
     "verificationKey": "circuits/setup/verification_key.json"
   },
+  "apply": {
+    "layout": "policies/layouts/income-v1.json",
+    "verificationKey": "circuits/setup/phi_a/verification_key.json",
+    "incomeMultiple": 3,
+    "amountUnit": "wei"
+  },
+  "settle": {
+    "layout": "policies/layouts/tenancy-v1.json",
+    "verificationKey": "circuits/setup/phi_s/verification_key.json",
+    "utcOffsetSecs": 10800
+  },
   "reqEscrowWei": "50000000000000000",
   "minCollateralWei": "100000000000000000",
   "maxCollateralWei": "1000000000000000000"

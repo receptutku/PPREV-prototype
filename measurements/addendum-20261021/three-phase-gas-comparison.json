@@ -1,0 +1,46 @@
+{
+  "scope": "Partial additive execution-gas model: existing signature-based lifecycle plus three standalone Groth16 verifier executions. Not an integrated on-chain TLSNotary design; excludes attestation verification, verifier deployment, additional transaction/calldata costs, and any change to the original signature checks.",
+  "inputs": {
+    "r": {
+      "path": "measurements/addendum-20261021/groth16/20261021T081521Z.json",
+      "sha256": "8bd3c31abaca3097c2637525336ebbdd1b4df9e5f4d33420fedd152de91701ca",
+      "publicInputs": 9,
+      "executionGas": 242098,
+      "checks": {
+        "validProofAccepted": true,
+        "changedPublicInputRejected": true,
+        "transactionReturnedTrue": true,
+        "transactionGasLimit": 1000000
+      }
+    },
+    "a": {
+      "path": "measurements/addendum-20261021/groth16_phi_a/20261021T085144Z.json",
+      "sha256": "1f781fe8f838a6042afdeeaa1771b31f2dd6360b59e8ab6e75f4b426aa6582e8",
+      "publicInputs": 7,
+      "executionGas": 228804,
+      "checks": {
+        "validProofAccepted": true,
+        "changedPublicInputRejected": true,
+        "transactionReturnedTrue": true,
+        "transactionGasLimit": 1000000
+      }
+    },
+    "s": {
+      "path": "measurements/addendum-20261021/groth16_phi_s/20261021T085209Z.json",
+      "sha256": "83b457c3154b6a3d31341cf6b4007e05d215cd18ca9c59c21b9547eef5d943d7",
+      "publicInputs": 11,
+      "executionGas": 255392,
+      "checks": {
+        "validProofAccepted": true,
+        "changedPublicInputRejected": true,
+        "transactionReturnedTrue": true,
+        "transactionGasLimit": 1000000
+      }
+    }
+  },
+  "baseLifecycleExecutionGas": 538976,
+  "additionalVerifierExecutionGas": 726294,
+  "additiveExecutionGas": 1265270,
+  "factor": 2.347544232025174,
+  "equalPublicInputAssumptionRequired": false
+}

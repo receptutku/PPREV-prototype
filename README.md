@@ -1,42 +1,66 @@
 # PPREV prototype
 
-Artifact of PPREV, a protocol that verifies real estate transactions over notarised registry data:
-an on-chain enforcement layer, an attested-submission pipeline over a TLS registry, and the scripts
-and records behind every measured figure.
+Artifact of PPREV, a protocol that verifies real estate transactions over notarised registry data.
+A party proves a predicate over a record that an authoritative registry serves to its own account,
+without revealing the record: a TLSNotary session attests where the bytes came from, a Groth16 proof
+shows that the hidden fields satisfy the phase's predicate, and a notary signature binds the result to
+one transaction, phase, and deployment of an escrow contract.
+
+This repository holds the contracts, the off-chain pipeline for all three attested phases, a local
+mock registry, the circuits and their setup records, and the scripts and records behind every
+measured figure.
 
 ## 1. Overview
 
-The artifact contains:
+What the artifact contains:
 
 - **On-chain enforcement layer** (`contracts/`, Solidity, Foundry): the seven algorithms Register,
   Apply, Engage, Settle, Expire, Reclaim, Cancel and the auxiliary Withdraw, an ECDSA notary
   verifier, and a test suite with a positive and a negative test for every acceptance condition.
-- **Mock title registry** (`mock-registry/`): a local HTTPS server (TLS 1.2) with a fixed-layout JSON
-  response and fixture records.
-- **Attested session** (`offchain/`, Rust): a TLSNotary (tlsn v0.1.0-alpha.15, MPC mode) prover and
-  notary. The prover commits to the owner, account, and property fields of the registry response;
-  the presentation reveals only the request line and the response structure.
-- **Predicate circuit phi_R** (`circuits/`, circom, Groth16): opens the attested commitments and checks
-  that the session's account is an owner of the property in `txData`. The phase-1 parameters come
-  from a public powers-of-tau ceremony; phase 2 is local.
-- **Policy verifier and notary signer** (`offchain/`): checks the presentation and the phi_R proof,
-  records the nonce, and signs x_R. A mock notary checks phi_A and phi_S natively for Apply and Settle.
-- **End-to-end Register** on a local chain (`script/e2e_register.sh`) and the **measurement scripts**
-  with their committed records (`measurements/`).
+- **Predicate circuits** (`circuits/`, circom, Groth16):
+  - phi_R (Register): the logged-in account is an owner of the property in `txData`;
+  - phi_A (Apply): the logged-in account's monthly income is at least three times the rent, and the
+    applicant's identity commitment c_B opens to that account;
+  - phi_S (Settle): a tenancy notation is on the property in `txData`, names the identity in c_B,
+    and is dated no earlier than the engagement day.
 
-The artifact does not contain:
+  Each circuit opens the SHA-256 commitments that the TLSNotary attestation holds for the fields it
+  reads, and takes the EIP-712 digest of its statement as a public input. Phase 1 uses public
+  powers-of-tau parameters; each phase-2 setup is local and single-party.
+- **Mock registry** (`mock-registry/`): a local HTTPS server (TLS 1.2, the one cipher suite that
+  TLSNotary's MPC mode handles) with login, fixed-layout title, income, and tenancy-notation
+  responses, and synthetic fixture records.
+- **Attested-submission pipeline** (`offchain/`, Rust):
+  - a TLSNotary prover and notary (tlsn v0.1.0-alpha.15, MPC mode). The prover commits to the
+    fields a predicate reads; the presentation reveals only the request line and the response
+    structure (status line, Content-Type, JSON keys);
+  - the policy verifier: checks the presentation against the phase's layout, derives every public
+    input from the attestation and the statement, verifies the Groth16 proof under the phase's
+    key, records the nonce (one store for all phases), and signs the statement with the notary key;
+  - the prover's client for Register, Apply, Engage, and Settle, including the transactions.
+- **End-to-end scripts** on a local chain: `script/e2e_register.sh` (Register with five negative
+  cases) and `script/e2e_lifecycle.sh` (Register, Apply, Engage, Settle with eleven negative
+  cases), and the **measurement scripts** with their committed records (`measurements/`).
 
-- a real land registry: the registry is a local mock, so network latency to a real registry is absent;
+What it does not contain:
+
+- a real land registry: the registry is a local mock, so network latency to a real registry and the
+  layout of real portal responses are untested;
 - more than one notary: notary and policy verifier are one trusted process with two keys;
-- a production trusted-setup ceremony: phase 2 is single-party, so the proving key suits this
+- a production trusted-setup ceremony: every phase 2 is single-party, so the proving keys suit this
   prototype only;
-- circuits for phi_A and phi_S: Apply and Settle are signed by the mock notary;
 - a mainnet deployment: Layer-2 figures come from Base Sepolia, priced with Base mainnet parameters.
+
+The September measurement campaign (Section 5.2) predates the phi_A and phi_S circuits. Its Apply and
+Settle transactions carry signatures from a fixed-key test signer that checks no predicate. Their gas
+depends on what the contract checks, the signature, and not on what the notary checked before
+signing; the signature bytes themselves move receipt gas by a few gas (Section 6). The lifecycle runs
+and predicate measurements of Section 5.1 are separate experiments.
 
 ## 2. Requirements
 
-Tested on an Apple M2 with 16 GB of memory, macOS 26.6, on AC power. Versions are pinned where the
-repository can pin them:
+Tested on an Apple M2 with 16 GB of memory, macOS 26.6. Versions are pinned where the repository
+can pin them:
 
 | Tool | Version | Pinned by |
 |---|---|---|
@@ -51,70 +75,182 @@ repository can pin them:
 | Python 3, jq, lsof, openssl, curl, git | any recent | standard library only for Python |
 | libfaketime | optional | only for the ignored clock-shift tests |
 
-Disk: about 10 GB free (Rust build about 7 GB, circuit build 155 MB, powers-of-tau cache 200 MB).
+Disk: about 10 GB free (Rust build about 7 GB, circuit builds about 210 MB, proving keys about
+155 MB, powers-of-tau cache 200 MB).
 
 ## 3. Setup
 
 ```
 git clone --recurse-submodules <repository-url> pprev-prototype
 cd pprev-prototype
-nvm install && nvm use                     # Node.js from .nvmrc (or install v26.9.0 otherwise)
-(cd circuits && npm ci)                    # snarkjs, circomlib
-cargo build --release                      # prover, notary, mock registry
+nvm install && nvm use          # Node.js from .nvmrc (or install v26.9.0 otherwise)
+(cd circuits && npm ci)         # snarkjs, circomlib
+cargo build --release           # prover, notary, mock registry
 (cd contracts && forge build)
-script/circuits_build.sh                   # compile phi_R
-script/circuits_setup.sh                   # Groth16 setup (downloads the 200 MB phase-1 file once)
-cp .env.example .env                       # only for the steps that need a network, see below
+script/circuits_build.sh        # compile phi_R
+script/circuits_setup.sh        # phi_R setup (downloads the 200 MB phase-1 file once)
+script/circuits_build_as.sh     # compile phi_A and phi_S
+script/circuits_setup_as.sh     # phi_A and phi_S setup, sample proofs, exported verifiers
+cp .env.example .env            # only for the steps that need a network, see below
 ```
 
 `script/circuits_setup.sh` runs once and takes about 65 minutes on the tested machine: almost all of
-it is `snarkjs powersoftau verify` checking the 80 contributions of the phase-1 file, which runs on a
-single core and prints its result only at the end; phase 2 takes a few minutes.
+it is `snarkjs powersoftau verify` checking the phase-1 file ending at ceremony contribution 0080,
+which runs on a single core and prints its result only at the end; phase 2 takes a few minutes. The
+[ceremony history](https://github.com/privacy-ethereum/perpetualpowersoftau#note-on-chain-fork)
+branches from 0058 to 0078: 0080 is a contribution identifier, not a count of 80 contributions.
 
-`script/circuits_setup.sh` produces a new proving key (`circuits/build/phi_r.zkey`, 65 MB, not in the
-repository) and rewrites `circuits/setup/` (verification key, Solidity verifier, sample proof,
-transcript) accordingly. The measurement scripts refuse a dirty working tree, so commit those files
-locally before measuring, or run with `PPREV_ALLOW_DIRTY=1 PPREV_MEASUREMENTS_DIR=<dir>`. No gas
-figure depends on the key; proving and verification times do not depend on it either.
+`script/circuits_setup_as.sh` takes a few minutes. It reuses the cached phase-1 file after checking
+its SHA-256 against the pinned value and against `circuits/setup/setup.json`, and does not repeat
+`powersoftau verify`. It checks that each circuit fits the 2^17 constraints of that file, runs a
+separate phase 2 per circuit, verifies each key with `snarkjs zkey verify`, and calls
+`script/circuits_samples_as.sh`, which proves one sample statement per circuit and exports the
+Solidity verifiers. The phi_R key is not touched.
+
+Every setup produces new proving keys (`circuits/build/phi_{r,a,s}.zkey`, not in the repository) and
+rewrites the matching files under `circuits/setup/`: verification key, Solidity verifier, sample
+proof, and the transcript `setup.json` with the contribution hashes, the beacon and its source, and
+the SHA-256 of every output. The end-to-end and measurement scripts check the keys against these
+transcripts. The measurement scripts refuse a dirty working tree, so commit the new files locally
+before measuring, or run with `PPREV_ALLOW_DIRTY=1 PPREV_MEASUREMENTS_DIR=<dir>`. A new key changes
+the proofs, the verifier constants, and calldata, so exact gas and timing results must be measured
+again for it.
 
 `.env` (git-ignored; no script prints its values):
 
 | Variable | Used by |
 |---|---|
-| `ETH_MAINNET_RPC_URL` | `script/l1_price.sh`; optional beacon of `script/circuits_setup.sh` (or set `PPREV_BEACON`) |
+| `ETH_MAINNET_RPC_URL` | `script/l1_price.sh`; optional beacon of both setup scripts (or set `PPREV_BEACON` and `PPREV_BEACON_SOURCE`; without either, `circuits_setup_as.sh` uses 32 random bytes and records that) |
 | `BASE_MAINNET_RPC_URL` | `script/measure_l2.sh` (price parameters of one block) |
 | `BASE_SEPOLIA_RPC_URL` | `script/measure_l2.sh` (the campaign's transactions) |
 | `TESTNET_PRIVATE_KEY` | `script/measure_l2.sh`: a Base Sepolia test wallet, never one with real funds |
 
-Steps that need no network after setup: all tests, `script/e2e_register.sh`,
+Steps that need no network after setup: all tests, both end-to-end scripts,
 `script/measure_offchain.sh`, `script/measure.sh`, `script/measure_groth16.sh`. The L2 campaign needs
 test ETH on Base Sepolia (about 0.001 ETH per run); the official faucets are listed at
 <https://docs.base.org/base-chain/tools/network-faucets>.
 
-## 4. Quick check (about 10 minutes after setup)
+## 4. Quick check (about 15 minutes after setup)
 
 ```
 (cd contracts && forge test)
+python3 script/table6_coverage.py
 cargo test --release --workspace
 script/e2e_register.sh
+script/e2e_lifecycle.sh
 ```
 
 | Command | Expected |
 |---|---|
 | `forge test` | `206 tests passed, 0 failed, 0 skipped (206 total tests)`; the tests record breaks the count down by kind |
 | `python3 script/table6_coverage.py` | `Tests: 205/205 passed; invariants: 4/4 held.` and `Conditions without a passing positive and negative test: none.` |
-| `cargo test --release --workspace` | 114 passed, 0 failed, 3 ignored (the ignored clock-shift tests need libfaketime: `cargo test --release -p pprev-prover --test time -- --include-ignored`) |
+| `cargo test --release --workspace` | 162 passed, 0 failed, 3 ignored (the ignored clock-shift tests need libfaketime: `cargo test --release -p pprev-prover --test time -- --include-ignored`) |
 | `script/e2e_register.sh` | `checks: 19/19 passed`; a record in `measurements/e2e_register/` |
+| `script/e2e_lifecycle.sh` | `checks: 25/25 passed`; a record in `measurements/e2e_lifecycle/` |
 
-`script/e2e_register.sh` starts anvil, deploys the contracts, starts the mock registry and the
-notary, runs Register for an owner of a fixture property (TLSNotary session, phi_R proof, notary
-signature, transaction), checks the event and the contract state, and runs five negative cases: an
-account that is not an owner (no witness; a borrowed proof is refused), a nonce the notary has
-signed, the payload sent from another account, the payload replayed, and a submission after Delta.
-It stops every process it started, also on failure or interrupt, and needs ports 8545, 4443, 7047,
-7048 free (override with `ANVIL_PORT`, `REGISTRY_PORT`, `MPC_PORT`, `VERIFIER_PORT`).
+Both end-to-end scripts start anvil, deploy the contracts with the D18 parameters and the
+`policies/rental-v1.json` bundle, start the mock registry and the notary with keys generated for the
+run, and stop every process they started, also on failure or interrupt. They need ports 8545, 4443,
+7047, 7048 free (override with `ANVIL_PORT`, `REGISTRY_PORT`, `MPC_PORT`, `VERIFIER_PORT`). The
+notary takes tau_lock from the deployed contract's `TAU_LOCK()`, so the engagement day of phi_S
+follows the deployment.
+
+`script/e2e_register.sh` runs Register for an owner of a fixture property (TLSNotary session, phi_R
+proof, notary signature, transaction), checks the event and the contract state, and runs five
+negative cases: an account that is not an owner (no witness; a borrowed proof is refused), a nonce
+the notary has signed, the payload sent from another account, the payload replayed, and a
+submission after Delta.
+
+`script/e2e_lifecycle.sh` runs Register, then Apply for a tenant with an income of 3.5 times the
+rent, Engage, and Settle with a tenancy notation dated on the engagement day, each attested phase
+with its own TLSNotary session, proof, and notary signature. It checks the events, the state of the
+listing and the application, and that the deposit and the collateral reach their recipients. The
+negative cases are:
+
+| Case | Expected |
+|---|---|
+| applicant with 2.9 times the rent | phi_A has no witness; the tenant's proof, borrowed, is refused |
+| c_B naming another account than the session's | phi_A has no witness |
+| the tenant's signed application nonce again | refused by the policy verifier |
+| the tenant's Apply payload sent again | `NonceConsumed` |
+| a notation of the tenant dated before the engagement day | phi_S has no witness; the valid notation's proof, borrowed, is refused |
+| a notation of the tenant on another property | phi_S has no witness |
+| a notation of another tenant on the property | phi_S has no witness |
+| the Settle payload sent from another account | `NotListingOwner` |
+| the Settle payload sent again after settlement | `NotLocked` |
+
+The script dates the valid synthetic notations to the current day in the registry's time zone
+(`utcOffsetSecs` of the policy) and records that date. Its per-phase times are single observations,
+not a distribution.
+
+### Running the parts by hand
+
+The scripts above are the reference; the binaries can also run one step at a time. A sketch, with
+the addresses and key files that `start_stack` in `script/lib/common.sh` sets up:
+
+```
+target/release/mock-registry --bind 127.0.0.1:4443 --ca-out registry-ca.der \
+    --income-layout policies/layouts/income-v1.json --tenancy-layout policies/layouts/tenancy-v1.json
+target/release/pprev-notary --registry-ca registry-ca.der --policy policies/rental-v1.json \
+    --attestation-key attestation.key --statement-key statement.key \
+    --chain-id 31337 --contract <PPREV> --tau-lock <TAU_LOCK()> --nonces nonces.log --log events.jsonl
+target/release/pprev-prover register --account ACC-000000000001 ... --out run/register
+target/release/pprev-prover apply    --listing run/register/record.json --account ACC-000000000003 ... --out run/apply
+target/release/pprev-prover engage   --application run/apply/record.json ... --out run/engage.json
+target/release/pprev-prover settle   --listing run/register/record.json --application run/apply/record.json \
+    --engagement run/engage.json --notation N-0001 --account ACC-000000000001 ... --out run/settle
+```
+
+`pprev-prover <command> --help` lists every option. `--tau-lock` is trusted configuration of the
+notary: it must equal the contract's `TAU_LOCK()`, which the scripts read from the chain. The Apply
+payload carries the opening of c_B (identifier and salt) that the tenant hands to the landlord for
+Settle. `submit`, `submit-apply`, and `submit-settle` send a payload written with `--no-submit`.
 
 ## 5. Reproducing the results
+
+### 5.1 Rental predicates and lifecycle (October 2026)
+
+`measurements/addendum-20261021/` holds the records of the phi_A and phi_S work: the lifecycle and
+Register end-to-end records, raw predicate-benchmark samples and proofs, independent witness and
+proof checks, phase-verifier gas records, the Rust test record, the helper scripts, and a SHA-256
+manifest. These runs used a working tree with the phi_A and phi_S implementation before it was
+committed; their records keep the dirty flag and the SHA-256 of every source file. Local paths in
+the distributed copies are made repository-relative; the manifest keeps the digests of both the
+original and the distributed files, and no number, proof, or test result changed.
+
+| Predicate | Constraints | Public inputs | Witness + proving, median ms (IQR), n = 20 | Standalone verifier execution gas |
+|---|---:|---:|---:|---:|
+| phi_R | 119,680 | 9 | 2,995.2 (2,955.9-3,053.2) | 242,098 |
+| phi_A | 59,963 | 7 | 1,778.9 (1,763.1-1,826.5) | 228,804 |
+| phi_S | 89,257 | 11 | 2,795.0 (2,773.6-2,854.8) | 255,392 |
+
+The proving benchmark uses one fixed synthetic input per predicate, one excluded warm-up per
+predicate, a rotating predicate order, and verifies every proof. It ran on the M2 on battery power
+and covers witness generation and snarkjs proving only: no TLS session, policy verifier, signature,
+or transaction. It is not a new estimate of the September end-to-end Register distribution. After
+circuit setup:
+
+```
+python3 measurements/addendum-20261021/benchmark_predicates.py . target/predicate-benchmark 20
+python3 measurements/addendum-20261021/check_as_witnesses.py . \
+    circuits/setup/phi_a/sample/input.json circuits/setup/phi_s/sample/input.json target/as-witnesses
+python3 measurements/addendum-20261021/check_as_proofs.py . circuits/setup/phi_a/verification_key.json \
+    circuits/setup/phi_a/sample/public.json circuits/setup/phi_a/sample/proof.json \
+    circuits/setup/phi_s/verification_key.json target/as-proofs-a
+bash measurements/addendum-20261021/measure_groth16_phase.sh . phi_a     # and phi_s
+```
+
+The independent checks passed 28 witness and R1CS cases and 22 proof-verification cases: valid
+baselines, every public input changed by one, and the other phase's key. The three standalone
+verifiers execute 726,294 gas together. Added to the 538,976-gas lifecycle of Section 5.2, they give
+1,265,270 gas, 2.3475 times as much. This is an additive, partial model: it keeps the signature
+checks and leaves out attestation verification, the extra calldata and intrinsic gas, and the
+verifier deployments. No design that verifies the TLSNotary attestation on-chain was built or
+measured. The same factor in the September summary row below came from an estimate that assumed all
+three verifiers cost like phi_R's; the measured verifiers give the same total, because 7 + 11 public
+inputs equal 2 x 9 and the verifier cost is linear in their number.
+
+### 5.2 September 2026 campaign
 
 Each row names a result, the command that produces it, the committed record it comes from, and the
 value in that record. Gas values reproduce exactly; times, prices, and ETH/USD differ from run to run
@@ -122,7 +258,7 @@ value in that record. Gas values reproduce exactly; times, prices, and ETH/USD d
 tool versions, and the machine. The summary record (`script/derive_summary.py`) derives the dollar
 figures, their L1/L2 ratio, the freshness budget, and the Groth16 factor from the other records
 without network access or new measurements; it lists every input with its SHA-256 and commit, and
-the same inputs give the same file.
+the same inputs give the same file. This campaign ran on AC power.
 
 <!-- results:begin -->
 <!-- Generated by script/render_results.py from the newest record of each kind; do not edit. -->
@@ -138,7 +274,7 @@ the same inputs give the same file.
 | Peak memory | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | snarkjs 1,638.6 MB, witness generator 96.9 MB, prover 242.3 MB (medians) | ~15 min | no |
 | MPC-TLS preprocessing stalls (tlsn#1173), recovered by retry | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | 3/223 sessions (1.35%); 0 runs gave up | ~15 min | no |
 | Contract tests | `script/record_tests.sh` | `measurements/tests/20260926T212837Z.json` | 206 forge tests (Fuzz 5, Invariant 1, Unit 200), 0 failed; invariants 256 runs x depth 128 | ~10 min | no |
-| Table VI coverage (contract conditions) | `script/record_tests.sh` | `measurements/tests/20260926T212837Z.json` | 205/205 tests pass, 4/4 invariants hold; every condition has a passing positive and negative test | ~10 min | no |
+| Security-property coverage (contract conditions) | `script/record_tests.sh` | `measurements/tests/20260926T212837Z.json` | 205/205 tests pass, 4/4 invariants hold; every condition has a passing positive and negative test | ~10 min | no |
 | Coverage of contracts/src | `script/record_tests.sh` | `measurements/tests/20260926T212837Z.json` | lines 100.0%, statements 100.0%, branches 100.0%, functions 100.0% | ~10 min | no |
 | Rust tests | `script/record_tests.sh` | `measurements/tests/20260926T212837Z.json` | 114 passed, 0 failed, 3 ignored; ignored clock-shift tests under libfaketime: 6 passed | ~10 min | no |
 | On-chain execution gas per operation | `script/measure.sh` | `measurements/l1/20260926T194331Z.json` | Register 182,779, Apply 168,680, Engage 96,593, Settle 90,924, Expire 58,787, Reclaim 23,853, Cancel 21,238 | ~2 min | no |
@@ -152,7 +288,7 @@ the same inputs give the same file.
 | L1 cost per operation (execution gas at the median effective price) | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | Register $0.0658, Apply $0.0607, Engage $0.0348, Settle $0.0327, Expire $0.0212, Reclaim $0.0086, Cancel $0.0076 | ~1 s | no |
 | L1 lifecycle and deployment cost | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | execution $0.194; receipts $0.225 (without refunds $0.229); deployment $0.834 | ~1 s | no |
 | L1 lifecycle cost at other gas prices | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | 0.1 gwei $0.145, 1 gwei $1.447, 10 gwei $14.474, 30 gwei $43.421 | ~1 s | no |
-| Freshness budget, medians (Section VII-F formula) | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | local anvil t_incl: 3,333 ms (1.11% of Delta); Base Sepolia t_incl: 4,728 ms (1.58% of Delta) | ~1 s | no |
+| Freshness budget, sum of component medians (Section VII-E) | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | local anvil total: 3,333 ms (1.11% of Delta); Base Sepolia total: 4,728 ms (1.58% of Delta) | ~1 s | no |
 | On-chain Groth16 verification of phi_R (9 public inputs) | `script/measure_groth16.sh` | `measurements/groth16/20260926T201202Z.json` | 242,098 gas execution; EIP-1108 model 236,350 | ~1 min | no |
 | Lifecycle with three predicate verifications on-chain | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | 1,265,270 gas, x2.3475 (assumes phi_A, phi_S verified like phi_R) | ~1 s | no |
 | L2 receipt gas per operation (Base Sepolia) | `script/measure_l2.sh` | `measurements/l2/20260926T195911Z.json` | Register 208,227, Apply 193,736, Engage 113,137, Settle 110,636, Expire 79,991, Reclaim 40,257, Cancel 37,642 | ~4 min | yes: BASE_SEPOLIA_RPC_URL, BASE_MAINNET_RPC_URL, TESTNET_PRIVATE_KEY |
@@ -162,12 +298,13 @@ the same inputs give the same file.
 | L1 against L2 lifecycle cost (receipt gas, same ETH/USD) | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | L1 21.94x L2 | ~1 s | no |
 <!-- results:end -->
 
-`script/render_results.py` regenerates this table from the newest records; `--check` tells whether it
-is current. Both read the newest record of each kind, so a record written by your own run (for
-example by `script/e2e_register.sh` in the quick check) makes `--check` report the table as out of date. Suggested order after setup: `record_tests.sh`, `measure_offchain.sh`, `measure.sh`,
+`script/render_results.py` regenerates this table from the newest records; `--check` tells whether
+it is current. Both read the newest record of each kind, so a record written by your own run (for
+example by `script/e2e_register.sh` in the quick check) makes `--check` report the table as out of
+date. Suggested order after setup: `record_tests.sh`, `measure_offchain.sh`, `measure.sh`,
 `l1_price.sh`, `measure_groth16.sh`, `measure_l2.sh`, then `derive_summary.py` (commit each record
-before the next script, which refuses a dirty tree). `measure_groth16.sh` and `measure_l2.sh` read the
-newest L1 record; `measure_l2.sh` takes ETH/USD from the newest price record.
+before the next script, which refuses a dirty tree). `measure_groth16.sh` and `measure_l2.sh` read
+the newest L1 record; `measure_l2.sh` takes ETH/USD from the newest price record.
 
 ## 6. Measurement notes
 
@@ -175,16 +312,16 @@ newest L1 record; `measure_l2.sh` takes ETH/USD from the newest price record.
   the duration (`caffeinate -dims` in a separate terminal). Records note the power source. Run from
   a directory outside iCloud Drive; the scripts stop if an input file is evicted (dataless).
 - **Deterministic**: gas per operation, deployment gas, bytecode sizes, calldata sizes, the storage
-  decomposition, constraint count, and on-chain Groth16 gas. Receipt gas of the three operations that
-  carry a notary signature varies by a few gas with the signature (calldata zero bytes at 4 against
-  16 gas, and the verifier's recovery-parameter check, up to 20 gas); the records reconcile it.
-  MPC-TLS traffic varies by well under 1 KB per session.
+  decomposition, constraint counts, and on-chain Groth16 gas. Receipt gas of the three operations
+  that carry a notary signature varies by a few gas with the signature (calldata zero bytes at 4
+  against 16 gas, and the verifier's recovery-parameter check, up to 20 gas); the records reconcile
+  it. MPC-TLS traffic varies by well under 1 KB per session.
 - **Not deterministic**: all times (the off-chain record gives minimum, quartiles, and maximum of
-  every timing over 20 runs), the occurrence of preprocessing stalls, the
-  inclusion time on Base Sepolia, and every price. Gas prices and ETH/USD are snapshots: a new run
-  of `script/l1_price.sh` or `script/measure_l2.sh` reads other blocks and gives other dollar figures.
-  Base Sepolia fees reflect testnet demand; the L2 campaign takes only gas and bytes from it and
-  prices them with one Base mainnet block.
+  every timing over 20 runs), the occurrence of preprocessing stalls, the inclusion time on Base
+  Sepolia, and every price. Gas prices and ETH/USD are snapshots: a new run of `script/l1_price.sh`
+  or `script/measure_l2.sh` reads other blocks and gives other dollar figures. Base Sepolia fees
+  reflect testnet demand; the L2 campaign takes only gas and bytes from it and prices them with one
+  Base mainnet block.
 - **Scope of t_incl**: `script/e2e_register.sh` and `script/measure_offchain.sh` include on a local
   anvil node; the public-chain figure is the Base Sepolia one of `script/measure_l2.sh`, which is
   the time from sending a transaction until the including block can be read (Base serves
@@ -199,6 +336,25 @@ newest L1 record; `measure_l2.sh` takes ETH/USD from the newest price record.
 
 ## 7. Known issues
 
+- **Source and calendar assumptions.** The registry is a synthetic fixed-layout source, not an
+  adapter validated against an authenticated government portal; whether a real portal serves a
+  fixed-layout response, or needs parsing inside the circuit, is untested. The tenancy route is
+  available to any logged-in fixture account: phi_S binds the notation's property and tenant, and
+  the contract binds the submitting wallet, but nothing proves that the logged-in source account is
+  the landlord. The request target reveals the notation identifier to the policy verifier.
+  `utcOffsetSecs` is a fixed policy offset; a source that observes daylight saving needs an explicit
+  calendar rule. A date-only notation cannot distinguish a notation entered earlier on the
+  engagement day from one entered after engagement.
+- **Predicate domains.** The income and tenancy sources must name the applicant with the same
+  identifier; the fixtures use one `ACC-...` namespace. phi_A compares 20 zero-padded decimal digits
+  directly with three times `txData.amount`, in the unit that the policy names (`amountUnit`, wei
+  here), with no currency conversion. The policy verifier rejects `txData.amount >= 2^96` and a c_B
+  outside the BN254 scalar field. These are prototype domain bounds, not claims about every
+  real-world income format or identifier system.
+- **Not exercised end to end.** Settle after `expiresAt` (`LockWindowElapsed`) is covered by the
+  contract tests only: on a local chain the notary's clock cannot be moved past the lock window, so
+  a late submission fails the freshness check first. Expire, Reclaim, and Cancel are covered by the
+  contract tests and the September gas campaign.
 - **TLSNotary preprocessing stall.** tlsn v0.1.0-alpha.15 intermittently deadlocks in MPC-TLS
   preprocessing (upstream pull request [tlsnotary/tlsn#1173](https://github.com/tlsnotary/tlsn/pull/1173)).
   The prover bounds preprocessing to 30 s and retries with a new session up to three times; the
@@ -209,18 +365,19 @@ newest L1 record; `measure_l2.sh` takes ETH/USD from the newest price record.
   commitments of an attestation body crate-private; `pprev_notary::attested_commitments` reads them
   from the serialised body of a verified attestation. The golden test
   `g3_attestation_body_layout_matches_golden` fails if a tlsn update changes that layout.
-- **GPL-licensed verifier.** `circuits/setup/Groth16Verifier.sol` is the verifier as snarkjs exports it
-  and keeps snarkjs' GPL-3.0 header; the rest of the repository is MIT. The protocol never deploys
-  it; only `script/measure_groth16.sh` compiles it, for the on-chain comparison.
-- **The exported Groth16 verifier fails silently on low gas.** When a precompile call runs out of gas,
-  snarkjs' verifier returns `false` instead of reverting. A gas estimate therefore settles on a limit
-  at which the pairing check fails, and the transaction succeeds while verifying nothing.
+- **GPL-licensed verifiers.** `circuits/setup/Groth16Verifier.sol` and
+  `circuits/setup/phi_{a,s}/Groth16Verifier.sol` are the verifiers as snarkjs exports them and keep
+  snarkjs' GPL-3.0 header; the rest of the repository is MIT. The protocol never deploys them; they
+  are compiled only for the on-chain comparison.
+- **The exported Groth16 verifier fails silently on low gas.** When a precompile call runs out of
+  gas, snarkjs' verifier returns `false` instead of reverting. A gas estimate therefore settles on a
+  limit at which the pairing check fails, and the transaction succeeds while verifying nothing.
   `script/measure_groth16.sh` sends the verification with an explicit gas limit and checks in the
   call trace that it returned true. PPREV's own calls revert on a rejected signature, so estimation
   is sound for them.
-- **Proving key not in the repository.** The 65 MB proving key is produced by
-  `script/circuits_setup.sh`; a new setup changes the committed verification key and sample proof
-  (Section 3).
+- **Proving keys not in the repository.** The proving keys (65 MB for phi_R, 35 MB and 53 MB for
+  phi_A and phi_S) are produced by the setup scripts; a new setup changes the committed verification
+  keys and sample proofs (Section 3).
 - **Python CA bundle.** Python builds without a CA bundle of their own (python.org builds on macOS)
   fall back to `/etc/ssl/cert.pem` in `script/lib/l2_send.py`; certificate verification stays on.
 
@@ -229,18 +386,22 @@ newest L1 record; `measure_l2.sh` takes ETH/USD from the newest price record.
 ```
 contracts/          Foundry project: PPREV, ECDSA notary verifier, tests (test/), deployment and
                     measurement scripts (script/: Deploy, Lifecycle, MeasureGas, L2Campaign, GenVectors)
-circuits/           phi_R in circom (src/), Groth16 setup outputs: verification key, exported verifier,
-                    sample proof, transcript (setup/); build/ is generated
-mock-registry/      local HTTPS title registry with fixture records
-offchain/crates/    pprev-types (layout, policy bundle, circuit parameters, EIP-712 statements),
+circuits/           phi_R, phi_A, phi_S in circom (src/; lib/ holds byte, decimal, and calendar
+                    templates); setup outputs (setup/, setup/phi_a/, setup/phi_s/): verification keys,
+                    exported verifiers, sample proofs, transcripts; build/ is generated
+mock-registry/      local HTTPS title, income, and tenancy registry with fixture records
+offchain/crates/    pprev-types (response layouts, policy bundle, circuit parameters and public
+                    inputs, calendar days, EIP-712 statements),
                     pprev-notary (MPC-TLS notary, presentation checks, Groth16 verification, policy
-                    verifier, statement signature, nonce record, mock notary; binary pprev-notary),
-                    pprev-prover (login, MPC-TLS session, presentation, phi_R witness and proof,
-                    Register client; binary pprev-prover with notarize, register, submit)
-policies/           policy bundle rental-v1.json and the registry response layout
+                    verifier for Register, Apply, and Settle, statement signature, nonce record,
+                    mock notary; binary pprev-notary),
+                    pprev-prover (login, MPC-TLS session, presentations, witnesses and proofs of the
+                    three predicates, Register/Apply/Engage/Settle clients; binary pprev-prover)
+policies/           policy bundle rental-v1.json and the response layouts title-v1, income-v1,
+                    tenancy-v1
 test-vectors/       EIP-712, C_tx, and notary signature vectors shared by Solidity and Rust
-script/             circuit build and setup, end-to-end Register, measurement scripts, Table VI
-                    coverage, results table; lib/ holds the shared parts
+script/             circuit build and setup, end-to-end Register and lifecycle, measurement scripts,
+                    security-property coverage, results table; lib/ holds the shared parts
 measurements/       committed records of the measurement scripts, one JSON file per run
 ```
 
@@ -258,13 +419,14 @@ Code follows Solidity naming conventions. The table maps the paper's notation to
 | $r$ | `r` |
 | $H$ | `keccak256` |
 | $\mathsf{policyID}_R$, $\mathsf{policyID}_A$, $\mathsf{policyID}_S$ | `policyIdR`, `policyIdA`, `policyIdS` |
-| $\mathsf{PolicyRegistry}$ | `policyRegistry`, struct `Policy` |
+| $\mathsf{PolicyRegistry}$ | `policyRegistry`, struct `Policy`; off-chain, the bundle `policies/rental-v1.json` (`pprev_types::PolicyBundle`) |
 | $\mathsf{reqEscrow}$, $\mathsf{minCollateral}$, $\mathsf{maxCollateral}$ | `reqEscrow`, `minCollateral`, `maxCollateral` |
 | $\eta_R$, $\eta_A$, $\eta_S$ | `etaR`, `etaA`, `etaS` (field `eta` in the signed statements) |
 | $t_{\mathsf{att},R}$, $t_{\mathsf{att},A}$, $t_{\mathsf{att},S}$ | `tAttR`, `tAttA`, `tAttS` (field `tAtt` in the signed statements) |
 | $\sigma_R$, $\sigma_A$, $\sigma_S$ | `sigmaR`, `sigmaA`, `sigmaS` |
 | $a_\psi$ ($a_P$, $a_B$) | field `submitter` in the signed statements, fixed to `msg.sender` |
 | $c_B$ | `cB` |
+| $H_c$ | circomlib's two-input Poseidon: `Poseidon(2)` in `phi_a.circom` and `phi_s.circom`, `pprev_notary::mock::counterparty_commitment` in Rust |
 | $x_R$, $x_A$, $x_S$ | EIP-712 types `Register`, `Apply`, `Settle`; `PPREVEncoding.RegisterStatement` etc. |
 | $\mathsf{tag}_\psi$ | EIP-712 primary type of the statement |
 | $\mathsf{enc}(\mathsf{tag}_\psi, x_\psi, \mathsf{chainID}, \mathsf{addr}_{\mathsf{SC}})$ | EIP-712 digest, domain `{name: "PPREV", version: "1", chainId, verifyingContract}` |
@@ -276,19 +438,23 @@ Code follows Solidity naming conventions. The table maps the paper's notation to
 | $\mathsf{collateral}$, $\mathsf{deposit}$ | `collateral`, `deposit` |
 | $\mathsf{expiresAt}$, $\mathsf{now}$ | `expiresAt`, `block.timestamp` |
 | $\Delta$ | `DELTA` (seconds) |
-| $\tau_{\mathsf{lock}}$ | `TAU_LOCK` (seconds) |
+| $\tau_{\mathsf{lock}}$ | `TAU_LOCK` (seconds); off-chain, the notary's `--tau-lock` |
+| engagement day | `pprev_types::calendar::engagement_day`: Y·10000 + M·100 + D of `expiresAt - TAU_LOCK` in the policy's time zone |
 | $\mathsf{maxExpirations}$ | `MAX_EXPIRATIONS` |
 | $\rho$ | `RHO` (basis points) |
 | $t_{\mathsf{att},\psi}$ (source) | notary clock, attestation extension `pprev.t_att` |
 | $\mathsf{prov}_\psi$ | TLSNotary `Attestation`, shown to the policy verifier as a `Presentation` |
 | $\mathsf{record}_R$ fields committed | `account`, `owners`, `propertyId` byte ranges (`pprev_types::ResponseRanges`) |
-| $\phi_R$ | template `PhiR` in `circuits/src/phi_r.circom` |
-| $\pi_R$ | Groth16 proof (snarkjs `proof.json`), `pprev_notary::Groth16Proof` |
-| binding of $\pi_R$ to $x_R$ | public input `bind` = EIP-712 digest of $x_R$ mod $r_{\mathrm{BN254}}$ |
-| $H_c$ | circomlib's two-input Poseidon, `pprev_notary::mock::counterparty_commitment` |
+| $\mathsf{record}_A$, $\mathsf{record}_S$ fields committed | the account and every record field: `monthlyIncome`; `propertyId`, `tenant`, `recordDate` (`pprev_types::RecordRanges`) |
+| $\phi_R$, $\phi_A$, $\phi_S$ | templates `PhiR`, `PhiA`, `PhiS` in `circuits/src/phi_r.circom`, `phi_a.circom`, `phi_s.circom` |
+| $\phi_A$, $\phi_S$ checked natively | `pprev_notary::mock::MockNotary::sign_apply`, `sign_settle` (unit tests only) |
+| $\pi_\psi$ | Groth16 proof (snarkjs `proof.json`), `pprev_notary::Groth16Proof` |
+| binding of $\pi_\psi$ to $x_\psi$ | public input `bind` = EIP-712 digest of $x_\psi$ mod $r_{\mathrm{BN254}}$ |
 | $\mathsf{sk}_{\mathsf{notary}}$ | `pprev_notary::StatementKey` |
-| nonces the notary has signed | `pprev_notary::NonceStore` (append-only file) |
-| policy verifier | `pprev_notary::PolicyVerifier` (Register) |
-| $\phi_A$, $\phi_S$ (mock) | `pprev_notary::mock::MockNotary::sign_apply`, `sign_settle` |
+| nonces the notary has signed | `pprev_notary::NonceStore` (append-only file, shared by all phases) |
+| policy verifier | `pprev_notary::PolicyVerifier` (Register in `register.rs`, Apply and Settle in `phases.rs`) |
 
-Undeliverable payouts: every payout made by an algorithm forwards `PAYOUT_GAS` (30,000) gas and copies
+Undeliverable payouts: every payout made by an algorithm forwards `PAYOUT_GAS` (30,000) gas. If the
+recipient's call fails, the contract credits the amount to `credit[recipient]` and emits
+`PayoutCredited`; the recipient collects it with `withdraw()`, so a recipient that rejects payments
+cannot block the algorithm that pays it.

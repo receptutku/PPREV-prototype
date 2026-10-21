@@ -2,7 +2,7 @@
   "circuit": "main_title_v1",
   "r1csSha256": "69268a65d4e44efdf35f42df2a9ba1db27eb31b571475dc252dc20c4b2b9c8e3",
   "phase1": {
-    "source": "PSE perpetual powers of tau, 80 contributions",
+    "source": "PSE perpetual powers of tau, branch ending at contribution 0080",
     "url": "https://pse-trusted-setup-ppot.s3.eu-central-1.amazonaws.com/pot28_0080/ppot_0080_17.ptau",
     "sha256": "f807e065fde53f72f4bf4d57140fab85b26daa6cc95bdfec7cce93622b3a367c",
     "snarkjsVerify": "Powers of Tau Ok!"

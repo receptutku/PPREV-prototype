@@ -21,7 +21,7 @@ use tlsn::verifier::ServerCertVerifier;
 use tlsn::webpki::{CertificateDer, RootCertStore};
 
 use crate::chain::{self, RegisterPayload, SubmitOutcome};
-use crate::circuit::{CircuitFiles, PhiRInput, Unsatisfied, prove, public_of};
+use crate::circuit::{CircuitFiles, PhiRInput, Unsatisfied, prove, public_of, read_borrowed_proof};
 use crate::counting::{ByteCounts, CountingStream, Traffic};
 use crate::session::{ProverSetup, notarize_with_retries, present};
 
@@ -193,7 +193,7 @@ pub struct RegisterRecord {
     pub t_att: u64,
     pub notarization: Notarization,
     pub witness: Witness,
-    /// `own`, or the path of the borrowed proof.
+    /// `own`, or `borrowed:sha256:<digest>` of the borrowed proof file.
     pub proof_source: String,
     pub timings: Timings,
     pub resources: Resources,
@@ -387,8 +387,9 @@ pub async fn run(config: &RegisterConfig) -> Result<RegisterRecord> {
     };
     let proof_json = match &config.proof_from {
         Some(path) => {
-            record.proof_source = path.display().to_string();
-            std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?
+            let (json, source) = read_borrowed_proof(path)?;
+            record.proof_source = source;
+            json
         }
         None => proof_json,
     };
@@ -397,7 +398,7 @@ pub async fn run(config: &RegisterConfig) -> Result<RegisterRecord> {
     let started = Instant::now();
     let reply = submit_to_verifier(
         config.verifier,
-        &RegisterSubmission::new(presentation, config.property.clone(), &x, proof_json),
+        RegisterSubmission::new(presentation, config.property.clone(), &x, proof_json),
     )
     .await?;
     record.timings.verifier_round_trip_ms = Some(millis(started));

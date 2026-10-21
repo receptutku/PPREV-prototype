@@ -1,0 +1,273 @@
+{
+  "scope": "Independent witness generation and R1CS checks only; not TLS or verifier integration.",
+  "scriptSha256": "baa68af89c6e1312f517a5191a1c25680318c116fe32322e9848d49f3456f19c",
+  "sourceUnchanged": true,
+  "baselineSha256": {
+    "circuits/setup/phi_a/sample/input.json": "ffc16025246f920622a6429b9ac8d92635340b3b29c18625e83d5022d6423ba2",
+    "circuits/setup/phi_s/sample/input.json": "9c0999c099f62cdd863bfb9521fb9c1514fc19234a730e50a48ce4b01b7b810d"
+  },
+  "artifactSha256": {
+    "circuits/build/main_income_v1_js/main_income_v1.wasm": "0d951466432820e1f29feb38f241a1aa95cd85a39430f5839094bb803ed5beb5",
+    "circuits/build/main_income_v1_js/generate_witness.js": "4995a2e6b01432f76182abec6a831fdaf7f840384035072002ccaa43101b14d4",
+    "circuits/build/main_income_v1.r1cs": "10fd7a35a2d344b6e7f35e70d88036680da864d80b14a0370efe548333824ed0",
+    "circuits/build/main_tenancy_v1_js/main_tenancy_v1.wasm": "e50cba3d3dc51749d22160b419f4e311b434971c7ea9c0b8f3881bb74031a21c",
+    "circuits/build/main_tenancy_v1_js/generate_witness.js": "4995a2e6b01432f76182abec6a831fdaf7f840384035072002ccaa43101b14d4",
+    "circuits/build/main_tenancy_v1.r1cs": "73741d474e0052e8edaeb0b7ecb230786538e7dda92cfaee21f7f3bbdc1ca0a4"
+  },
+  "cases": [
+    {
+      "phase": "a",
+      "case": "baseline",
+      "expectedAccepted": true,
+      "observedAccepted": true,
+      "pass": true,
+      "generatorExit": 0,
+      "r1csCheckExit": 0
+    },
+    {
+      "phase": "a",
+      "case": "income_exact_threshold",
+      "expectedAccepted": true,
+      "observedAccepted": true,
+      "pass": true,
+      "generatorExit": 0,
+      "r1csCheckExit": 0
+    },
+    {
+      "phase": "a",
+      "case": "income_below_threshold",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "a",
+      "case": "income_max_twenty_digits",
+      "expectedAccepted": true,
+      "observedAccepted": true,
+      "pass": true,
+      "generatorExit": 0,
+      "r1csCheckExit": 0
+    },
+    {
+      "phase": "a",
+      "case": "income_nondigit",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "a",
+      "case": "amount_exceeds_96_bits",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "a",
+      "case": "changed_commitment",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "a",
+      "case": "changed_salt",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "a",
+      "case": "different_authenticated_account",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "s",
+      "case": "baseline",
+      "expectedAccepted": true,
+      "observedAccepted": true,
+      "pass": true,
+      "generatorExit": 0,
+      "r1csCheckExit": 0
+    },
+    {
+      "phase": "s",
+      "case": "same_day",
+      "expectedAccepted": true,
+      "observedAccepted": true,
+      "pass": true,
+      "generatorExit": 0,
+      "r1csCheckExit": 0
+    },
+    {
+      "phase": "s",
+      "case": "later_day",
+      "expectedAccepted": true,
+      "observedAccepted": true,
+      "pass": true,
+      "generatorExit": 0,
+      "r1csCheckExit": 0
+    },
+    {
+      "phase": "s",
+      "case": "earlier_day",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "s",
+      "case": "valid_century_leap_day",
+      "expectedAccepted": true,
+      "observedAccepted": true,
+      "pass": true,
+      "generatorExit": 0,
+      "r1csCheckExit": 0
+    },
+    {
+      "phase": "s",
+      "case": "invalid_century_leap_day",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "s",
+      "case": "valid_leap_day",
+      "expectedAccepted": true,
+      "observedAccepted": true,
+      "pass": true,
+      "generatorExit": 0,
+      "r1csCheckExit": 0
+    },
+    {
+      "phase": "s",
+      "case": "invalid_nonleap_day",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "s",
+      "case": "invalid_april_day",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "s",
+      "case": "zero_month",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "s",
+      "case": "month_thirteen",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "s",
+      "case": "zero_day",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "s",
+      "case": "signed_month",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "s",
+      "case": "wrong_separator",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "s",
+      "case": "different_authenticated_property",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "s",
+      "case": "different_authenticated_tenant",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "s",
+      "case": "changed_commitment",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "s",
+      "case": "changed_salt",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    },
+    {
+      "phase": "s",
+      "case": "engagement_day_exceeds_27_bits",
+      "expectedAccepted": false,
+      "observedAccepted": false,
+      "pass": true,
+      "generatorExit": 1,
+      "r1csCheckExit": null
+    }
+  ],
+  "passed": 28,
+  "total": 28
+}

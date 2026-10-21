@@ -3,6 +3,7 @@
 #
 #   init_run <kind>      RUN_ID, WORK=target/<kind>/<run>
 #   preflight            tools, pinned Node.js, circuit artifacts checked against setup.json
+#   preflight_phases     phi_A and phi_S artifacts checked against their setup.json
 #   build_all            release binaries and contracts
 #   start_stack          anvil, deployment, mock registry, notary (sets RPC, PPREV_ADDRESS, ...)
 #   require_clean_tree   refuses a dirty working tree unless PPREV_ALLOW_DIRTY=1
@@ -26,6 +27,8 @@ RPC="http://127.0.0.1:${ANVIL_PORT:?}"
 # Local chains follow the Osaka (Fusaka) schedule; anvil's default fork can move with its version.
 HARDFORK_PIN=osaka
 POLICY="policies/rental-v1.json"
+# Fixtures of the mock registry; a script may point this at a copy with run-time dates.
+REGISTRY_FIXTURES="${REGISTRY_FIXTURES:-mock-registry/fixtures/records.json}"
 WORK=""
 
 log() { printf '[%s] %s\n' "${LOG_TAG:-pprev}" "$*" >&2; }
@@ -98,6 +101,25 @@ preflight() {
     VK_SHA256="$(shasum -a 256 "${CIRCUITS}/setup/verification_key.json" | cut -d' ' -f1)"
     [ "${VK_SHA256}" = "$(jq -r .verificationKeySha256 "${CIRCUITS}/setup/setup.json")" ] \
         || die "verification_key.json does not match circuits/setup/setup.json"
+}
+
+# phi_A and phi_S: compiled circuits and keys of script/circuits_build_as.sh and
+# script/circuits_setup_as.sh, checked against their transcripts.
+preflight_phases() {
+    local p circuit sha
+    for p in phi_a:main_income_v1 phi_s:main_tenancy_v1; do
+        circuit="${p#*:}"
+        p="${p%%:*}"
+        [ -f "${CIRCUITS}/build/${circuit}_js/${circuit}.wasm" ] \
+            || die "${p} not built; run script/circuits_build_as.sh"
+        [ -f "${CIRCUITS}/build/${p}.zkey" ] || die "${p} proving key missing; run script/circuits_setup_as.sh"
+        sha="$(shasum -a 256 "${CIRCUITS}/build/${p}.zkey" | cut -d' ' -f1)"
+        [ "${sha}" = "$(jq -r .zkeySha256 "${CIRCUITS}/setup/${p}/setup.json")" ] \
+            || die "${p}.zkey does not match circuits/setup/${p}/setup.json"
+        sha="$(shasum -a 256 "${CIRCUITS}/setup/${p}/verification_key.json" | cut -d' ' -f1)"
+        [ "${sha}" = "$(jq -r .verificationKeySha256 "${CIRCUITS}/setup/${p}/setup.json")" ] \
+            || die "circuits/setup/${p}/verification_key.json does not match its setup.json"
+    done
 }
 
 build_all() {
@@ -204,8 +226,10 @@ wait_port() {
 # ------------------------------------------------------------------ local stack
 
 # Starts anvil, deploys EcdsaNotaryVerifier and PPREV with the D18 parameters and the rental-v1
-# bundle, and starts the mock registry and the notary with keys generated for this run. Sets RPC,
-# PPREV_ADDRESS, VERIFIER_ADDRESS, VK_NOTARY, DELTA, and account<i>.key files (anvil accounts 0-2).
+# bundle, and starts the mock registry (title, eligibility, and tenancy sources) and the notary with
+# keys generated for this run. The notary takes tau_lock from the deployed contract, so the
+# engagement day of phi_S follows the deployment. Sets RPC, PPREV_ADDRESS, VERIFIER_ADDRESS,
+# VK_NOTARY, DELTA, TAU_LOCK, and account<i>.key files (anvil accounts 0-2).
 start_stack() {
     local i
     openssl rand -hex 32 >"${WORK}/attestation.key"
@@ -228,20 +252,24 @@ start_stack() {
     VERIFIER_ADDRESS="$(deployed_address EcdsaNotaryVerifier)"
     [ "${PPREV_ADDRESS}" != null ] && [ "${VERIFIER_ADDRESS}" != null ] || die "deployment addresses not found"
     DELTA="$(cast call "${PPREV_ADDRESS}" "DELTA()(uint256)" --rpc-url "${RPC}")"
+    # cast prints large numbers with a scientific suffix: "1209600 [1.209e6]".
+    TAU_LOCK="$(cast call "${PPREV_ADDRESS}" "TAU_LOCK()(uint256)" --rpc-url "${RPC}" | cut -d' ' -f1)"
     [ "$(cast call "${VERIFIER_ADDRESS}" "VK_NOTARY()(address)" --rpc-url "${RPC}")" = "${VK_NOTARY}" ] \
         || die "the verifier does not hold vk_notary"
-    log "PPREV ${PPREV_ADDRESS}, EcdsaNotaryVerifier ${VERIFIER_ADDRESS}, Delta ${DELTA} s"
+    log "PPREV ${PPREV_ADDRESS}, EcdsaNotaryVerifier ${VERIFIER_ADDRESS}, Delta ${DELTA} s, tau_lock ${TAU_LOCK} s"
 
     cd "${ROOT:?}"
     start mock-registry "${WORK}/registry.log" "${BIN}/mock-registry" \
-        --bind "127.0.0.1:${REGISTRY_PORT}" --ca-out "${WORK}/registry-ca.der"
+        --bind "127.0.0.1:${REGISTRY_PORT}" --ca-out "${WORK}/registry-ca.der" \
+        --fixtures "${REGISTRY_FIXTURES}" \
+        --income-layout policies/layouts/income-v1.json --tenancy-layout policies/layouts/tenancy-v1.json
     wait_port "${REGISTRY_PORT}" mock-registry "${PIDS[${#PIDS[@]} - 1]}"
 
     start pprev-notary "${WORK}/notary.log" "${BIN}/pprev-notary" \
         --mpc-bind "127.0.0.1:${MPC_PORT}" --verifier-bind "127.0.0.1:${VERIFIER_PORT}" \
         --registry-ca "${WORK}/registry-ca.der" --policy "${POLICY}" --root "${ROOT}" \
         --attestation-key "${WORK}/attestation.key" --statement-key "${WORK}/statement.key" \
-        --chain-id "${CHAIN_ID}" --contract "${PPREV_ADDRESS}" \
+        --chain-id "${CHAIN_ID}" --contract "${PPREV_ADDRESS}" --tau-lock "${TAU_LOCK}" \
         --nonces "${WORK}/nonces.log" --log "${WORK}/notary-events.jsonl"
     wait_port "${MPC_PORT}" pprev-notary "${PIDS[${#PIDS[@]} - 1]}"
     wait_port "${VERIFIER_PORT}" pprev-notary "${PIDS[${#PIDS[@]} - 1]}"

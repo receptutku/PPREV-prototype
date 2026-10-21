@@ -1,0 +1,18 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+   Compiling pprev-prover v0.1.0 (offchain/crates/pprev-prover)
+    Finished `release` profile [optimized + debuginfo] target(s) in 12.12s
+     Running tests/time.rs (target/release/deps/time-90609bbbcf533a96)
+
+running 6 tests
+test rejects_a_gap_above_the_session_bound_and_the_bound_is_configurable ... ok
+test prover_clock_plus_10s_is_rejected_by_tlsn ... ok
+test t_att_is_the_notary_clock ... ok
+test rejects_t_att_before_the_connection_time ... ok
+test prover_clock_plus_3s_is_accepted_and_t_att_is_the_notary_clock ... ok
+test prover_clock_minus_3s_is_accepted_and_t_att_is_the_notary_clock ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.31s
+

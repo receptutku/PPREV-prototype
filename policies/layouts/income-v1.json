@@ -1,0 +1,10 @@
+{
+  "id": "income-v1",
+  "serverName": "registry.pprev.test",
+  "pathPrefix": "/income",
+  "statusLine": "HTTP/1.1 200 OK",
+  "contentType": "application/json",
+  "padding": " ",
+  "accountWidth": 16,
+  "fields": [{ "key": "monthlyIncome", "width": 20 }]
+}

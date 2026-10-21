@@ -19,5 +19,35 @@
       "assessedValue": "000000030750000",
       "recordDate": "2025-11-03"
     }
+  ],
+  "incomes": [
+    { "account": "ACC-000000000002", "monthlyIncome": "02900000000000000000" },
+    { "account": "ACC-000000000003", "monthlyIncome": "03500000000000000000" }
+  ],
+  "tenancies": [
+    {
+      "id": "N-0001",
+      "propertyId": "TR-06-CANKAYA-000123",
+      "tenant": "ACC-000000000003",
+      "recordDate": "2026-10-21"
+    },
+    {
+      "id": "N-0002",
+      "propertyId": "TR-06-CANKAYA-000123",
+      "tenant": "ACC-000000000003",
+      "recordDate": "2025-01-15"
+    },
+    {
+      "id": "N-0003",
+      "propertyId": "TR-34-KADIKOY-004567",
+      "tenant": "ACC-000000000003",
+      "recordDate": "2026-10-21"
+    },
+    {
+      "id": "N-0004",
+      "propertyId": "TR-06-CANKAYA-000123",
+      "tenant": "ACC-000000000002",
+      "recordDate": "2026-10-21"
+    }
   ]
 }

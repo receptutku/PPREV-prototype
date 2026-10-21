@@ -5,8 +5,8 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use mock_registry::{Fixtures, RunningRegistry};
-use pprev_types::Layout;
+use mock_registry::{Fixtures, PhaseLayouts, RunningRegistry};
+use pprev_types::{Layout, RecordLayout};
 use rustls::crypto::ring as ring_provider;
 use rustls_pki_types::{CertificateDer, ServerName};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -215,4 +215,121 @@ async fn every_title_response_follows_the_layout() {
         }
     }
     assert_eq!(registry.registry.sent_log(), expected_log);
+}
+
+// Apply and Settle sources -------------------------------------------------------------------
+
+fn record_layout(name: &str) -> RecordLayout {
+    RecordLayout::load(workspace_path(&format!("policies/layouts/{name}.json"))).unwrap()
+}
+
+async fn start_with_phases() -> RunningRegistry {
+    RunningRegistry::start_with_phases(
+        layout(),
+        PhaseLayouts {
+            income: Some(record_layout("income-v1")),
+            tenancy: Some(record_layout("tenancy-v1")),
+        },
+        fixtures(),
+        "127.0.0.1:0",
+    )
+    .await
+    .unwrap()
+}
+
+async fn get(registry: &RunningRegistry, target: &str, token: Option<&str>) -> Vec<u8> {
+    let auth = token
+        .map(|t| format!("Authorization: Bearer {t}\r\n"))
+        .unwrap_or_default();
+    let request = format!(
+        "GET {target} HTTP/1.1\r\nHost: registry.pprev.test\r\n{auth}Connection: close\r\n\r\n"
+    );
+    let config = client_config(&registry.certs.ca_der, &[&rustls::version::TLS12]);
+    exchange(registry.addr, config, &request).await.unwrap().0
+}
+
+#[tokio::test]
+async fn income_is_the_record_of_the_logged_in_account() {
+    let registry = start_with_phases().await;
+    let income = record_layout("income-v1");
+    assert!(
+        get(&registry, "/income", None)
+            .await
+            .starts_with(b"HTTP/1.1 401 ")
+    );
+    let token = login(&registry, "ACC-000000000003", "tenant").await;
+    let response = get(&registry, "/income", Some(&token)).await;
+    let expected = income
+        .render_response("ACC-000000000003", &["03500000000000000000"])
+        .unwrap();
+    assert_eq!(response, expected.bytes);
+    // An account without an eligibility record.
+    let token = login(&registry, "ACC-000000000001", "owner-one").await;
+    assert!(
+        get(&registry, "/income", Some(&token))
+            .await
+            .starts_with(b"HTTP/1.1 404 ")
+    );
+}
+
+#[tokio::test]
+async fn tenancy_notations_follow_the_layout_for_any_account() {
+    let registry = start_with_phases().await;
+    let tenancy = record_layout("tenancy-v1");
+    let token = login(&registry, "ACC-000000000001", "owner-one").await;
+    let response = get(&registry, "/tenancy/N-0003", Some(&token)).await;
+    let expected = tenancy
+        .render_response(
+            "ACC-000000000001",
+            &["TR-34-KADIKOY-004567", "ACC-000000000003", "2026-10-21"],
+        )
+        .unwrap();
+    assert_eq!(response, expected.bytes);
+    assert_eq!(response.len(), tenancy.ranges().unwrap().len);
+    assert!(
+        get(&registry, "/tenancy/N-9999", Some(&token))
+            .await
+            .starts_with(b"HTTP/1.1 404 ")
+    );
+    assert!(
+        get(&registry, "/tenancy/N-0001", None)
+            .await
+            .starts_with(b"HTTP/1.1 401 ")
+    );
+    // The title route is unchanged.
+    let title = get(&registry, "/title/TR-06-CANKAYA-000123", Some(&token)).await;
+    assert!(title.starts_with(b"HTTP/1.1 200 OK"));
+}
+
+#[tokio::test]
+async fn without_phase_layouts_the_phase_routes_are_not_served() {
+    let registry = start().await;
+    let token = login(&registry, "ACC-000000000003", "tenant").await;
+    assert!(
+        get(&registry, "/income", Some(&token))
+            .await
+            .starts_with(b"HTTP/1.1 404 ")
+    );
+    assert!(
+        get(&registry, "/tenancy/N-0001", Some(&token))
+            .await
+            .starts_with(b"HTTP/1.1 404 ")
+    );
+}
+
+#[tokio::test]
+async fn phase_layouts_must_name_the_registry_server() {
+    let mut other = record_layout("income-v1");
+    other.server_name = "payroll.pprev.test".into();
+    let result = RunningRegistry::start_with_phases(
+        layout(),
+        PhaseLayouts {
+            income: Some(other),
+            tenancy: None,
+        },
+        fixtures(),
+        "127.0.0.1:0",
+    )
+    .await;
+    assert!(result.is_err());
 }

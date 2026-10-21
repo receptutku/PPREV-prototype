@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Groth16 setup for phi_R (D31, D32).
 #
-# Phase 1: the PSE perpetual powers of tau file ppot_0080_17.ptau (80 contributions, up to 2^17
+# Phase 1: the PSE perpetual powers of tau file ppot_0080_17.ptau (ending at contribution 0080, up to 2^17
 # constraints), fetched once into a cache outside the repository and checked against its pinned
 # SHA-256 and with `snarkjs powersoftau verify`.
 #
@@ -142,7 +142,7 @@ transcript = {
     "circuit": "main_title_v1",
     "r1csSha256": sha256(f"{circuits}/build/main_title_v1.r1cs"),
     "phase1": {
-        "source": "PSE perpetual powers of tau, 80 contributions",
+        "source": "PSE perpetual powers of tau, branch ending at contribution 0080",
         "url": ptau_url,
         "sha256": sha256(ptau),
         "snarkjsVerify": "Powers of Tau Ok!",

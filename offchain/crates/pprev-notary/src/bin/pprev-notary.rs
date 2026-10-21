@@ -1,8 +1,8 @@
 //! The notary and policy verifier as one process (D2): an MPC-TLS listener that notarises sessions
-//! and returns attestations, and a policy-verifier listener that answers Register submissions with
-//! sigma_R (Section V-B, steps (b) and (d)).
+//! and returns attestations, and a policy-verifier listener that answers Register, Apply, and Settle
+//! submissions with sigma_psi (Section V-B, steps (b) and (d)).
 //!
-//! Every session and every Register request is appended as one JSON line to `--log`.
+//! Every session and every request is appended as one JSON line to `--log`.
 
 use std::collections::HashMap;
 use std::io::Write;
@@ -14,13 +14,14 @@ use std::time::{Duration, Instant};
 use alloy_primitives::Address;
 use anyhow::{Context, Result, ensure};
 use clap::Parser;
-use pprev_notary::wire::{RegisterReply, RegisterSubmission, read_message, write_message};
+use pprev_notary::phases::{ApplyPolicy, SettlePolicy};
+use pprev_notary::wire::{RegisterReply, Submission, read_message, write_message};
 use pprev_notary::{
     DEFAULT_MAX_SESSION_SECS, DEFAULT_PREPROCESS_TIMEOUT, DEFAULT_SESSION_TIMEOUT, Groth16Verifier,
     NonceStore, NotaryConfig, PolicyVerifier, RegisterPolicy, SessionCut, StatementKey,
 };
 use pprev_types::statement::domain;
-use pprev_types::{Layout, PolicyBundle};
+use pprev_types::{Layout, PolicyBundle, RecordLayout};
 use serde_json::{Value, json};
 use tlsn::attestation::signing::{Secp256k1Signer, Signer};
 use tokio::net::TcpListener;
@@ -36,7 +37,8 @@ struct Args {
     /// Registry CA certificate (DER), trusted for the server identity.
     #[arg(long)]
     registry_ca: PathBuf,
-    /// Register policy bundles this notary serves; paths inside are relative to `--root`.
+    /// Policy bundles this notary serves; paths inside are relative to `--root`. A bundle's Apply and
+    /// Settle sources are served when it names them.
     #[arg(long, required = true)]
     policy: Vec<PathBuf>,
     /// Repository root.
@@ -53,6 +55,10 @@ struct Args {
     chain_id: u64,
     #[arg(long)]
     contract: Address,
+    /// The deployment's lock window tau_lock, in seconds; it fixes the engagement day of phi_S.
+    /// Required when a bundle has a Settle source; it must equal the contract's TAU_LOCK.
+    #[arg(long)]
+    tau_lock: Option<u64>,
     /// Nonce record (D20).
     #[arg(long)]
     nonces: PathBuf,
@@ -112,15 +118,60 @@ fn millis(since: Instant) -> f64 {
     since.elapsed().as_secs_f64() * 1000.0
 }
 
-fn load_policies(args: &Args) -> Result<HashMap<alloy_primitives::B256, RegisterPolicy>> {
+fn load_verifier(args: &Args, path: &Path) -> Result<Groth16Verifier> {
+    let vk_path = args.root.join(path);
+    let vk = std::fs::read_to_string(&vk_path)
+        .with_context(|| format!("reading {}", vk_path.display()))?;
+    Groth16Verifier::from_snarkjs_json(&vk)
+}
+
+type Policies<P> = HashMap<alloy_primitives::B256, P>;
+
+/// Register, Apply, and Settle policies of every bundle, each keyed by its own identifier.
+fn load_policies(
+    args: &Args,
+) -> Result<(
+    Policies<RegisterPolicy>,
+    Policies<ApplyPolicy>,
+    Policies<SettlePolicy>,
+)> {
     let mut policies = HashMap::new();
+    let mut apply = HashMap::new();
+    let mut settle = HashMap::new();
     for path in &args.policy {
         let bundle = PolicyBundle::load(path)?;
+        if let Some(source) = &bundle.apply {
+            let policy = ApplyPolicy {
+                layout: RecordLayout::load(args.root.join(&source.layout))?,
+                verifier: load_verifier(args, &source.verification_key)?,
+            };
+            ensure!(
+                apply.insert(bundle.policy_id_a(), policy).is_none(),
+                "Apply policy {} is listed twice",
+                bundle.policy_id_a()
+            );
+            println!("policy {}: policyID_A {}", bundle.id, bundle.policy_id_a());
+        }
+        if let Some(source) = &bundle.settle {
+            ensure!(
+                args.tau_lock.is_some(),
+                "policy {} has a Settle source; --tau-lock is required",
+                bundle.id
+            );
+            let policy = SettlePolicy {
+                layout: RecordLayout::load(args.root.join(&source.layout))?,
+                verifier: load_verifier(args, &source.verification_key)?,
+                utc_offset_secs: source.utc_offset_secs,
+            };
+            ensure!(
+                settle.insert(bundle.policy_id_s(), policy).is_none(),
+                "Settle policy {} is listed twice",
+                bundle.policy_id_s()
+            );
+            println!("policy {}: policyID_S {}", bundle.id, bundle.policy_id_s());
+        }
         let layout = Layout::load(args.root.join(&bundle.register.layout))?;
-        let vk_path = args.root.join(&bundle.register.verification_key);
-        let vk = std::fs::read_to_string(&vk_path)
-            .with_context(|| format!("reading {}", vk_path.display()))?;
-        let verifier = Groth16Verifier::from_snarkjs_json(&vk)?;
+        let verifier = load_verifier(args, &bundle.register.verification_key)?;
         ensure!(
             policies
                 .insert(bundle.policy_id_r(), RegisterPolicy { layout, verifier })
@@ -130,7 +181,7 @@ fn load_policies(args: &Args) -> Result<HashMap<alloy_primitives::B256, Register
         );
         println!("policy {}: policyID_R {}", bundle.id, bundle.policy_id_r());
     }
-    Ok(policies)
+    Ok((policies, apply, settle))
 }
 
 async fn serve_mpc(listener: TcpListener, config: NotaryConfig, log: EventLog) -> Result<()> {
@@ -170,24 +221,43 @@ async fn serve_verifier(
         let (verifier, log) = (verifier.clone(), log.clone());
         tokio::spawn(async move {
             let (reader, writer) = socket.into_split();
-            let reply = match read_message::<RegisterSubmission>(reader).await {
-                Ok(submission) => tokio::task::spawn_blocking(move || {
-                    let started = Instant::now();
-                    let request = submission.into_request()?;
-                    let decode_ms = millis(started);
-                    let (sigma, timings) = verifier
-                        .lock()
-                        .expect("policy verifier lock")
-                        .sign_register_timed(request)?;
-                    anyhow::Ok(RegisterReply::Signed {
-                        sigma: sigma.to_vec(),
-                        decode_ms,
-                        timings,
+            let mut phase = "unknown";
+            let reply = match read_message::<Submission>(reader).await {
+                Ok(submission) => {
+                    phase = submission.phase();
+                    tokio::task::spawn_blocking(move || {
+                        let started = Instant::now();
+                        let mut verifier = verifier.lock().expect("policy verifier lock");
+                        let (sigma, timings, decode_ms) = match submission {
+                            Submission::Register(s) => {
+                                let request = s.into_request()?;
+                                let decode_ms = millis(started);
+                                let (sigma, timings) = verifier.sign_register_timed(request)?;
+                                (sigma, timings, decode_ms)
+                            }
+                            Submission::Apply(s) => {
+                                let request = s.into_request()?;
+                                let decode_ms = millis(started);
+                                let (sigma, timings) = verifier.sign_apply_timed(request)?;
+                                (sigma, timings, decode_ms)
+                            }
+                            Submission::Settle(s) => {
+                                let request = s.into_request()?;
+                                let decode_ms = millis(started);
+                                let (sigma, timings) = verifier.sign_settle_timed(request)?;
+                                (sigma, timings, decode_ms)
+                            }
+                        };
+                        anyhow::Ok(RegisterReply::Signed {
+                            sigma: sigma.to_vec(),
+                            decode_ms,
+                            timings,
+                        })
                     })
-                })
-                .await
-                .map_err(anyhow::Error::from)
-                .and_then(|r| r),
+                    .await
+                    .map_err(anyhow::Error::from)
+                    .and_then(|r| r)
+                }
                 Err(e) => Err(e),
             }
             .unwrap_or_else(|e| RegisterReply::Refused {
@@ -197,18 +267,18 @@ async fn serve_verifier(
                 RegisterReply::Signed {
                     decode_ms, timings, ..
                 } => json!({
-                    "event": "register",
+                    "event": phase,
                     "outcome": "signed",
                     "decodeMs": decode_ms,
                     "timings": timings,
                 }),
                 RegisterReply::Refused { reason } => json!({
-                    "event": "register",
+                    "event": phase,
                     "outcome": "refused",
                     "reason": reason,
                 }),
             };
-            tracing::info!(%peer, %event, "register request");
+            tracing::info!(%peer, %event, "policy-verifier request");
             log.write(event);
             if let Err(e) = write_message(writer, &reply).await {
                 tracing::warn!(%peer, "writing the reply: {e:#}");
@@ -238,15 +308,17 @@ async fn main() -> Result<()> {
     config.preprocess_timeout = Duration::from_secs(args.preprocess_timeout_secs);
     config.session_timeout = Duration::from_secs(args.session_timeout_secs);
 
+    let (register, apply, settle) = load_policies(&args)?;
     let verifier = PolicyVerifier::new(
-        load_policies(&args)?,
+        register,
         Secp256k1Signer::new(&attestation_key)?.verifying_key(),
         vec![ca],
         args.max_session_secs,
         statement_key,
         domain(args.chain_id, args.contract),
         NonceStore::open(&args.nonces)?,
-    );
+    )
+    .with_phases(apply, settle, args.tau_lock);
     let log = EventLog::open(&args.log)?;
 
     let mpc = TcpListener::bind(args.mpc_bind).await?;

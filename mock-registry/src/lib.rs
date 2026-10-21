@@ -1,15 +1,18 @@
-//! Local HTTPS title registry with a fixed-layout response (D4).
+//! Local HTTPS registry with fixed-layout responses (D4).
 //!
 //! `POST /login` exchanges account credentials for a bearer token; `GET /title/{propertyId}` returns
 //! the title record, rendered by [`pprev_types::Layout`], together with the identifier of the
-//! account that asked. TLS is restricted to what TLSNotary's MPC mode handles: TLS 1.2,
+//! account that asked. With the Apply and Settle layouts, the registry also serves the sources of
+//! phi_A and phi_S, rendered by [`pprev_types::RecordLayout`]: `GET /income` returns the eligibility
+//! record of the logged-in account, and `GET /tenancy/{notationId}` returns a tenancy notation. TLS
+//! is restricted to what TLSNotary's MPC mode handles: TLS 1.2,
 //! `TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256`, ECDHE over secp256r1.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result, anyhow, bail};
-use pprev_types::{Layout, TitleRecord};
+use pprev_types::{Layout, RecordLayout, TitleRecord};
 use rand::RngCore;
 use rcgen::{
     BasicConstraints, CertificateParams, CertifiedIssuer, DnType, ExtendedKeyUsagePurpose, IsCa,
@@ -33,11 +36,41 @@ pub struct Account {
     pub password: String,
 }
 
+/// The eligibility record of one account: the source of phi_A.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct IncomeRecord {
+    pub account: String,
+    /// Zero-padded decimal digits, in the denomination and scale the policy fixes.
+    pub monthly_income: String,
+}
+
+/// A tenancy notation: the source of phi_S.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TenancyNotation {
+    pub id: String,
+    pub property_id: String,
+    pub tenant: String,
+    /// `YYYY-MM-DD` in the registry's time zone.
+    pub record_date: String,
+}
+
+impl TenancyNotation {
+    fn values(&self) -> [&str; 3] {
+        [&self.property_id, &self.tenant, &self.record_date]
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Fixtures {
     pub accounts: Vec<Account>,
     pub records: Vec<TitleRecord>,
+    #[serde(default)]
+    pub incomes: Vec<IncomeRecord>,
+    #[serde(default)]
+    pub tenancies: Vec<TenancyNotation>,
 }
 
 impl Fixtures {
@@ -102,9 +135,17 @@ pub fn tls_config(certs: &Certs) -> Result<Arc<ServerConfig>> {
     Ok(Arc::new(config))
 }
 
-/// Registry state: fixtures, issued tokens, and the log of title responses sent.
+/// Layouts of the Apply and Settle sources, when the registry serves them.
+#[derive(Clone, Debug, Default)]
+pub struct PhaseLayouts {
+    pub income: Option<RecordLayout>,
+    pub tenancy: Option<RecordLayout>,
+}
+
+/// Registry state: fixtures, issued tokens, and the log of record responses sent.
 pub struct Registry {
     layout: Layout,
+    phases: PhaseLayouts,
     fixtures: Fixtures,
     tokens: Mutex<HashMap<String, String>>,
     sent: Mutex<Vec<Vec<u8>>>,
@@ -112,14 +153,31 @@ pub struct Registry {
 
 impl Registry {
     pub fn new(layout: Layout, fixtures: Fixtures) -> Result<Self> {
-        // Every record must render under the layout before the registry serves anything.
+        Self::with_phases(layout, PhaseLayouts::default(), fixtures)
+    }
+
+    pub fn with_phases(layout: Layout, phases: PhaseLayouts, fixtures: Fixtures) -> Result<Self> {
+        // Every record must render under its layout before the registry serves anything.
         for record in &fixtures.records {
             for account in &fixtures.accounts {
                 layout.render_response(&account.id, record)?;
             }
         }
+        if let Some(income) = &phases.income {
+            for record in &fixtures.incomes {
+                income.render_response(&record.account, &[&record.monthly_income])?;
+            }
+        }
+        if let Some(tenancy) = &phases.tenancy {
+            for notation in &fixtures.tenancies {
+                for account in &fixtures.accounts {
+                    tenancy.render_response(&account.id, &notation.values())?;
+                }
+            }
+        }
         Ok(Self {
             layout,
+            phases,
             fixtures,
             tokens: Mutex::default(),
             sent: Mutex::default(),
@@ -130,7 +188,7 @@ impl Registry {
         &self.layout
     }
 
-    /// Exact bytes of every title response sent so far, in order.
+    /// Exact bytes of every record response sent so far, in order.
     pub fn sent_log(&self) -> Vec<Vec<u8>> {
         self.sent.lock().expect("sent log").clone()
     }
@@ -166,11 +224,47 @@ impl Registry {
         )
     }
 
-    fn title(&self, property_id: &str, authorization: Option<&str>) -> Response {
-        let account = authorization
+    /// The account of a bearer token.
+    fn account_of(&self, authorization: Option<&str>) -> Option<String> {
+        authorization
             .and_then(|v| v.strip_prefix("Bearer "))
-            .and_then(|token| self.tokens.lock().expect("tokens").get(token).cloned());
-        let Some(account) = account else {
+            .and_then(|token| self.tokens.lock().expect("tokens").get(token).cloned())
+    }
+
+    /// Records the bytes of a rendered response and returns it.
+    fn sent(&self, bytes: Vec<u8>) -> Response {
+        self.sent.lock().expect("sent log").push(bytes.clone());
+        Response { bytes }
+    }
+
+    fn income(&self, layout: &RecordLayout, authorization: Option<&str>) -> Response {
+        let Some(account) = self.account_of(authorization) else {
+            return Response::status(401, "Unauthorized");
+        };
+        let Some(record) = self.fixtures.incomes.iter().find(|r| r.account == account) else {
+            return Response::status(404, "Not Found");
+        };
+        match layout.render_response(&account, &[&record.monthly_income]) {
+            Ok(rendered) => self.sent(rendered.bytes),
+            Err(_) => Response::status(500, "Internal Server Error"),
+        }
+    }
+
+    fn tenancy(&self, layout: &RecordLayout, id: &str, authorization: Option<&str>) -> Response {
+        let Some(account) = self.account_of(authorization) else {
+            return Response::status(401, "Unauthorized");
+        };
+        let Some(notation) = self.fixtures.tenancies.iter().find(|n| n.id == id) else {
+            return Response::status(404, "Not Found");
+        };
+        match layout.render_response(&account, &notation.values()) {
+            Ok(rendered) => self.sent(rendered.bytes),
+            Err(_) => Response::status(500, "Internal Server Error"),
+        }
+    }
+
+    fn title(&self, property_id: &str, authorization: Option<&str>) -> Response {
+        let Some(account) = self.account_of(authorization) else {
             return Response::status(401, "Unauthorized");
         };
         let Some(record) = self
@@ -182,26 +276,31 @@ impl Registry {
             return Response::status(404, "Not Found");
         };
         match self.layout.render_response(&account, record) {
-            Ok(rendered) => {
-                self.sent
-                    .lock()
-                    .expect("sent log")
-                    .push(rendered.bytes.clone());
-                Response {
-                    bytes: rendered.bytes,
-                }
-            }
+            Ok(rendered) => self.sent(rendered.bytes),
             Err(_) => Response::status(500, "Internal Server Error"),
         }
     }
 
     fn route(&self, request: &Request) -> Response {
+        let authorization = request.header("authorization");
         match (request.method.as_str(), request.target.as_str()) {
             ("POST", "/login") => self.login(&request.body),
-            ("GET", target) => match target.strip_prefix(&self.layout.path_prefix) {
-                Some(property_id) => self.title(property_id, request.header("authorization")),
-                None => Response::status(404, "Not Found"),
-            },
+            ("GET", target) => {
+                if let Some(income) = &self.phases.income
+                    && target == income.path("")
+                {
+                    return self.income(income, authorization);
+                }
+                if let Some(tenancy) = &self.phases.tenancy
+                    && let Some(id) = target.strip_prefix(&tenancy.path_prefix)
+                {
+                    return self.tenancy(tenancy, id, authorization);
+                }
+                match target.strip_prefix(&self.layout.path_prefix) {
+                    Some(property_id) => self.title(property_id, authorization),
+                    None => Response::status(404, "Not Found"),
+                }
+            }
             _ => Response::status(405, "Method Not Allowed"),
         }
     }
@@ -344,9 +443,30 @@ pub struct RunningRegistry {
 
 impl RunningRegistry {
     pub async fn start(layout: Layout, fixtures: Fixtures, bind: &str) -> Result<Self> {
+        Self::start_with_phases(layout, PhaseLayouts::default(), fixtures, bind).await
+    }
+
+    /// A registry that also serves the Apply and Settle sources. Every layout must name the same
+    /// server, which holds one certificate.
+    pub async fn start_with_phases(
+        layout: Layout,
+        phases: PhaseLayouts,
+        fixtures: Fixtures,
+        bind: &str,
+    ) -> Result<Self> {
+        for other in phases.income.iter().chain(&phases.tenancy) {
+            if other.server_name != layout.server_name {
+                bail!(
+                    "layout {} names server {}, the registry is {}",
+                    other.id,
+                    other.server_name,
+                    layout.server_name
+                );
+            }
+        }
         let certs = Certs::generate(&layout.server_name)?;
         let tls = tls_config(&certs)?;
-        let registry = Arc::new(Registry::new(layout, fixtures)?);
+        let registry = Arc::new(Registry::with_phases(layout, phases, fixtures)?);
         let listener = TcpListener::bind(bind).await?;
         let addr = listener.local_addr()?;
         let task = tokio::spawn(serve(registry.clone(), listener, tls));

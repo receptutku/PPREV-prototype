@@ -1,0 +1,14 @@
+{
+  "id": "tenancy-v1",
+  "serverName": "registry.pprev.test",
+  "pathPrefix": "/tenancy/",
+  "statusLine": "HTTP/1.1 200 OK",
+  "contentType": "application/json",
+  "padding": " ",
+  "accountWidth": 16,
+  "fields": [
+    { "key": "propertyId", "width": 20 },
+    { "key": "tenant", "width": 16 },
+    { "key": "recordDate", "width": 10 }
+  ]
+}

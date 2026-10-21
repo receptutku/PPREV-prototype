@@ -1,0 +1,630 @@
+{
+  "startedAt": "2026-10-21T09:01:01.708269+00:00",
+  "scriptSha256": "0e9acae003ad2ebac1eae4e28a77e2a6c33f5df024309b0e322bf33f89c558a3",
+  "scope": "Local witness generation and Groth16 proving on fixed synthetic fixtures; excludes TLS, service verification, signing, and chain inclusion.",
+  "commit": "2f9a9cc6637d8f516c56c943f003b49904888c9d",
+  "workingTreeStatus": " M README.md\n M circuits/setup/setup.json\n M mock-registry/fixtures/records.json\n M mock-registry/src/lib.rs\n M mock-registry/src/main.rs\n M mock-registry/tests/http.rs\n M offchain/crates/pprev-notary/src/bin/pprev-notary.rs\n M offchain/crates/pprev-notary/src/lib.rs\n M offchain/crates/pprev-notary/src/mock.rs\n M offchain/crates/pprev-notary/src/presentation.rs\n M offchain/crates/pprev-notary/src/register.rs\n M offchain/crates/pprev-notary/src/wire.rs\n M offchain/crates/pprev-notary/tests/mock.rs\n M offchain/crates/pprev-prover/Cargo.toml\n M offchain/crates/pprev-prover/src/chain.rs\n M offchain/crates/pprev-prover/src/circuit.rs\n M offchain/crates/pprev-prover/src/lib.rs\n M offchain/crates/pprev-prover/src/main.rs\n M offchain/crates/pprev-prover/src/register.rs\n M offchain/crates/pprev-prover/src/session.rs\n M offchain/crates/pprev-types/src/circuit.rs\n M offchain/crates/pprev-types/src/layout.rs\n M offchain/crates/pprev-types/src/lib.rs\n M offchain/crates/pprev-types/src/policy.rs\n M policies/rental-v1.json\n M script/circuits_setup.sh\n M script/lib/common.sh\n M script/render_results.py\n?? circuits/setup/phi_a/\n?? circuits/setup/phi_s/\n?? circuits/src/lib/date.circom\n?? circuits/src/lib/decimal.circom\n?? circuits/src/main_income_v1.circom\n?? circuits/src/main_tenancy_v1.circom\n?? circuits/src/phi_a.circom\n?? circuits/src/phi_s.circom\n?? offchain/crates/pprev-notary/src/phases.rs\n?? offchain/crates/pprev-prover/src/bin/gen-phase-sample.rs\n?? offchain/crates/pprev-prover/src/phases.rs\n?? offchain/crates/pprev-prover/tests/phases_circuit.rs\n?? offchain/crates/pprev-prover/tests/phases_policy_verifier.rs\n?? offchain/crates/pprev-types/src/bin/gen-phase-circuit-main.rs\n?? offchain/crates/pprev-types/src/calendar.rs\n?? offchain/crates/pprev-types/src/record.rs\n?? policies/layouts/income-v1.json\n?? policies/layouts/tenancy-v1.json\n?? script/circuits_build_as.sh\n?? script/circuits_samples_as.sh\n?? script/circuits_setup_as.sh\n?? script/e2e_lifecycle.sh\n",
+  "machine": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "architecture": "arm64",
+    "powerStart": "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=38076515)\t18%; discharging; 0:30 remaining present: true\n",
+    "cpu": "Apple M2",
+    "memoryBytes": 17179869184,
+    "powerEnd": "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=38076515)\t16%; discharging; 0:31 remaining present: true\n"
+  },
+  "node": "v26.9.0",
+  "nPerPhase": 20,
+  "warmupsPerPhase": 1,
+  "quantileMethod": "linear interpolation at (n-1)*q",
+  "sourceSha256": {
+    "circuits/build/main_title_v1_js/main_title_v1.wasm": "8f65190f3fff2ce932453269e853692fa21632531c18babf2790327af589f830",
+    "circuits/build/main_title_v1_js/generate_witness.js": "4995a2e6b01432f76182abec6a831fdaf7f840384035072002ccaa43101b14d4",
+    "circuits/build/phi_r.zkey": "f5e263f406737d0c2492b7347c7ca6ca7613c4c5333844caddcfa418a59d0748",
+    "circuits/setup/verification_key.json": "ae1f7cd05194f4886a386326ee1ac539b206c053d008704564e221ec9e006916",
+    "circuits/setup/sample/input.json": "cc9e4dd8fe0b14e4f091d1966c2569eb93e1ac61a45dc10a81810e5f153dfd22",
+    "circuits/setup/sample/public.json": "dcf37cda041e3ade02fa1a004803d01e50776c4a22bb55de6332147a7911c052",
+    "circuits/build/main_income_v1_js/main_income_v1.wasm": "0d951466432820e1f29feb38f241a1aa95cd85a39430f5839094bb803ed5beb5",
+    "circuits/build/main_income_v1_js/generate_witness.js": "4995a2e6b01432f76182abec6a831fdaf7f840384035072002ccaa43101b14d4",
+    "circuits/build/phi_a.zkey": "1867088245853e2975bd9e7e070ddae04c9e87730d09b7b593f1ef907172294a",
+    "circuits/setup/phi_a/verification_key.json": "157bb2d4f144c2de04a9b4ee8ffb6b52699707fd23f47bc1d8cfc9c6913594b5",
+    "circuits/setup/phi_a/sample/input.json": "ffc16025246f920622a6429b9ac8d92635340b3b29c18625e83d5022d6423ba2",
+    "circuits/setup/phi_a/sample/public.json": "a3cceb4e417198b51902547dd83bf7bbd0e95e5f8e83886693129246c7e9ab93",
+    "circuits/build/main_tenancy_v1_js/main_tenancy_v1.wasm": "e50cba3d3dc51749d22160b419f4e311b434971c7ea9c0b8f3881bb74031a21c",
+    "circuits/build/main_tenancy_v1_js/generate_witness.js": "4995a2e6b01432f76182abec6a831fdaf7f840384035072002ccaa43101b14d4",
+    "circuits/build/phi_s.zkey": "49d5c4cceeec89b845fd090f662b15bb7aab28e76ef74bc80296c2136cc05f0f",
+    "circuits/setup/phi_s/verification_key.json": "f72e695584614404e163e4a09ae3728ddc5c3d4c2e97bf811c2a656a56383164",
+    "circuits/setup/phi_s/sample/input.json": "9c0999c099f62cdd863bfb9521fb9c1514fc19234a730e50a48ce4b01b7b810d",
+    "circuits/setup/phi_s/sample/public.json": "f23f6f0b833595454e0686867d86bfa7afce4a53c184c2e91c49f385dd42c20b"
+  },
+  "warmups": [
+    {
+      "phase": "r",
+      "round": -1,
+      "witnessMs": 304.544166,
+      "proveMs": 2968.081,
+      "totalProvingMs": 3272.6251660000003,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": -1,
+      "witnessMs": 211.387791,
+      "proveMs": 1604.612417,
+      "totalProvingMs": 1816.000208,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": -1,
+      "witnessMs": 250.9065,
+      "proveMs": 2571.977042,
+      "totalProvingMs": 2822.883542,
+      "proofVerified": true
+    }
+  ],
+  "samples": [
+    {
+      "phase": "r",
+      "round": 0,
+      "witnessMs": 290.956875,
+      "proveMs": 2707.5105,
+      "totalProvingMs": 2998.4673749999997,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 0,
+      "witnessMs": 214.404542,
+      "proveMs": 1618.64325,
+      "totalProvingMs": 1833.047792,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 0,
+      "witnessMs": 261.16675,
+      "proveMs": 2600.4375,
+      "totalProvingMs": 2861.60425,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 1,
+      "witnessMs": 196.977041,
+      "proveMs": 1600.60525,
+      "totalProvingMs": 1797.5822910000002,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 1,
+      "witnessMs": 260.568,
+      "proveMs": 2594.071959,
+      "totalProvingMs": 2854.639959,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 1,
+      "witnessMs": 303.579125,
+      "proveMs": 2749.58075,
+      "totalProvingMs": 3053.1598750000003,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 2,
+      "witnessMs": 254.653625,
+      "proveMs": 2537.75,
+      "totalProvingMs": 2792.403625,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 2,
+      "witnessMs": 295.922209,
+      "proveMs": 2693.318375,
+      "totalProvingMs": 2989.2405839999997,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 2,
+      "witnessMs": 203.460875,
+      "proveMs": 1648.110042,
+      "totalProvingMs": 1851.570917,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 3,
+      "witnessMs": 301.881667,
+      "proveMs": 2690.080166,
+      "totalProvingMs": 2991.9618330000003,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 3,
+      "witnessMs": 205.044334,
+      "proveMs": 1596.232667,
+      "totalProvingMs": 1801.277001,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 3,
+      "witnessMs": 261.341041,
+      "proveMs": 2593.899292,
+      "totalProvingMs": 2855.240333,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 4,
+      "witnessMs": 196.835792,
+      "proveMs": 1647.762,
+      "totalProvingMs": 1844.597792,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 4,
+      "witnessMs": 250.433916,
+      "proveMs": 2628.887292,
+      "totalProvingMs": 2879.321208,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 4,
+      "witnessMs": 301.467042,
+      "proveMs": 2742.914625,
+      "totalProvingMs": 3044.3816669999997,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 5,
+      "witnessMs": 253.623916,
+      "proveMs": 2544.982542,
+      "totalProvingMs": 2798.606458,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 5,
+      "witnessMs": 291.081584,
+      "proveMs": 2621.602,
+      "totalProvingMs": 2912.683584,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 5,
+      "witnessMs": 201.296167,
+      "proveMs": 1623.05075,
+      "totalProvingMs": 1824.346917,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 6,
+      "witnessMs": 291.727208,
+      "proveMs": 2676.616625,
+      "totalProvingMs": 2968.343833,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 6,
+      "witnessMs": 197.39375,
+      "proveMs": 1566.057083,
+      "totalProvingMs": 1763.4508329999999,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 6,
+      "witnessMs": 261.049709,
+      "proveMs": 2526.967167,
+      "totalProvingMs": 2788.0168759999997,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 7,
+      "witnessMs": 194.698708,
+      "proveMs": 1573.899917,
+      "totalProvingMs": 1768.598625,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 7,
+      "witnessMs": 260.540875,
+      "proveMs": 2501.698709,
+      "totalProvingMs": 2762.239584,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 7,
+      "witnessMs": 300.071167,
+      "proveMs": 2800.973083,
+      "totalProvingMs": 3101.04425,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 8,
+      "witnessMs": 264.46025,
+      "proveMs": 2664.704417,
+      "totalProvingMs": 2929.164667,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 8,
+      "witnessMs": 302.772834,
+      "proveMs": 2723.671125,
+      "totalProvingMs": 3026.4439589999997,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 8,
+      "witnessMs": 227.202167,
+      "proveMs": 1645.916084,
+      "totalProvingMs": 1873.1182509999999,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 9,
+      "witnessMs": 304.555959,
+      "proveMs": 2730.436959,
+      "totalProvingMs": 3034.992918,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 9,
+      "witnessMs": 195.104875,
+      "proveMs": 1524.291208,
+      "totalProvingMs": 1719.396083,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 9,
+      "witnessMs": 253.156459,
+      "proveMs": 2501.649292,
+      "totalProvingMs": 2754.805751,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 10,
+      "witnessMs": 193.195167,
+      "proveMs": 1608.178583,
+      "totalProvingMs": 1801.37375,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 10,
+      "witnessMs": 251.523416,
+      "proveMs": 2493.154333,
+      "totalProvingMs": 2744.677749,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 10,
+      "witnessMs": 291.796,
+      "proveMs": 2665.737667,
+      "totalProvingMs": 2957.5336669999997,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 11,
+      "witnessMs": 248.766542,
+      "proveMs": 3420.7275,
+      "totalProvingMs": 3669.494042,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 11,
+      "witnessMs": 334.166667,
+      "proveMs": 3274.17425,
+      "totalProvingMs": 3608.340917,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 11,
+      "witnessMs": 196.860167,
+      "proveMs": 1639.8235,
+      "totalProvingMs": 1836.683667,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 12,
+      "witnessMs": 289.320417,
+      "proveMs": 2763.970958,
+      "totalProvingMs": 3053.291375,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 12,
+      "witnessMs": 196.128042,
+      "proveMs": 1549.6585,
+      "totalProvingMs": 1745.786542,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 12,
+      "witnessMs": 249.5265,
+      "proveMs": 2537.034458,
+      "totalProvingMs": 2786.560958,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 13,
+      "witnessMs": 190.443875,
+      "proveMs": 1542.515834,
+      "totalProvingMs": 1732.959709,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 13,
+      "witnessMs": 247.9785,
+      "proveMs": 2577.03875,
+      "totalProvingMs": 2825.0172500000003,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 13,
+      "witnessMs": 290.696625,
+      "proveMs": 2633.33275,
+      "totalProvingMs": 2924.029375,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 14,
+      "witnessMs": 248.458917,
+      "proveMs": 2518.948166,
+      "totalProvingMs": 2767.407083,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 14,
+      "witnessMs": 289.499917,
+      "proveMs": 2661.577167,
+      "totalProvingMs": 2951.077084,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 14,
+      "witnessMs": 194.392875,
+      "proveMs": 1573.876042,
+      "totalProvingMs": 1768.268917,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 15,
+      "witnessMs": 288.048542,
+      "proveMs": 2603.650167,
+      "totalProvingMs": 2891.698709,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 15,
+      "witnessMs": 190.431916,
+      "proveMs": 1581.508292,
+      "totalProvingMs": 1771.940208,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 15,
+      "witnessMs": 250.508041,
+      "proveMs": 2524.6805,
+      "totalProvingMs": 2775.188541,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 16,
+      "witnessMs": 192.154042,
+      "proveMs": 1588.982,
+      "totalProvingMs": 1781.136042,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 16,
+      "witnessMs": 248.465542,
+      "proveMs": 2520.292083,
+      "totalProvingMs": 2768.7576249999997,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 16,
+      "witnessMs": 293.512375,
+      "proveMs": 2780.811833,
+      "totalProvingMs": 3074.324208,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 17,
+      "witnessMs": 264.153125,
+      "proveMs": 2544.085,
+      "totalProvingMs": 2808.238125,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 17,
+      "witnessMs": 288.4085,
+      "proveMs": 2945.119375,
+      "totalProvingMs": 3233.527875,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 17,
+      "witnessMs": 191.518792,
+      "proveMs": 1585.140042,
+      "totalProvingMs": 1776.658834,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 18,
+      "witnessMs": 288.43925,
+      "proveMs": 2697.454,
+      "totalProvingMs": 2985.89325,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 18,
+      "witnessMs": 192.888833,
+      "proveMs": 1524.159,
+      "totalProvingMs": 1717.047833,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 18,
+      "witnessMs": 253.604292,
+      "proveMs": 2544.069083,
+      "totalProvingMs": 2797.673375,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 19,
+      "witnessMs": 192.885291,
+      "proveMs": 1569.290541,
+      "totalProvingMs": 1762.1758320000001,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 19,
+      "witnessMs": 249.987083,
+      "proveMs": 2532.936125,
+      "totalProvingMs": 2782.923208,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 19,
+      "witnessMs": 290.539708,
+      "proveMs": 2653.095333,
+      "totalProvingMs": 2943.6350410000005,
+      "proofVerified": true
+    }
+  ],
+  "status": "passed",
+  "summary": {
+    "r": {
+      "witnessMs": {
+        "n": 20,
+        "median": 291.76160400000003,
+        "p25": 290.27976025,
+        "p75": 301.57069824999996,
+        "min": 288.048542,
+        "max": 334.166667
+      },
+      "proveMs": {
+        "n": 20,
+        "median": 2702.48225,
+        "p25": 2664.697542,
+        "p75": 2753.1783020000003,
+        "min": 2603.650167,
+        "max": 3274.17425
+      },
+      "totalProvingMs": {
+        "n": 20,
+        "median": 2995.214604,
+        "p25": 2955.91952125,
+        "p75": 3053.19275,
+        "min": 2891.698709,
+        "max": 3608.340917
+      }
+    },
+    "a": {
+      "witnessMs": {
+        "n": 20,
+        "median": 195.6164585,
+        "p25": 192.8879475,
+        "p75": 198.36935425000001,
+        "min": 190.431916,
+        "max": 227.202167
+      },
+      "proveMs": {
+        "n": 20,
+        "median": 1587.061021,
+        "p25": 1568.4821765000002,
+        "p75": 1619.7451250000001,
+        "min": 1524.159,
+        "max": 1648.110042
+      },
+      "totalProvingMs": {
+        "n": 20,
+        "median": 1778.897438,
+        "p25": 1763.1320827499999,
+        "p75": 1826.52213575,
+        "min": 1717.047833,
+        "max": 1873.1182509999999
+      }
+    },
+    "s": {
+      "witnessMs": {
+        "n": 20,
+        "median": 253.3803755,
+        "p25": 249.87193725,
+        "p75": 260.68842725,
+        "min": 247.9785,
+        "max": 264.46025
+      },
+      "proveMs": {
+        "n": 20,
+        "median": 2540.9095415,
+        "p25": 2523.58339575,
+        "p75": 2593.94245875,
+        "min": 2493.154333,
+        "max": 3420.7275
+      },
+      "totalProvingMs": {
+        "n": 20,
+        "median": 2795.0384999999997,
+        "p25": 2773.580812,
+        "p75": 2854.7900525,
+        "min": 2744.677749,
+        "max": 3669.494042
+      }
+    }
+  },
+  "sourceUnchanged": true,
+  "finishedAt": "2026-10-21T09:03:57.893255+00:00"
+}

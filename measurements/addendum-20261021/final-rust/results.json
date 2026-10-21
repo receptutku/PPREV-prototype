@@ -1,0 +1,63 @@
+{
+  "startedAt": "2026-10-21T09:04:22.695623+00:00",
+  "runs": [
+    {
+      "name": "workspace",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "--workspace",
+        "--no-fail-fast"
+      ],
+      "exitCode": 0,
+      "logSha256": "bcfb56e33e17139a6190eb716640a4b9a781c054b9127a7e40cb334a22bfc8f8",
+      "passed": 162,
+      "failed": 0,
+      "ignored": 3
+    },
+    {
+      "name": "clock",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "-p",
+        "pprev-prover",
+        "--test",
+        "time",
+        "--",
+        "--include-ignored"
+      ],
+      "exitCode": 0,
+      "logSha256": "ab1f20ecdc13ab833e986149d78e35e3cad2207838f0b1f76ff9c98ce5509f61",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "name": "format",
+      "command": [
+        "cargo",
+        "fmt",
+        "--check"
+      ],
+      "exitCode": 0,
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "diff",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exitCode": 0,
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "sourceUnchanged": true,
+  "sourceSha256": "ef78e1ad1f516e5d7ecfd0ad87986a8341f7ab2475cbd7bed9b5472f00f347fd",
+  "finishedAt": "2026-10-21T09:07:55.781219+00:00",
+  "passed": true
+}

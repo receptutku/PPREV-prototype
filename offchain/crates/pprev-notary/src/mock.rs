@@ -61,6 +61,8 @@ pub struct EligibilityRecord {
 /// phi_S's source record: the tenancy notation of the settlement registry.
 #[derive(Clone, Debug)]
 pub struct SettlementRecord {
+    /// Identifier of the property the notation is registered on, padded to its layout width.
+    pub property_id: Vec<u8>,
     /// Identifier of the registered tenant, padded to its layout width.
     pub tenant: Vec<u8>,
     /// Calendar day of the notation in the registry's time zone, `YYYY-MM-DD`.
@@ -74,9 +76,9 @@ pub struct ApplyPolicy {
     pub income_multiple: u64,
 }
 
-/// phi_S of the rental instantiation: a tenancy notation that names the identifier in c_B and is
-/// dated no earlier than the engagement day, the calendar day in the registry's time zone of
-/// `expiresAt - tau_lock` (Section V-E).
+/// phi_S of the rental instantiation: a tenancy notation on the property of `txData` that names the
+/// identifier in c_B and is dated no earlier than the engagement day, the calendar day in the
+/// registry's time zone of `expiresAt - tau_lock` (Section V-E).
 #[derive(Clone, Debug)]
 pub struct SettlePolicy {
     pub tau_lock: u64,
@@ -204,6 +206,10 @@ impl MockNotary {
             "c_B does not open to the given identifier and salt"
         );
         ensure!(
+            property_word(&record.property_id)? == request.tx_data.propertyId.0,
+            "the settlement record is not on the property of txData"
+        );
+        ensure!(
             record.tenant == opening.identifier,
             "the settlement record does not name the identity in c_B"
         );
@@ -242,6 +248,18 @@ impl MockNotary {
     }
 }
 
+/// `txData.propertyId` of a padded property identifier: its bytes followed by zero bytes up to 32
+/// bytes, as `Layout::property_id_word` forms it for phi_R.
+fn property_word(property_id: &[u8]) -> Result<[u8; 32]> {
+    ensure!(
+        !property_id.is_empty() && property_id.len() <= 32,
+        "a property identifier must be 1 to 32 bytes"
+    );
+    let mut word = [0u8; 32];
+    word[..property_id.len()].copy_from_slice(property_id);
+    Ok(word)
+}
+
 /// Days since 1970-01-01 of a proleptic Gregorian `YYYY-MM-DD` date (H. Hinnant's days_from_civil).
 fn day_number(date: &str) -> Result<i64> {
     let parts: Vec<&str> = date.split('-').collect();
@@ -249,7 +267,12 @@ fn day_number(date: &str) -> Result<i64> {
         bail!("{date:?} is not YYYY-MM-DD");
     };
     ensure!(
-        y.len() == 4 && m.len() == 2 && d.len() == 2,
+        y.len() == 4
+            && m.len() == 2
+            && d.len() == 2
+            && [y, m, d]
+                .iter()
+                .all(|part| part.bytes().all(|b| b.is_ascii_digit())),
         "{date:?} is not YYYY-MM-DD"
     );
     let (y, m, d): (i64, i64, i64) = (y.parse()?, m.parse()?, d.parse()?);
@@ -306,8 +329,22 @@ mod tests {
             "2026-9-25",
             "20260925",
             "2026-09-31",
+            "2026-+9-25",
+            "+026-09-25",
+            "2026-09-+5",
+            "2026-09- 5",
         ] {
             assert!(day_number(bad).is_err(), "{bad}");
         }
+    }
+
+    #[test]
+    fn property_words_are_zero_padded_to_32_bytes() {
+        let mut expected = [0u8; 32];
+        expected[..20].copy_from_slice(b"TR-06-CANKAYA-000123");
+        assert_eq!(property_word(b"TR-06-CANKAYA-000123").unwrap(), expected);
+        assert_eq!(property_word(&[0x54; 32]).unwrap(), [0x54; 32]);
+        assert!(property_word(b"").is_err());
+        assert!(property_word(&[0x54; 33]).is_err());
     }
 }

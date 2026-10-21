@@ -136,6 +136,7 @@ fn eligibility(account: &[u8], tenths: u64) -> EligibilityRecord {
 
 fn settlement(tenant: &[u8], date: &str) -> SettlementRecord {
     SettlementRecord {
+        property_id: tx_data().propertyId.to_vec(),
         tenant: tenant.to_vec(),
         record_date: date.into(),
     }
@@ -371,4 +372,36 @@ fn settle_is_refused_when_the_notation_names_another_tenant() {
         .unwrap_err()
         .to_string();
     assert!(err.contains("does not open"), "{err}");
+}
+
+#[test]
+fn settle_is_refused_when_the_notation_is_on_another_property() {
+    let mut n = notary();
+    // The same tenant's notation on another property, dated after the engagement day.
+    let mut elsewhere = settlement(TENANT, "2026-10-01");
+    elsewhere.property_id = B256::repeat_byte(0x99).to_vec();
+    let err = n
+        .sign_settle(&settle_request(1), &elsewhere, &opening(TENANT))
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("not on the property of txData"), "{err}");
+    // A listing of that other property does not take the notation of the listed one either.
+    let mut request = settle_request(2);
+    request.tx_data.propertyId = B256::repeat_byte(0x99);
+    let err = n
+        .sign_settle(
+            &request,
+            &settlement(TENANT, "2026-10-01"),
+            &opening(TENANT),
+        )
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("not on the property of txData"), "{err}");
+    // The refusals left both nonces unused.
+    n.sign_settle(
+        &settle_request(1),
+        &settlement(TENANT, "2026-10-01"),
+        &opening(TENANT),
+    )
+    .unwrap();
 }

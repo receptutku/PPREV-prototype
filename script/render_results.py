@@ -96,7 +96,7 @@ def main():
         ("Contract tests", TESTS,
          f"{fg['total']} forge tests ({', '.join(f'{k} {v}' for k, v in sorted(fg['byKind'].items()))}), {len(fg['failed'])} failed; "
          f"invariants {fg['invariantConfig']['runs']} runs x depth {fg['invariantConfig']['depth']}"),
-        ("Table VI coverage (contract conditions)", TESTS,
+        ("Security-property coverage (contract conditions)", TESTS,
          f"{t6['testsPassed']}/{t6['tests']} tests pass, {t6['invariantsHeld']}/{t6['invariants']} invariants hold; "
          f"every condition has a passing positive and negative test" if tests["table6Coverage"]["exitStatus"] == 0
          else "conditions without a passing positive and negative test: see the record"),
@@ -134,9 +134,9 @@ def main():
          f"(without refunds {usd(one['lifecycleReceiptWithoutRefunds']['usd'])}); deployment {usd(one['deploymentTransactions']['total']['usd'])}"),
         ("L1 lifecycle cost at other gas prices", SUM,
          ", ".join(f"{k} {usd(v)}" for k, v in one["lifecycleExecutionSensitivity"].items())),
-        ("Freshness budget, medians (Section VII-F formula)", SUM,
-         f"local anvil t_incl: {n(round(budget['localAnvil']['totalMs']))} ms ({budget['localAnvil']['totalOverDelta'] * 100:.2f}% of Delta); "
-         f"Base Sepolia t_incl: {n(round(budget['baseSepolia']['totalMs']))} ms ({budget['baseSepolia']['totalOverDelta'] * 100:.2f}% of Delta)"),
+        ("Freshness budget, sum of component medians (Section VII-E)", SUM,
+         f"local anvil total: {n(round(budget['localAnvil']['totalMs']))} ms ({budget['localAnvil']['totalOverDelta'] * 100:.2f}% of Delta); "
+         f"Base Sepolia total: {n(round(budget['baseSepolia']['totalMs']))} ms ({budget['baseSepolia']['totalOverDelta'] * 100:.2f}% of Delta)"),
         ("On-chain Groth16 verification of phi_R (9 public inputs)", G16,
          f"{n(g16['verification']['executionGas'])} gas execution; EIP-1108 model {n(g16['eip1108Model']['total'])}"),
         ("Lifecycle with three predicate verifications on-chain", SUM,

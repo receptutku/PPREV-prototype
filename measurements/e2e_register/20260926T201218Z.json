@@ -342,7 +342,7 @@
         "satisfied": false,
         "failedAssertion": "template PhiR line 94"
       },
-      "proofSource": "/Users/receptutku/src/pprev-prototype/target/e2e/20260926T201218Z/positive/proof.json",
+      "proofSource": "target/e2e/20260926T201218Z/positive/proof.json",
       "timings": {
         "outsideDelta": {
           "loginMs": 0.686125,

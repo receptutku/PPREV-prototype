@@ -1,0 +1,45 @@
+{
+  "circuit": "main_tenancy_v1",
+  "constraints": 89257,
+  "r1csSha256": "73741d474e0052e8edaeb0b7ecb230786538e7dda92cfaee21f7f3bbdc1ca0a4",
+  "phase1": {
+    "source": "PSE perpetual powers of tau, branch ending at contribution 0080 (the file of circuits/setup/setup.json)",
+    "sha256": "f807e065fde53f72f4bf4d57140fab85b26daa6cc95bdfec7cce93622b3a367c",
+    "snarkjsVerify": "not repeated; see circuits/setup/setup.json"
+  },
+  "phase2": {
+    "trust": "single party, local to this prototype: whoever ran this script knows the toxic waste",
+    "contributions": [
+      {
+        "name": "contribution 1",
+        "entropy": "64 bytes from /dev/urandom",
+        "hash": "c5fe40cc89b27e764054b7d154fe0aeb0694b04c41d1349c98e66268494339820559d6f4ffb7d9ed26ea43f3e00e74e48457d9287613bb65619600ce112cb9b8"
+      },
+      {
+        "name": "contribution 2",
+        "entropy": "64 bytes from /dev/urandom",
+        "hash": "3a9fe2b9749f1be19fafe81670c545e453443351877bed5e2349da2a3363cce60c4adf38ba3686d608ca8c145876463124ad03813cc93442d4a424adc5ba1de5"
+      }
+    ],
+    "beacon": {
+      "source": "hash of Ethereum mainnet block 26239717 (finalised at setup time)",
+      "value": "789fd237ea66167d55342571c14c67eef7a0e270412fd656c3b82fc1a7391b72",
+      "iterationsExp": 10,
+      "hash": "84fe216fff1af94b26aa04a0ea28c9ef7164c845bcd58254f522fe62c4bdcf6d8ed3abf86d5881982a1c048117437687be8bbe7e57f57f766814788ffe5a0c9a"
+    },
+    "snarkjsVerify": "ZKey Ok!"
+  },
+  "zkeySha256": "49d5c4cceeec89b845fd090f662b15bb7aab28e76ef74bc80296c2136cc05f0f",
+  "verificationKeySha256": "f72e695584614404e163e4a09ae3728ddc5c3d4c2e97bf811c2a656a56383164",
+  "tools": {
+    "snarkjs": "0.7.6",
+    "circom": "circom compiler 2.2.3",
+    "node": "v26.9.0"
+  },
+  "date": "2026-10-21T08:39:42Z",
+  "solidityVerifierSha256": "87c094c0f0e62aebdf59168cc55927ced349651221d7fd2d4e8b70199cdea246",
+  "sample": {
+    "statement": "settle message of test-vectors/eip712.json, c_B = H_c(ACC-000000000003, fixed salt)",
+    "snarkjsVerify": "OK!"
+  }
+}

@@ -3,13 +3,14 @@
 //! [`notarize`] runs the notary's half of an MPC-TLS session and returns a signed attestation that
 //! carries the notary's own clock as the `pprev.t_att` extension (D29). [`check_presentation`]
 //! verifies a presentation against the policy's layout and extracts t_att and the hashes of the
-//! committed fields (D3, D26). [`PolicyVerifier`] adds the phi_R proof for Register and signs x_R
-//! with sk_notary (D19, D20); [`mock::MockNotary`] checks phi_A and phi_S natively for Apply and
-//! Settle (D23).
+//! committed fields (D3, D26). [`PolicyVerifier`] adds the predicate proof, phi_R for Register and
+//! phi_A and phi_S for Apply and Settle ([`phases`]), and signs x_psi with sk_notary (D19, D20);
+//! [`mock::MockNotary`] checks phi_A and phi_S natively on records given in the clear (D23).
 
 pub mod groth16;
 pub mod mock;
 pub mod nonces;
+pub mod phases;
 pub mod presentation;
 pub mod register;
 pub mod session;
@@ -19,8 +20,8 @@ pub mod wire;
 pub use groth16::{Groth16Proof, Groth16Verifier};
 pub use nonces::NonceStore;
 pub use presentation::{
-    Attested, CommittedHash, Expectation, TLSN_CLOCK_TOLERANCE, attested_commitments,
-    check_presentation, check_times,
+    Attested, AttestedShape, CommittedHash, Expectation, ShapeExpectation, TLSN_CLOCK_TOLERANCE,
+    attested_commitments, check_presentation, check_shape, check_times,
 };
 pub use register::{PolicyVerifier, RegisterPolicy, RegisterRequest, RegisterTimings};
 pub use session::{

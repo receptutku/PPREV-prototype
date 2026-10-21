@@ -1,0 +1,14 @@
+circuits/build/main_tenancy_v1_js/witness_calculator.js:168
+                    throw new Error(err);
+                          ^
+
+Error: Error: Assert Failed.
+Error in template PhiS_197 line: 91
+
+    at circuits/build/main_tenancy_v1_js/witness_calculator.js:168:27
+    at Array.forEach (<anonymous>)
+    at WitnessCalculator._doCalculateWitness (circuits/build/main_tenancy_v1_js/witness_calculator.js:143:14)
+    at WitnessCalculator.calculateWTNSBin (circuits/build/main_tenancy_v1_js/witness_calculator.js:218:20)
+    at circuits/build/main_tenancy_v1_js/generate_witness.js:16:38
+
+Node.js v26.9.0

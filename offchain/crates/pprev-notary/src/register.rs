@@ -17,6 +17,7 @@ use tlsn::attestation::signing::VerifyingKey;
 
 use crate::groth16::{Groth16Proof, Groth16Verifier};
 use crate::nonces::NonceStore;
+use crate::phases::{ApplyPolicy, SettlePolicy};
 use crate::presentation::{Expectation, check_presentation};
 use crate::sigma::StatementKey;
 
@@ -56,12 +57,16 @@ fn millis(since: Instant) -> f64 {
 
 pub struct PolicyVerifier {
     policies: HashMap<B256, RegisterPolicy>,
-    attestation_key: VerifyingKey,
-    root_certs: Vec<Vec<u8>>,
-    max_session_secs: u64,
+    pub(crate) apply_policies: HashMap<B256, ApplyPolicy>,
+    pub(crate) settle_policies: HashMap<B256, SettlePolicy>,
+    /// The deployment's lock window, which fixes the engagement day of phi_S.
+    pub(crate) tau_lock: Option<u64>,
+    pub(crate) attestation_key: VerifyingKey,
+    pub(crate) root_certs: Vec<Vec<u8>>,
+    pub(crate) max_session_secs: u64,
     key: StatementKey,
-    domain: Eip712Domain,
-    nonces: NonceStore,
+    pub(crate) domain: Eip712Domain,
+    pub(crate) nonces: NonceStore,
 }
 
 impl PolicyVerifier {
@@ -76,6 +81,9 @@ impl PolicyVerifier {
     ) -> Self {
         Self {
             policies,
+            apply_policies: HashMap::new(),
+            settle_policies: HashMap::new(),
+            tau_lock: None,
             attestation_key,
             root_certs,
             max_session_secs,
@@ -83,6 +91,26 @@ impl PolicyVerifier {
             domain,
             nonces,
         }
+    }
+
+    /// Adds the Apply and Settle policies, each keyed by its own identifier, and the deployment's
+    /// lock window. A statement is signed only under a policy of its own phase.
+    pub fn with_phases(
+        mut self,
+        apply: HashMap<B256, ApplyPolicy>,
+        settle: HashMap<B256, SettlePolicy>,
+        tau_lock: Option<u64>,
+    ) -> Self {
+        self.apply_policies = apply;
+        self.settle_policies = settle;
+        self.tau_lock = tau_lock;
+        self
+    }
+
+    /// Records the nonce (D20) and signs the digest with sk_notary.
+    pub(crate) fn record_and_sign(&mut self, eta: B256, digest: B256) -> Result<[u8; 65]> {
+        self.nonces.record(eta.0)?;
+        self.key.sign(digest)
     }
 
     /// Returns sigma_R for the request, or the reason for refusing it.

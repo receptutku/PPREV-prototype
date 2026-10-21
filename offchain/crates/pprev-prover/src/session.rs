@@ -12,7 +12,7 @@ use http_body_util::{BodyExt, Empty};
 use hyper::body::Bytes;
 use hyper::{Request, StatusCode};
 use hyper_util::rt::TokioIo;
-use pprev_types::{Layout, ResponseRanges};
+use pprev_types::{Layout, ResponseRanges, ResponseShape};
 use tlsn::Session;
 use tlsn::attestation::presentation::Presentation;
 use tlsn::attestation::request::{Request as AttestationRequest, RequestConfig};
@@ -104,6 +104,36 @@ pub struct ProverSetup {
     pub preprocess_timeout: Duration,
 }
 
+/// Everything the prover needs for one notarised request of any layout: the exchange's shape.
+#[derive(Clone)]
+pub struct ShapeSetup {
+    pub shape: ResponseShape,
+    pub registry_addr: SocketAddr,
+    /// Roots trusted for the registry certificate.
+    pub root_certs: Vec<Vec<u8>>,
+    /// Bearer token from [`crate::login`].
+    pub token: String,
+    /// MPC-TLS preprocessing limits; they bound the request and response sizes.
+    pub max_sent: usize,
+    pub max_recv: usize,
+    /// Bound on MPC-TLS preprocessing before the attempt counts as stalled (D33).
+    pub preprocess_timeout: Duration,
+}
+
+impl ProverSetup {
+    fn shape_setup(&self) -> Result<ShapeSetup> {
+        Ok(ShapeSetup {
+            shape: self.layout.shape(&self.property_id)?,
+            registry_addr: self.registry_addr,
+            root_certs: self.root_certs.clone(),
+            token: self.token.clone(),
+            max_sent: self.max_sent,
+            max_recv: self.max_recv,
+            preprocess_timeout: self.preprocess_timeout,
+        })
+    }
+}
+
 /// Plaintext and blinder of one hidden commitment (D3). SHA-256(plaintext || blinder) is the hash
 /// that the attestation records; the circuit opens it privately.
 #[derive(Clone)]
@@ -130,6 +160,15 @@ pub struct Notarized {
     pub ranges: ResponseRanges,
 }
 
+/// A completed notarisation of any layout, with the openings of the hidden fields in the shape's
+/// order.
+pub struct NotarizedShape {
+    pub attestation: Attestation,
+    pub secrets: Secrets,
+    pub openings: Vec<FieldOpening>,
+    pub shape: ResponseShape,
+}
+
 /// Runs the prover's half of one MPC-TLS session with the notary on `notary`, sends the title
 /// request, commits to the layout's ranges, and returns the attestation with its secrets.
 pub async fn notarize<S>(notary: S, setup: &ProverSetup) -> Result<Notarized>
@@ -137,8 +176,30 @@ where
     S: AsyncWrite + AsyncRead + Send + Sync + Unpin + 'static,
 {
     let ranges = setup.layout.ranges()?;
-    let request_line = setup.layout.request_line(&setup.property_id);
+    let notarized = notarize_shape(notary, &setup.shape_setup()?).await?;
+    let [account, owners, property_id]: [FieldOpening; 3] = notarized
+        .openings
+        .try_into()
+        .map_err(|_| anyhow::anyhow!("the title layout has three hidden fields"))?;
+    Ok(Notarized {
+        attestation: notarized.attestation,
+        secrets: notarized.secrets,
+        openings: HiddenOpenings {
+            account,
+            owners,
+            property_id,
+        },
+        request_line_len: notarized.shape.request_line.len(),
+        ranges,
+    })
+}
 
+/// Runs the prover's half of one MPC-TLS session for the exchange `setup.shape`: sends its request,
+/// commits to its revealed and hidden ranges, and returns the attestation with its secrets.
+pub async fn notarize_shape<S>(notary: S, setup: &ShapeSetup) -> Result<NotarizedShape>
+where
+    S: AsyncWrite + AsyncRead + Send + Sync + Unpin + 'static,
+{
     let session = Session::new(notary.compat());
     let (driver, mut handle) = session.split();
     let mut driver_task = DriverGuard(Some(tokio::spawn(driver)));
@@ -147,7 +208,7 @@ where
     // example after rejecting the handshake time; the session driver ending first is that failure.
     let preprocessed = AtomicBool::new(false);
     let (request, secrets, openings) = tokio::select! {
-        result = run_mpc(&mut handle, setup, &ranges, &request_line, &preprocessed) => result?,
+        result = run_mpc(&mut handle, setup, &preprocessed) => result?,
         ended = driver_task.running() => {
             let reason = match ended {
                 Ok(Ok(_)) => "connection closed".to_string(),
@@ -170,24 +231,23 @@ where
     let attestation: Attestation = bincode::deserialize(&attestation_bytes)?;
     request.validate(&attestation, &CryptoProvider::default())?;
 
-    Ok(Notarized {
+    Ok(NotarizedShape {
         attestation,
         secrets,
         openings,
-        request_line_len: request_line.len(),
-        ranges,
+        shape: setup.shape.clone(),
     })
 }
 
-/// MPC-TLS part of a notarisation: preprocessing, the TLS session with the registry, the title
-/// request, commitments, and the attestation request.
+/// MPC-TLS part of a notarisation: preprocessing, the TLS session with the registry, the request,
+/// commitments, and the attestation request.
 async fn run_mpc(
     handle: &mut tlsn::SessionHandle,
-    setup: &ProverSetup,
-    ranges: &ResponseRanges,
-    request_line: &str,
+    setup: &ShapeSetup,
     preprocessed: &AtomicBool,
-) -> Result<(AttestationRequest, Secrets, HiddenOpenings)> {
+) -> Result<(AttestationRequest, Secrets, Vec<FieldOpening>)> {
+    let shape = &setup.shape;
+    let request_line = shape.request_line.as_str();
     let preprocessing = handle.new_prover(ProverConfig::builder().build()?)?.commit(
         MpcTlsConfig::builder()
             .max_sent_data(setup.max_sent)
@@ -204,7 +264,7 @@ async fn run_mpc(
         })??;
     preprocessed.store(true, Ordering::SeqCst);
 
-    let server_name = ServerName::Dns(setup.layout.server_name.as_str().try_into()?);
+    let server_name = ServerName::Dns(shape.server_name.as_str().try_into()?);
     let tcp = tokio::net::TcpStream::connect(setup.registry_addr).await?;
     let (tls_connection, prover) = prover.connect(
         TlsClientConfig::builder()
@@ -223,8 +283,8 @@ async fn run_mpc(
 
     let request = Request::builder()
         .method("GET")
-        .uri(setup.layout.path(&setup.property_id))
-        .header("Host", &setup.layout.server_name)
+        .uri(&shape.path)
+        .header("Host", &shape.server_name)
         .header("Authorization", format!("Bearer {}", setup.token))
         .header("Connection", "close")
         .body(Empty::<Bytes>::new())?;
@@ -265,10 +325,10 @@ async fn run_mpc(
         "request does not start with {request_line:?}"
     );
     ensure!(
-        transcript.received().len() == ranges.len,
+        transcript.received().len() == shape.len,
         "response has {} bytes, the layout has {}",
         transcript.received().len(),
-        ranges.len
+        shape.len
     );
 
     // D3 and D26: the request line and the response structure are committed to be opened; the three
@@ -276,9 +336,9 @@ async fn run_mpc(
     let mut builder = TranscriptCommitConfig::builder(transcript);
     builder.default_kind(SHA256);
     builder.commit_sent(&(0..request_line.len()))?;
-    builder.commit_recv(RangeSet::from(ranges.revealed()))?;
-    for r in ranges.hidden() {
-        builder.commit_recv(&r)?;
+    builder.commit_recv(RangeSet::from(shape.revealed.clone()))?;
+    for r in &shape.hidden {
+        builder.commit_recv(r)?;
     }
     let transcript_commit = builder.build()?;
 
@@ -300,12 +360,11 @@ async fn run_mpc(
     let prover_transcript = prover.transcript().clone();
     let tls_transcript = prover.tls_transcript().clone();
     prover.close().await?;
-    let [account, owners, property_id] = ranges.hidden();
-    let openings = HiddenOpenings {
-        account: opening(&prover_transcript, &transcript_secrets, account)?,
-        owners: opening(&prover_transcript, &transcript_secrets, owners)?,
-        property_id: opening(&prover_transcript, &transcript_secrets, property_id)?,
-    };
+    let openings = shape
+        .hidden
+        .iter()
+        .map(|r| opening(&prover_transcript, &transcript_secrets, r.clone()))
+        .collect::<Result<Vec<_>>>()?;
 
     let mut builder = AttestationRequest::builder(&request_config);
     builder
@@ -353,7 +412,7 @@ fn opening(
 /// Runs [`notarize`] on a new notary connection from `connect` until it succeeds, retrying at most
 /// `max_retries` times when preprocessing stalls (D33). Every other failure is returned at once.
 pub async fn notarize_with_retries<C, F, S>(
-    mut connect: C,
+    connect: C,
     setup: &ProverSetup,
     max_retries: u32,
 ) -> Result<(Notarized, NotarizeStats)>
@@ -362,11 +421,39 @@ where
     F: Future<Output = Result<S>>,
     S: AsyncWrite + AsyncRead + Send + Sync + Unpin + 'static,
 {
+    with_retries(connect, |notary| notarize(notary, setup), max_retries).await
+}
+
+/// As [`notarize_with_retries`], for [`notarize_shape`].
+pub async fn notarize_shape_with_retries<C, F, S>(
+    connect: C,
+    setup: &ShapeSetup,
+    max_retries: u32,
+) -> Result<(NotarizedShape, NotarizeStats)>
+where
+    C: FnMut(u32) -> F,
+    F: Future<Output = Result<S>>,
+    S: AsyncWrite + AsyncRead + Send + Sync + Unpin + 'static,
+{
+    with_retries(connect, |notary| notarize_shape(notary, setup), max_retries).await
+}
+
+async fn with_retries<C, F, S, N, NF, T>(
+    mut connect: C,
+    mut notarize_one: N,
+    max_retries: u32,
+) -> Result<(T, NotarizeStats)>
+where
+    C: FnMut(u32) -> F,
+    F: Future<Output = Result<S>>,
+    N: FnMut(S) -> NF,
+    NF: Future<Output = Result<T>>,
+{
     let mut stats = NotarizeStats::default();
     loop {
         stats.attempts += 1;
         let notary = connect(stats.attempts).await?;
-        match notarize(notary, setup).await {
+        match notarize_one(notary).await {
             Ok(notarized) => return Ok((notarized, stats)),
             Err(e) if e.downcast_ref::<PreprocessingStalled>().is_some() => {
                 let reason = format!("{e:#}");
@@ -396,21 +483,46 @@ where
 /// response structure. The field values stay hidden unless `reveal_hidden` is set, which only the
 /// gate test G2 uses.
 pub fn present(notarized: &Notarized, reveal_hidden: bool) -> Result<Presentation> {
-    let mut builder = notarized.secrets.transcript_proof_builder();
+    build_presentation(
+        &notarized.attestation,
+        &notarized.secrets,
+        notarized.request_line_len,
+        notarized.ranges.revealed(),
+        reveal_hidden.then(|| notarized.ranges.hidden().to_vec()),
+    )
+}
+
+/// As [`present`], for a notarisation of any layout.
+pub fn present_shape(notarized: &NotarizedShape, reveal_hidden: bool) -> Result<Presentation> {
+    build_presentation(
+        &notarized.attestation,
+        &notarized.secrets,
+        notarized.shape.request_line.len(),
+        notarized.shape.revealed.clone(),
+        reveal_hidden.then(|| notarized.shape.hidden.clone()),
+    )
+}
+
+fn build_presentation(
+    attestation: &Attestation,
+    secrets: &Secrets,
+    request_line_len: usize,
+    revealed: Vec<Range<usize>>,
+    hidden: Option<Vec<Range<usize>>>,
+) -> Result<Presentation> {
+    let mut builder = secrets.transcript_proof_builder();
     builder.commitment_kinds(&[SHA256]);
-    builder.reveal_sent(&(0..notarized.request_line_len))?;
-    builder.reveal_recv(RangeSet::from(notarized.ranges.revealed()))?;
-    if reveal_hidden {
-        for r in notarized.ranges.hidden() {
-            builder.reveal_recv(&r)?;
-        }
+    builder.reveal_sent(&(0..request_line_len))?;
+    builder.reveal_recv(RangeSet::from(revealed))?;
+    for r in hidden.unwrap_or_default() {
+        builder.reveal_recv(&r)?;
     }
     let transcript_proof = builder.build()?;
 
     let provider = CryptoProvider::default();
-    let mut presentation = notarized.attestation.presentation_builder(&provider);
+    let mut presentation = attestation.presentation_builder(&provider);
     presentation
-        .identity_proof(notarized.secrets.identity_proof())
+        .identity_proof(secrets.identity_proof())
         .transcript_proof(transcript_proof);
     Ok(presentation.build()?)
 }
