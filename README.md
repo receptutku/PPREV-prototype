@@ -8,7 +8,8 @@ one transaction, phase, and deployment of an escrow contract.
 
 This repository holds the contracts, the off-chain pipeline for all three attested phases, a local
 mock registry, the circuits and their setup records, and the scripts and records behind every
-measured figure.
+measured figure. The manuscript corresponds to tag `artifact-v2`; tag `artifact-v1` is the September
+2026 snapshot, before the phi_A and phi_S circuits.
 
 ## 1. Overview
 
@@ -38,6 +39,8 @@ What the artifact contains:
     input from the attestation and the statement, verifies the Groth16 proof under the phase's
     key, records the nonce (one store for all phases), and signs the statement with the notary key;
   - the prover's client for Register, Apply, Engage, and Settle, including the transactions.
+- **Public-portal probe** (`offchain/crates/pprev-prover/src/bin/probe-portal.rs`): one notarised
+  session against a public page of a production server, a transport experiment (Section 5.1).
 - **End-to-end scripts** on a local chain: `script/e2e_register.sh` (Register with five negative
   cases) and `script/e2e_lifecycle.sh` (Register, Apply, Engage, Settle with nine negative
   scenarios), and the **measurement scripts** with their committed records (`measurements/`).
@@ -81,7 +84,7 @@ Disk: about 10 GB free (Rust build about 7 GB, circuit builds about 210 MB, prov
 ## 3. Setup
 
 ```
-git clone --recurse-submodules <repository-url> pprev-prototype
+git clone --recurse-submodules https://github.com/receptutku/PPREV-prototype.git pprev-prototype
 cd pprev-prototype
 cp .env.example .env            # then set the beacon for the phi_R setup, see below
 nvm install && nvm use          # Node.js from .nvmrc (or install v26.9.0 otherwise)
@@ -157,7 +160,7 @@ script/e2e_lifecycle.sh
 
 | Command | Expected |
 |---|---|
-| `forge test` | `206 tests passed, 0 failed, 0 skipped (206 total tests)`; the tests record breaks the count down by kind |
+| `forge test` | `206 tests passed, 0 failed, 0 skipped (206 total tests)`: 205 unit and fuzz tests and the one invariant suite, which checks four invariants; the tests record breaks the count down by kind |
 | `python3 script/table6_coverage.py` | `Tests: 205/205 passed; invariants: 4/4 held.` and `Conditions without a passing positive and negative test: none.` |
 | `cargo test --release --workspace` | 164 passed, 0 failed, 3 ignored (the ignored clock-shift tests need libfaketime: `cargo test --release -p pprev-prover --test time -- --include-ignored`) |
 | `script/e2e_register.sh` | `checks: 19/19 passed`; a record in `measurements/e2e_register/` |
@@ -228,8 +231,12 @@ Settle. `submit`, `submit-apply`, and `submit-settle` send a payload written wit
 `measurements/addendum-20261021/` holds the records of the phi_A and phi_S work: the lifecycle and
 Register end-to-end records, raw predicate-benchmark samples and proofs, independent witness and
 proof checks, phase-verifier gas records, the Rust test record, the helper scripts, and a SHA-256
-manifest. These runs used a working tree with the phi_A and phi_S implementation before it was
-committed; their records keep the dirty flag and the SHA-256 of every source file. Local paths in
+manifest. The final test record of the committed sources is `final-source-tests/` (164 Rust tests
+passed, with the SHA-256 of every file changed since the September snapshot); the public-portal probe records are in
+`public-portals/`. The predicate benchmark and the first lifecycle runs used a working tree on top
+of the September commit `2f9a9cc` with the phi_A and phi_S implementation before it was committed
+(it is in `e1de6f6` and later commits); the later test and probe records name their own sources.
+Each record keeps the dirty flag and its own source and artifact hashes. Local paths in
 the distributed copies are made repository-relative; the manifest keeps the digests of both the
 original and the distributed files, and no number, proof, or test result changed.
 
@@ -267,7 +274,28 @@ checks and leaves out attestation verification, the extra calldata and intrinsic
 verifier deployments. No design that verifies the TLSNotary attestation on-chain was built or
 measured. The same factor in the September summary row below came from an estimate that assumed all
 three verifiers cost like phi_R's; the measured verifiers give the same total, because 7 + 11 public
-inputs equal 2 x 9 and the verifier cost is linear in their number.
+inputs equal 2 x 9 and the verifier cost is linear in their number. That summary record also states
+that neither phi_A nor phi_S exists in the prototype: true when it was written, superseded by this
+section; committed records are not edited.
+
+**Public-portal probe.** `probe-portal` runs one TLSNotary session in MPC mode against a public HTTPS
+page of a production server, with no login, account, credentials, or query parameters. For each URL
+it sends two ordinary requests and then one notarised request (User-Agent
+`pprev-probe/0.1 (research prototype; one request per run)`), obtains an attestation from a notary
+in the same process with a fixed, public key and the Mozilla root store, and verifies a presentation
+of it: it checks the server identity and extracts the signed attestation time (no freshness check). It stores no response content, only byte counts,
+the positions at which repeated responses differ, the status line, the Content-Type, and timings.
+`measurements/addendum-20261021/public-portals/` holds the records of four endpoints on three hosts
+(`SUMMARY.md` gives the results and their limits). The probe contacts live servers, so run it
+sparingly and only against public pages:
+
+```
+target/release/probe-portal --out target/probe.json https://<host>/<public-path>
+```
+
+It is a transport experiment: it shows that sessions complete and their presentations verify, and
+says nothing about authenticated record views, a fixed record layout, latency to a remote notary,
+or an independent notary deployment.
 
 ### 5.2 September 2026 campaign
 
