@@ -308,7 +308,18 @@ where
         };
     }
     let failed = match outcome {
-        Ok(Err(e)) if e.downcast_ref::<PreprocessingStalled>().is_some() => return e,
+        // The prover's own stall (its preprocessing timeout) is retried only if the driver ended with
+        // a closure. A failed driver is final, and the stall must not stay in the error's chain,
+        // where the retry loop would find it.
+        Ok(Err(e)) if e.downcast_ref::<PreprocessingStalled>().is_some() => {
+            return match closure(&ended) {
+                Some(_) => e,
+                None => anyhow::anyhow!(
+                    "the session driver failed: {}; the prover: {e:#}",
+                    describe(&ended)
+                ),
+            };
+        }
         Ok(Err(e)) => {
             let failure = failure_of(&e);
             Some((e, failure))
@@ -972,6 +983,26 @@ mod tests {
             format!("{e:#}").contains("before notarisation completed"),
             "{e:#}"
         );
+    }
+
+    #[tokio::test]
+    async fn a_prover_timeout_with_a_failed_driver_is_final() {
+        let flag = AtomicBool::new(false);
+        let timeout = || async {
+            Err::<(), _>(anyhow::Error::from(PreprocessingStalled(
+                "did not finish within 10s".into(),
+            )))
+        };
+        let panicked = driver(async { panic!("driver bug") }).join().await;
+        let e = after_driver_end(panicked, timeout(), &flag).await;
+        assert!(!stalled(&e), "{e:#}");
+        assert!(format!("{e:#}").contains("did not finish within"), "{e:#}");
+        let streams = driver(async { Err(ConnectionError::TooManyStreams.into()) })
+            .join()
+            .await;
+        assert!(!stalled(&after_driver_end(streams, timeout(), &flag).await));
+        let clean = driver(async { Ok(()) }).join().await;
+        assert!(stalled(&after_driver_end(clean, timeout(), &flag).await));
     }
 
     #[tokio::test]
