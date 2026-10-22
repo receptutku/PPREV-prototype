@@ -8,8 +8,10 @@ one transaction, phase, and deployment of an escrow contract.
 
 This repository holds the contracts, the off-chain pipeline for all three attested phases, a local
 mock registry, the circuits and their setup records, and the scripts and records behind every
-measured figure. The manuscript corresponds to tag `artifact-v2`; tag `artifact-v1` is the September
-2026 snapshot, before the phi_A and phi_S circuits.
+measured figure. Tag `artifact-v2` is the snapshot of the first October 2026 manuscript; the
+integrated on-chain verification baseline (Section 5.3), the controlled link experiment (Section
+5.4), and the retry fix of Section 7 came after it. Tag `artifact-v1` is the September 2026 snapshot,
+before the phi_A and phi_S circuits.
 
 ## 1. Overview
 
@@ -41,14 +43,20 @@ What the artifact contains:
   - the prover's client for Register, Apply, Engage, and Settle, including the transactions.
 - **Public-portal probe** (`offchain/crates/pprev-prover/src/bin/probe-portal.rs`): one notarised
   session against a public page of a production server, a transport experiment (Section 5.1).
+- **Integrated on-chain verification baseline** (`contracts/src/baseline/`, measurement only, not
+  part of PPREV): contracts that check an attested phase's submission on-chain the way the policy
+  verifier checks it off-chain, with the server identity attested off-chain (Section 5.3).
+- **Link emulation** (`offchain/crates/pprev-prover/src/netem.rs`): an application-level proxy that
+  delays and paces the bytes of one link, for the controlled link experiment (Section 5.4).
 - **End-to-end scripts** on a local chain: `script/e2e_register.sh` (Register with five negative
   cases) and `script/e2e_lifecycle.sh` (Register, Apply, Engage, Settle with nine negative
   scenarios), and the **measurement scripts** with their committed records (`measurements/`).
 
 What it does not contain:
 
-- a real land registry: the registry is a local mock, so network latency to a real registry and the
-  layout of real portal responses are untested;
+- a real land registry: the registry is a local mock, so latency to a real registry over a real
+  network and the layout of real portal responses are untested (Section 5.4 emulates delay and
+  bandwidth on loopback at the application level, not a wide-area network);
 - more than one notary: notary and policy verifier are one trusted process with two keys;
 - a production trusted-setup ceremony: every phase 2 is single-party, so the proving keys suit this
   prototype only;
@@ -160,11 +168,18 @@ script/e2e_lifecycle.sh
 
 | Command | Expected |
 |---|---|
-| `forge test` | `206 tests passed, 0 failed, 0 skipped (206 total tests)`: 205 unit and fuzz tests and the one invariant suite, which checks four invariants; the tests record breaks the count down by kind |
-| `python3 script/table6_coverage.py` | `Tests: 205/205 passed; invariants: 4/4 held.` and `Conditions without a passing positive and negative test: none.` |
-| `cargo test --release --workspace` | 164 passed, 0 failed, 3 ignored (the ignored clock-shift tests need libfaketime: `cargo test --release -p pprev-prover --test time -- --include-ignored`) |
+| `forge test` | `245 tests passed, 0 failed, 0 skipped (245 total tests)`: 244 unit and fuzz tests (39 of them for the baseline of Section 5.3) and the one invariant suite, which checks four invariants |
+| `python3 script/table6_coverage.py` | `Tests: 244/244 passed; invariants: 4/4 held.` and `Conditions without a passing positive and negative test: none.` |
+| `cargo test --release --workspace` | 191 passed, 0 failed, 3 ignored (the ignored clock-shift tests need libfaketime: `cargo test --release -p pprev-prover --test time -- --include-ignored`) |
 | `script/e2e_register.sh` | `checks: 19/19 passed`; a record in `measurements/e2e_register/` |
 | `script/e2e_lifecycle.sh` | `checks: 25/25 passed`; a record in `measurements/e2e_lifecycle/` |
+
+`script/gate.sh` runs formatting and lint checks, both test suites, the measurement helpers' tests,
+and a shell syntax check, and writes each step's output to `measurements/gate/<run>/` with the
+SHA-256 of every tracked file before and after; the run fails on any difference. The current record
+is `measurements/gate/20261022T184708Z/` (commit `824cd23`: Rust 191 passed, 3 ignored; forge 245;
+helpers 6). The figures of the earlier records (206 forge and 114 Rust tests in September, 164 Rust
+tests on October 21) describe the sources of their dates.
 
 Both end-to-end scripts start anvil, deploy the contracts with the D18 parameters and the
 `policies/rental-v1.json` bundle, start the mock registry and the notary with keys generated for the
@@ -271,8 +286,8 @@ phi_A, 13 for phi_S): valid baselines, every public input changed by one, and th
 verifiers execute 726,294 gas together. Added to the 538,976-gas lifecycle of Section 5.2, they give
 1,265,270 gas, 2.3475 times as much. This is an additive, partial model: it keeps the signature
 checks and leaves out attestation verification, the extra calldata and intrinsic gas, and the
-verifier deployments. No design that verifies the TLSNotary attestation on-chain was built or
-measured. The same factor in the September summary row below came from an estimate that assumed all
+verifier deployments. When these records were taken, no design that verifies the TLSNotary
+attestation on-chain had been built; Section 5.3 builds and measures one. The same factor in the September summary row below came from an estimate that assumed all
 three verifiers cost like phi_R's; the measured verifiers give the same total, because 7 + 11 public
 inputs equal 2 x 9 and the verifier cost is linear in their number. That summary record also states
 that neither phi_A nor phi_S exists in the prototype: true when it was written, superseded by this
@@ -353,6 +368,71 @@ date. Suggested order after setup: `record_tests.sh`, `measure_offchain.sh`, `me
 before the next script, which refuses a dirty tree). `measure_groth16.sh` and `measure_l2.sh` read
 the newest L1 record; `measure_l2.sh` takes ETH/USD from the newest price record.
 
+### 5.3 Integrated on-chain verification baseline (October 2026)
+
+`contracts/src/baseline/` holds a measurement baseline, not part of PPREV: for Register, Apply, and
+Settle, a contract that checks the phase's submission on-chain the way PPREV's policy verifier
+checks it off-chain. It verifies the notary's signature over the attestation header (Ethereum-style
+secp256k1 over Keccak-256, an option of tlsn that the prover requests), recomputes the Merkle root
+over every body field, maps each transcript commitment to its role, opens the request line and the
+response structure, checks the connection data, t_att, and freshness, derives the predicate's
+public inputs, and verifies its Groth16 proof. The server identity (certificate chain and DNS name)
+is not checked on-chain: an identity attestor signs it off-chain over the signed header. The notary
+stays trusted for the authenticity of the TLS session.
+
+The fixtures (`contracts/test/baseline/fixtures/`) come from real notarised sessions with the mock
+registry (`offchain/crates/pprev-prover/tests/e1_attestation.rs`). Their identity signatures are
+test-key signatures, issued by the fixture generator after it verified the session's presentation
+(certificate chain against the mock registry's CA, DNS name): not an end-to-end identity service.
+The 39 forge tests accept each real submission and reject every altered part.
+
+```
+script/measure_e1.sh
+```
+
+| Phase | Execution gas | Groth16 call | Rest | Calldata |
+|---|---:|---:|---:|---:|
+| Register | 304,703 | 242,098 | 62,605 | 2,948 B |
+| Apply | 280,088 | 228,804 | 51,284 | 2,820 B |
+| Settle | 321,696 | 255,392 | 66,304 | 3,268 B |
+
+Record: `measurements/e1/20261021T133032Z.json` (commit `daa24d3`, clean tree; the sources,
+fixtures, compiled artifacts, and verifiers are hashed before and after the run, and each
+baseline's runtime code before and after its transaction). Each verification is a standalone view
+call: it handles no nonce, state, or caller. The record's lifecycle figures are a compositional
+estimate, not a measurement: added to the 538,976-gas lifecycle of Section 5.2, the three
+verifications give 1,445,463 gas (x2.68); without PPREV's own signature checks (their ECDSA
+marginals), 1,434,713 (x2.66). Calldata, storage, and deployment differences are not modelled. The
+contract coverage figure of Section 5.2 covers the September `contracts/src`; the baseline contracts
+are tested but not part of that figure.
+
+### 5.4 Controlled link experiment (October 2026)
+
+`script/measure_wan.sh` runs MPC-TLS sessions (the Register request of a fixture owner) with an
+emulated delay and bandwidth on one link at a time, prover-notary or prover-registry, through the
+proxy of `netem.rs`. It delays and paces application bytes; TCP handshakes, acknowledgements,
+congestion control, loss, and jitter are not emulated, so it is not a wide-area network emulation.
+Each grid point first calibrates the proxy (one-byte round trips, a bulk transfer) and records the
+measured round-trip time and goodput next to the target.
+
+Record: `measurements/wan/20261021T131426Z.json`, 14 points x 10 sessions on the M2 on AC power,
+with the SHA-256 of 100 source and binary files at start and end (unchanged). All 140 sessions
+succeeded in the end; one (registry link, 0 ms) needed a second attempt after a preprocessing stall
+of 60 s, so its process time is 60.4 s while its last attempt took 0.36 s. Medians of the process
+time:
+
+| Link | Measured RTT | Bandwidth | Process time, median |
+|---|---:|---:|---:|
+| direct | - | - | 0.31 s |
+| notary | 34.2 ms | unlimited | 2.17 s |
+| notary | 104.3 ms | unlimited | 5.76 s |
+| notary | 204.5 ms | unlimited | 10.80 s |
+| notary | 34.1 ms | 20 Mbit/s | 14.24 s |
+| registry | 104.2 ms | unlimited | 1.03 s |
+
+The record also gives the last attempt's MPC-TLS time, quartiles, and the other points. Only the
+notarisation is timed: no proof, policy verifier, or transaction.
+
 ## 6. Measurement notes
 
 - **Machine preparation** for timings: AC power, other applications closed, and sleep disabled for
@@ -407,7 +487,15 @@ the newest L1 record; `measure_l2.sh` takes ETH/USD from the newest price record
   The prover bounds preprocessing to 30 s and retries with a new session up to three times; the
   notary cuts sessions above its preprocessing (30 s) or session (120 s) bound. Measured rate in the
   committed off-chain record: 3 of 223 sessions (1.35%), all recovered by the first retry. Failed
-  attempts are excluded from every timing and reported separately.
+  attempts are excluded from every timing and reported separately. A notary that closes the session
+  before preprocessing completes is retried in the same way, whichever side observes the closure
+  first: the driver of the session ending, or preprocessing failing with an end of stream, a write
+  to a closed connection, or tlsn's internal error of an OT setup whose peer went away (taken as a
+  closure only if the session driver shows one within 2 s). Rejections, configuration errors, a
+  failed driver, and anything after preprocessing are final (`measurements/retry-fix-20261021/`
+  holds the failing and passing runs). During such deliberate cuts in the tests, worker threads of
+  the MPC dependencies print `Task polled after completion` panics; the tests pass, and the
+  prototype makes no claim of production fault tolerance.
 - **Dependency on tlsn's serialisation layout.** tlsn v0.1.0-alpha.15 keeps the transcript
   commitments of an attestation body crate-private; `pprev_notary::attested_commitments` reads them
   from the serialised body of a verified attestation. The golden test
@@ -432,7 +520,9 @@ the newest L1 record; `measure_l2.sh` takes ETH/USD from the newest price record
 
 ```
 contracts/          Foundry project: PPREV, ECDSA notary verifier, tests (test/), deployment and
-                    measurement scripts (script/: Deploy, Lifecycle, MeasureGas, L2Campaign, GenVectors)
+                    measurement scripts (script/: Deploy, Lifecycle, MeasureGas, L2Campaign, GenVectors,
+                    E1Measure); src/baseline/ and test/baseline/ hold the measurement baseline of
+                    Section 5.3
 circuits/           phi_R, phi_A, phi_S in circom (src/; lib/ holds byte, decimal, and calendar
                     templates); setup outputs (setup/, setup/phi_a/, setup/phi_s/): verification keys,
                     exported verifiers, sample proofs, transcripts; build/ is generated
@@ -443,12 +533,15 @@ offchain/crates/    pprev-types (response layouts, policy bundle, circuit parame
                     verifier for Register, Apply, and Settle, statement signature, nonce record,
                     mock notary; binary pprev-notary),
                     pprev-prover (login, MPC-TLS session, presentations, witnesses and proofs of the
-                    three predicates, Register/Apply/Engage/Settle clients; binary pprev-prover)
+                    three predicates, Register/Apply/Engage/Settle clients, attestation encoding
+                    for the baseline, link emulation; binaries pprev-prover, probe-portal,
+                    netem-proxy, netem-calibrate)
 policies/           policy bundle rental-v1.json and the response layouts title-v1, income-v1,
                     tenancy-v1
 test-vectors/       EIP-712, C_tx, and notary signature vectors shared by Solidity and Rust
 script/             circuit build and setup, end-to-end Register and lifecycle, measurement scripts,
-                    security-property coverage, results table; lib/ holds the shared parts
+                    security-property coverage, results table, repository gate; lib/ holds the
+                    shared parts
 measurements/       committed records of the measurement scripts, one JSON file per run
 ```
 
