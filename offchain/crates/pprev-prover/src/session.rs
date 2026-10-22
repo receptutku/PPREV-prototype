@@ -930,6 +930,62 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_closure_failure_with_a_failed_driver_is_final() {
+        let closure_failure = || {
+            let e: anyhow::Error = tlsn::Error::from(io(ErrorKind::UnexpectedEof)).into();
+            (e, Failure::Closure)
+        };
+        let panicked = driver(async { panic!("driver bug") }).join().await;
+        assert!(!stalled(&decide(Some(closure_failure()), Some(&panicked))));
+        let streams = driver(async { Err(ConnectionError::TooManyStreams.into()) })
+            .join()
+            .await;
+        assert!(!stalled(&decide(Some(closure_failure()), Some(&streams))));
+        let clean = driver(async { Ok(()) }).join().await;
+        assert!(stalled(&decide(Some(closure_failure()), Some(&clean))));
+    }
+
+    #[tokio::test]
+    async fn after_the_driver_ends_a_prover_failure_before_preprocessing_is_classified() {
+        let flag = AtomicBool::new(false);
+        let clean = driver(async { Ok(()) }).join().await;
+        let mpc = async { Err::<(), _>(anyhow::Error::from(io(ErrorKind::UnexpectedEof))) };
+        let e = after_driver_end(clean, mpc, &flag).await;
+        assert!(stalled(&e), "{e:#}");
+    }
+
+    #[tokio::test]
+    async fn preprocessing_completing_while_waiting_on_the_prover_makes_the_failure_final() {
+        // The prover finishes preprocessing during the wait and then fails, as it would after
+        // reaching the registry: not a stall, although the failure is a closure and the driver
+        // ended cleanly.
+        let flag = AtomicBool::new(false);
+        let clean = driver(async { Ok(()) }).join().await;
+        let mpc = async {
+            tokio::task::yield_now().await;
+            flag.store(true, Ordering::SeqCst);
+            Err::<(), _>(anyhow::Error::from(io(ErrorKind::UnexpectedEof)))
+        };
+        let e = after_driver_end(clean, mpc, &flag).await;
+        assert!(!stalled(&e), "{e:#}");
+        assert!(
+            format!("{e:#}").contains("before notarisation completed"),
+            "{e:#}"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_hung_prover_leaves_the_decision_to_the_driver() {
+        let flag = AtomicBool::new(false);
+        let clean = driver(async { Ok(()) }).join().await;
+        let e = after_driver_end(clean, std::future::pending::<Result<()>>(), &flag).await;
+        assert!(stalled(&e), "{e:#}");
+        let panicked = driver(async { panic!("driver bug") }).join().await;
+        let e = after_driver_end(panicked, std::future::pending::<Result<()>>(), &flag).await;
+        assert!(!stalled(&e), "{e:#}");
+    }
+
+    #[tokio::test]
     async fn a_driver_end_without_a_prover_failure_is_a_stall_only_if_it_is_a_closure() {
         let clean = driver(async { Ok(()) }).join().await;
         assert!(stalled(&decide(None, Some(&clean))));

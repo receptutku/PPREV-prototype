@@ -111,6 +111,8 @@ async fn prover_retries_when_the_notary_cuts_preprocessing() {
     // The cut is the first stall. A later attempt may still hit the upstream preprocessing deadlock
     // (tlsnotary/tlsn#1173) under load and time out, which is the retry this test does not test;
     // any further stall must be that timeout.
+    println!("attempts {}, stalls {:?}", stats.attempts, stats.stalls);
+    assert!((2..=4).contains(&stats.attempts), "{:?}", stats.stalls);
     assert_eq!(stats.stalls.len() as u32 + 1, stats.attempts);
     assert!(
         stats.stalls[0].contains("the notary closed the session"),

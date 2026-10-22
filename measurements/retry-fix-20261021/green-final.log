@@ -1,0 +1,265 @@
+# GREEN (final): working tree at 02c2681 + boundary regression tests; 2026-10-22T18:40:41Z
+# sha256 session.rs 49420cd1a7c88812070296dca6fa959907d59765888d4ab02e68369419c087a0 retry.rs be0c9940cb69c76a7721373277b6c93562c579e041144da3ad8a25824b044d85
+# mutation check: with the post-await phase re-read and the failed-driver veto disabled, a_closure_failure_with_a_failed_driver_is_final and preprocessing_completing_while_waiting_on_the_prover_makes_the_failure_final FAILED (11 passed, 2 failed); restored
+   Compiling pprev-prover v0.1.0 (/Users/receptutku/src/pprev-int/offchain/crates/pprev-prover)
+    Finished `release` profile [optimized + debuginfo] target(s) in 10.28s
+     Running unittests src/lib.rs (/Users/receptutku/src/pprev-int/target/release/deps/pprev_prover-04c23aed9543cb39)
+
+running 13 tests
+test session::tests::after_the_driver_ends_a_prover_failure_before_preprocessing_is_classified ... ok
+test session::tests::a_closure_failure_is_a_stall_without_the_driver ... ok
+test session::tests::a_final_failure_stays_final_even_when_the_driver_ended_cleanly ... ok
+test session::tests::closures_are_recognised_through_wrappers ... ok
+test session::tests::failures_are_classified_by_type ... ok
+test session::tests::a_lossy_failure_is_a_stall_only_if_the_driver_shows_the_closure ... ok
+test session::tests::other_failures_are_not_closures ... ok
+test session::tests::a_driver_end_without_a_prover_failure_is_a_stall_only_if_it_is_a_closure ... ok
+test session::tests::a_driver_panic_or_protocol_error_is_not_a_cut ... ok
+test session::tests::a_closure_failure_with_a_failed_driver_is_final ... ok
+test session::tests::preprocessing_completing_while_waiting_on_the_prover_makes_the_failure_final ... ok
+test session::tests::the_driver_ending_cleanly_or_with_a_closure_is_a_cut ... ok
+test session::tests::a_hung_prover_leaves_the_decision_to_the_driver ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 4.00s
+
+## retry suite run 1
+   Compiling pprev-prover v0.1.0 (/Users/receptutku/src/pprev-int/offchain/crates/pprev-prover)
+    Finished `release` profile [optimized + debuginfo] target(s) in 37.15s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+
+thread 'mpz-executor-worker' (23054123) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'mpz-executor-worker' (23054120) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+
+thread 'tokio-rt-worker' (23053987) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+test errors_after_preprocessing_are_not_retried ... ok
+attempts 2, stalls ["MPC-TLS preprocessing stalled: the notary closed the session: io error: error polling session connection caused by: i/o error: broken pipe, with an ambiguous internal preprocessing failure: internal error: commitment protocol failed during mpc-tls preprocessing caused by: preprocess error: io error: unexpected end of file: preprocess error: io error: unexpected end of file"]
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 2
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.74s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+
+thread 'tokio-rt-worker' (23054665) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test errors_after_preprocessing_are_not_retried ... ok
+attempts 2, stalls ["MPC-TLS preprocessing stalled: the notary closed the session: io error: error polling session connection caused by: i/o error: broken pipe, with an ambiguous internal preprocessing failure: internal error: commitment protocol failed during mpc-tls preprocessing caused by: preprocess error: io error: unexpected end of file: preprocess error: io error: unexpected end of file"]
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 3
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.22s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+
+thread 'mpz-executor-worker' (23055415) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'mpz-executor-worker' (23055418) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+
+thread 'mpz-executor-worker' (23055412) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+
+thread 'tokio-rt-worker' (23055313) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+test errors_after_preprocessing_are_not_retried ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+attempts 2, stalls ["MPC-TLS preprocessing stalled: the notary closed the session: io error: error polling session connection caused by: i/o error: broken pipe"]
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 4
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.22s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+
+thread 'mpz-executor-worker' (23056087) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+
+thread 'tokio-rt-worker' (23055991) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+test errors_after_preprocessing_are_not_retried ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+attempts 2, stalls ["MPC-TLS preprocessing stalled: the notary closed the session: io error: error polling session connection caused by: i/o error: broken pipe"]
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 5
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.24s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+
+thread 'tokio-rt-worker' (23056680) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test errors_after_preprocessing_are_not_retried ... ok
+attempts 2, stalls ["MPC-TLS preprocessing stalled: the notary closed the session: io error: error polling session connection caused by: i/o error: broken pipe, with an ambiguous internal preprocessing failure: internal error: commitment protocol failed during mpc-tls preprocessing caused by: preprocess error: io error: unexpected end of file: preprocess error: io error: unexpected end of file"]
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 6
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.22s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+
+thread 'tokio-rt-worker' (23057365) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test errors_after_preprocessing_are_not_retried ... ok
+attempts 2, stalls ["MPC-TLS preprocessing stalled: the notary closed the session: io error: error polling session connection caused by: i/o error: broken pipe, with an ambiguous internal preprocessing failure: internal error: commitment protocol failed during mpc-tls preprocessing caused by: preprocess error: execution error: io error: (Stream 13ac0e91/3c1ca37f03bf790b): connection is closed: preprocess error: execution error: io error: (Stream 13ac0e91/3c1ca37f03bf790b): connection is closed"]
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 7
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.22s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+
+thread 'mpz-executor-worker' (23058148) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'mpz-executor-worker' (23058146) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+
+thread 'mpz-executor-worker' (23058145) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+
+thread 'tokio-rt-worker' (23058003) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+test errors_after_preprocessing_are_not_retried ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+attempts 2, stalls ["MPC-TLS preprocessing stalled: the notary closed the session: io error: error polling session connection caused by: i/o error: broken pipe"]
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 8
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.22s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+
+thread 'tokio-rt-worker' (23058755) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test errors_after_preprocessing_are_not_retried ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+attempts 2, stalls ["MPC-TLS preprocessing stalled: the notary closed the session: io error: error polling session connection caused by: i/o error: broken pipe"]
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 9
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.23s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+
+thread 'mpz-executor-worker' (23059446) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+
+thread 'tokio-rt-worker' (23059393) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+test errors_after_preprocessing_are_not_retried ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+attempts 2, stalls ["MPC-TLS preprocessing stalled: the notary closed the session: io error: error polling session connection caused by: i/o error: broken pipe"]
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+## retry suite run 10
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.33s
+     Running tests/retry.rs (/Users/receptutku/src/pprev-int/target/release/deps/retry-f44140bd590d20dc)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+
+thread 'tokio-rt-worker' (23060121) panicked at /Users/receptutku/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/async-task-4.7.1/src/task.rs:452:45:
+Task polled after completion
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test errors_after_preprocessing_are_not_retried ... ok
+attempts 2, stalls ["MPC-TLS preprocessing stalled: the notary closed the session: io error: error polling session connection caused by: i/o error: broken pipe, with an ambiguous internal preprocessing failure: internal error: commitment protocol failed during mpc-tls preprocessing caused by: preprocess error: io error: unexpected end of file: preprocess error: io error: unexpected end of file"]
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
