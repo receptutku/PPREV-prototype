@@ -1,0 +1,7 @@
+cargo-fmt	0	1	bash -c cd offchain && cargo fmt --all --check
+cargo-clippy	0	3	bash -c cd offchain && cargo clippy --workspace --all-targets --release -- -D warnings
+cargo-test	0	184	bash -c cd offchain && cargo test --workspace --release --no-fail-fast
+forge-fmt	0	0	bash -c cd contracts && forge fmt --check
+forge-test	0	15	bash -c cd contracts && forge test
+python-helpers	0	1	python3 -I script/lib/test_wan_support.py -v
+shell-syntax	0	0	bash -c for f in script/*.sh script/lib/*.sh; do bash -n "$f" || exit 1; done

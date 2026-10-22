@@ -1,0 +1,11 @@
+test_calibration_budget_expiry_is_a_recorded_outcome (__main__.AccountingTests.test_calibration_budget_expiry_is_a_recorded_outcome) ... ok
+test_expired_campaign_does_not_start_a_process (__main__.AccountingTests.test_expired_campaign_does_not_start_a_process) ... ok
+test_invalid_calibration_json_is_recorded_as_error (__main__.AccountingTests.test_invalid_calibration_json_is_recorded_as_error) ... ok
+test_missing_attempts_and_censored_durations_are_not_zero_or_success (__main__.AccountingTests.test_missing_attempts_and_censored_durations_are_not_zero_or_success) ... ok
+test_source_change_invalidates_snapshot (__main__.AccountingTests.test_source_change_invalidates_snapshot) ... ok
+test_timeout_preserves_output_and_is_not_a_success (__main__.AccountingTests.test_timeout_preserves_output_and_is_not_a_success) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.347s
+
+OK

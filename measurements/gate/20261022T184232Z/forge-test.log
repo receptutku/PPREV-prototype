@@ -1,0 +1,331 @@
+No files changed, compilation skipped
+
+Ran 10 tests for test/Admin.t.sol:AdminTest
+[PASS] test_Constructor_fixesPublicParameters() (gas: 71197)
+[PASS] test_Constructor_revertsForInvalidParameters() (gas: 6290)
+[PASS] test_RegisterPolicy_bundleCannotBeChanged() (gas: 37481)
+[PASS] test_RegisterPolicy_optionalBoundsAdmitAnyCollateralAndDeposit() (gas: 537663)
+[PASS] test_RegisterPolicy_revertsForInvalidBundle() (gas: 182325)
+[PASS] test_RegisterPolicy_revertsForNonOperator() (gas: 34802)
+[PASS] test_RegisterPolicy_storesBundleAndEmits() (gas: 187170)
+[PASS] test_SetNotaryVerifier_revertsForNonOperator() (gas: 32585)
+[PASS] test_SetNotaryVerifier_revertsForZeroAddress() (gas: 32341)
+[PASS] test_SetNotaryVerifier_rotatesKey() (gas: 343876)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 4.23ms (2.27ms CPU time)
+
+Ran 8 tests for test/Cancel.t.sol:CancelTest
+[PASS] test_Cancel_acceptsActiveListing() (gas: 329165)
+[PASS] test_Cancel_acceptsExpiredListingWithRemainingCollateral() (gas: 720682)
+[PASS] test_Cancel_keepsPendingDepositsReclaimable() (gas: 550264)
+[PASS] test_Cancel_revertsForCancelledListing() (gas: 324765)
+[PASS] test_Cancel_revertsForNonOwner() (gas: 285487)
+[PASS] test_Cancel_revertsForSettledListing() (gas: 732292)
+[PASS] test_Cancel_revertsForUnknownListing() (gas: 34296)
+[PASS] test_Cancel_revertsWhileEngagementPending() (gas: 613115)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 7.02ms (5.39ms CPU time)
+
+Ran 10 tests for test/EcdsaNotaryVerifier.t.sol:EcdsaNotaryVerifierTest
+[PASS] test_Verifier_acceptsNotarySignature() (gas: 12973)
+[PASS] test_Verifier_acceptsOffchainNotarySignature() (gas: 15797)
+[PASS] test_Verifier_constructorRejectsZeroKey() (gas: 3850)
+[PASS] test_Verifier_rejectsAlteredOffchainNotarySignature() (gas: 32721)
+[PASS] test_Verifier_rejectsHighS() (gas: 15923)
+[PASS] test_Verifier_rejectsInvalidV() (gas: 21833)
+[PASS] test_Verifier_rejectsOtherDigest() (gas: 12925)
+[PASS] test_Verifier_rejectsOtherSigner() (gas: 12971)
+[PASS] test_Verifier_rejectsUnrecoverableSignature() (gas: 9689)
+[PASS] test_Verifier_rejectsWrongLength() (gas: 20946)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 1.61ms (1.47ms CPU time)
+
+Ran 9 tests for test/Reclaim.t.sol:ReclaimTest
+[PASS] test_Reclaim_acceptsInActiveListing() (gas: 531818)
+[PASS] test_Reclaim_acceptsInCancelledListing() (gas: 570381)
+[PASS] test_Reclaim_acceptsInExpiredListing() (gas: 940550)
+[PASS] test_Reclaim_acceptsInSettledListing() (gas: 976246)
+[PASS] test_Reclaim_acceptsUnengagedApplicationInLockedListing() (gas: 857016)
+[PASS] test_Reclaim_revertsForEngagedApplication() (gas: 610930)
+[PASS] test_Reclaim_revertsForNonDepositor() (gas: 496940)
+[PASS] test_Reclaim_revertsForReclaimedApplication() (gas: 536740)
+[PASS] test_Reclaim_revertsForUnknownApplication() (gas: 494877)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 10.50ms (8.16ms CPU time)
+
+Ran 12 tests for test/Attacks.t.sol:AttacksTest
+[PASS] test_P1_staleEvidenceRejectedInEveryPhase() (gas: 786664)
+[PASS] test_P2_acceptedPayloadCannotBeReplayed() (gas: 307453)
+[PASS] test_P2_nonceIsGlobalAcrossPhases() (gas: 328499)
+[PASS] test_P2_signatureBoundToChain() (gas: 321881)
+[PASS] test_P2_signatureBoundToDeployment() (gas: 471438)
+[PASS] test_P3_signatureOfOnePhaseRejectedInAnother() (gas: 1083067)
+[PASS] test_P4_doubleSettlementRejected() (gas: 764611)
+[PASS] test_P4_selfApplicationRejected() (gas: 306298)
+[PASS] test_P4_unauthorisedSettlementAttempts() (gas: 972682)
+[PASS] test_P5_frontRunApplyFailsAndHonestSubmissionSucceeds() (gas: 543199)
+[PASS] test_P5_frontRunRegisterFailsAndHonestSubmissionSucceeds() (gas: 320229)
+[PASS] test_P5_frontRunSettleFailsAndHonestSubmissionSucceeds() (gas: 746070)
+Suite result: ok. 12 passed; 0 failed; 0 skipped; finished in 10.46ms (8.29ms CPU time)
+
+Ran 12 tests for test/Engage.t.sol:EngageTest
+[PASS] test_Engage_i_acceptsListingOwner() (gas: 584452)
+[PASS] test_Engage_i_revertsForNonOwner() (gas: 495167)
+[PASS] test_Engage_ii_acceptsPendingApplication() (gas: 584453)
+[PASS] test_Engage_ii_revertsForApplicationOfOtherListing() (gas: 724818)
+[PASS] test_Engage_ii_revertsForEngagedApplication() (gas: 696742)
+[PASS] test_Engage_ii_revertsForReclaimedApplication() (gas: 539068)
+[PASS] test_Engage_ii_revertsForUnknownApplication() (gas: 497716)
+[PASS] test_Engage_iii_acceptsExpiredListing() (gas: 1009847)
+[PASS] test_Engage_iii_revertsForCancelledListing() (gas: 540861)
+[PASS] test_Engage_iii_revertsForLockedListing() (gas: 827534)
+[PASS] test_Engage_iii_revertsForSettledListing() (gas: 946686)
+[PASS] test_Engage_locksListingAndSetsExpiry() (gas: 631007)
+Suite result: ok. 12 passed; 0 failed; 0 skipped; finished in 6.98ms (6.50ms CPU time)
+
+Ran 33 tests for test/Register.t.sol:RegisterTest
+[PASS] test_R_a_acceptsRegisteredPolicies() (gas: 480120)
+[PASS] test_R_a_revertsForUnknownPolicy() (gas: 77479)
+[PASS] test_R_b_acceptsMatchingCommitment() (gas: 257259)
+[PASS] test_R_b_revertsWhenCommitmentAltered() (gas: 78660)
+[PASS] test_R_b_revertsWhenPolicyIdAltered() (gas: 77910)
+[PASS] test_R_b_revertsWhenSaltAltered() (gas: 78555)
+[PASS] test_R_b_revertsWhenTxDataAltered() (gas: 78014)
+[PASS] test_R_c_acceptsNotarySignature() (gas: 256849)
+[PASS] test_R_c_revertsForHighS() (gas: 85014)
+[PASS] test_R_c_revertsForMalformedSignature() (gas: 96660)
+[PASS] test_R_c_revertsForOtherChain() (gas: 86455)
+[PASS] test_R_c_revertsForOtherDeployment() (gas: 86263)
+[PASS] test_R_c_revertsForOtherPhaseTag() (gas: 88497)
+[PASS] test_R_c_revertsForOtherSubmitter() (gas: 90526)
+[PASS] test_R_c_revertsForWrongSigner() (gas: 88378)
+[PASS] test_R_c_revertsWhenSignedNonceDiffers() (gas: 89172)
+[PASS] test_R_c_revertsWhenSignedTimestampDiffers() (gas: 88543)
+[PASS] test_R_d_acceptsFreshNonce() (gas: 270050)
+[PASS] test_R_d_revertsForConsumedNonce() (gas: 314867)
+[PASS] test_R_e_acceptsAtAttestationTime() (gas: 257264)
+[PASS] test_R_e_acceptsAtWindowEnd() (gas: 257360)
+[PASS] test_R_e_revertsAfterWindow() (gas: 91770)
+[PASS] test_R_e_revertsForFutureAttestation() (gas: 91654)
+[PASS] test_R_f_acceptsNewCommitment() (gas: 270025)
+[PASS] test_R_f_revertsForCommitmentOfCancelledListing() (gas: 353062)
+[PASS] test_R_f_revertsForRegisteredCommitment() (gas: 314482)
+[PASS] test_R_g_acceptsMaxCollateral() (gas: 256919)
+[PASS] test_R_g_acceptsMinCollateral() (gas: 256961)
+[PASS] test_R_g_revertsAboveMaxCollateral() (gas: 97788)
+[PASS] test_R_g_revertsBelowMinCollateral() (gas: 95585)
+[PASS] test_R_h_acceptsFullShare() (gas: 256600)
+[PASS] test_R_h_revertsAboveFullShare() (gas: 97362)
+[PASS] test_Register_storesListingAndEmitsTxData() (gas: 306802)
+Suite result: ok. 33 passed; 0 failed; 0 skipped; finished in 7.28ms (6.32ms CPU time)
+
+Ran 13 tests for test/Expire.t.sol:ExpireTest
+[PASS] test_E_a_acceptsOpenEngagement() (gas: 683647)
+[PASS] test_E_a_revertsForExpiredEngagement() (gas: 693735)
+[PASS] test_E_a_revertsForPreviousRoundEngagement() (gas: 1019676)
+[PASS] test_E_a_revertsForSettledEngagement() (gas: 729860)
+[PASS] test_E_a_revertsForUnknownEngagement() (gas: 610136)
+[PASS] test_E_b_acceptsLockedListing() (gas: 679036)
+[PASS] test_E_c_acceptsAfterExpiresAt() (gas: 668735)
+[PASS] test_E_c_revertsAtExpiresAt() (gas: 618901)
+[PASS] test_E_c_revertsBeforeExpiresAt() (gas: 618524)
+[PASS] test_Expire_callableByAnyone() (gas: 674493)
+[PASS] test_Expire_compensatesCounterparty() (gas: 732437)
+[PASS] test_Expire_settleAndExpireWindowsMeetWithoutOverlap() (gas: 892221)
+[PASS] test_Expire_slashCompoundsAndExhaustingExpirationCancels() (gas: 1508377)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 7.92ms (7.45ms CPU time)
+
+Ran 6 tests for test/baseline/IntegratedPhaseVerifiers.t.sol:IntegratedApplyVerifierTest
+[PASS] test_accepts_the_real_submission() (gas: 809036)
+[PASS] test_rejects_a_c_b_aliasing_above_the_field() (gas: 573622)
+[PASS] test_rejects_an_amount_of_96_bits() (gas: 573630)
+[PASS] test_rejects_another_c_b() (gas: 809426)
+[PASS] test_rejects_another_listing() (gas: 809357)
+[PASS] test_rejects_another_request_line() (gas: 530206)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 24.91ms (20.73ms CPU time)
+
+Ran 29 tests for test/Settle.t.sol:SettleTest
+[PASS] test_S_a_acceptsExistingEngagement() (gas: 704484)
+[PASS] test_S_a_revertsForUnknownEngagement() (gas: 622273)
+[PASS] test_S_b_acceptsListingOwner() (gas: 704528)
+[PASS] test_S_b_revertsBeforeSignatureCheck() (gas: 624674)
+[PASS] test_S_b_revertsForCounterparty() (gas: 628603)
+[PASS] test_S_c_acceptsLockedListing() (gas: 718789)
+[PASS] test_S_c_revertsForDoubleSettlement() (gas: 750214)
+[PASS] test_S_c_revertsForExpiredListing() (gas: 714554)
+[PASS] test_S_d_acceptsRegisteredTxData() (gas: 703720)
+[PASS] test_S_d_revertsWhenSaltAltered() (gas: 635950)
+[PASS] test_S_d_revertsWhenShareRaised() (gas: 634418)
+[PASS] test_S_e_acceptsNotarySignature() (gas: 704477)
+[PASS] test_S_e_revertsForOtherEngagement() (gas: 1205850)
+[PASS] test_S_e_revertsForOtherPhaseTag() (gas: 652614)
+[PASS] test_S_e_revertsForWrongSigner() (gas: 652663)
+[PASS] test_S_e_revertsWhenSignedCbDiffers() (gas: 655177)
+[PASS] test_S_e_revertsWhenSignedExpiryDiffers() (gas: 652825)
+[PASS] test_S_e_revertsWhenSignedForOtherSubmitter() (gas: 654856)
+[PASS] test_S_f_acceptsFreshNonce() (gas: 707534)
+[PASS] test_S_f_revertsForConsumedNonce() (gas: 655271)
+[PASS] test_S_g_acceptsAtAttestationTime() (gas: 705880)
+[PASS] test_S_g_acceptsAtWindowEnd() (gas: 705816)
+[PASS] test_S_g_revertsAfterWindow() (gas: 656906)
+[PASS] test_S_g_revertsForFutureAttestation() (gas: 655855)
+[PASS] test_S_h_acceptsAtExpiresAt() (gas: 704875)
+[PASS] test_S_h_revertsAfterExpiresAt() (gas: 655693)
+[PASS] test_S_h_revertsForPreviousRoundEngagement() (gas: 1078743)
+[PASS] test_Settle_rentalReturnsDepositAndCollateral() (gas: 757123)
+[PASS] test_Settle_salePaysShareFixedInTxData() (gas: 705395)
+Suite result: ok. 29 passed; 0 failed; 0 skipped; finished in 22.23ms (20.96ms CPU time)
+
+Ran 3 tests for test/WhiteBox.t.sol:WhiteBoxTest
+[PASS] test_A_a_revertsWhenExpirationCounterReachedMax() (gas: 745848)
+[PASS] test_E_b_revertsWhenListingNotLocked() (gas: 646298)
+[PASS] test_Engage_iii_revertsWhenExpirationCounterReachedMax() (gas: 941982)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.58ms (1.07ms CPU time)
+
+Ran 5 tests for test/Withdraw.t.sol:WithdrawTest
+[PASS] test_Withdraw_paysCreditOnceRecipientAccepts() (gas: 462537)
+[PASS] test_Withdraw_reentryGainsNothing() (gas: 503270)
+[PASS] test_Withdraw_revertsAndKeepsCreditWhileRecipientRefuses() (gas: 440101)
+[PASS] test_Withdraw_revertsTwice() (gas: 480757)
+[PASS] test_Withdraw_revertsWithoutCredit() (gas: 34044)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 1.39ms (789.46µs CPU time)
+
+Ran 7 tests for test/baseline/IntegratedPhaseVerifiers.t.sol:IntegratedSettleVerifierTest
+[PASS] test_accepts_the_real_submission() (gas: 953145)
+[PASS] test_rejects_a_c_b_aliasing_above_the_field() (gas: 685463)
+[PASS] test_rejects_a_notation_that_changes_the_request_line() (gas: 634792)
+[PASS] test_rejects_another_expiry() (gas: 953622)
+[PASS] test_rejects_another_notation() (gas: 661453)
+[PASS] test_rejects_another_property() (gas: 953578)
+[PASS] test_the_engagement_day_matches_the_off_chain_derivation() (gas: 1178789)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 21.38ms (19.37ms CPU time)
+
+Ran 26 tests for test/baseline/IntegratedRegisterVerifier.t.sol:IntegratedRegisterVerifierTest
+[PASS] test_accepts_the_real_submission() (gas: 883995)
+[PASS] test_rejects_a_header_the_notary_did_not_sign() (gas: 593993)
+[PASS] test_rejects_a_header_with_a_trailing_byte() (gas: 588715)
+[PASS] test_rejects_a_malleable_signature() (gas: 590455)
+[PASS] test_rejects_a_missing_commitment() (gas: 604618)
+[PASS] test_rejects_a_proof_for_another_deployment() (gas: 1477651)
+[PASS] test_rejects_a_repeated_role() (gas: 608272)
+[PASS] test_rejects_a_role_out_of_range() (gas: 604286)
+[PASS] test_rejects_a_statement_changed_after_proving() (gas: 884319)
+[PASS] test_rejects_a_submission_after_delta() (gas: 642255)
+[PASS] test_rejects_an_identity_signature_for_another_server() (gas: 638348)
+[PASS] test_rejects_an_identity_signature_transplanted_from_another_header() (gas: 678106)
+[PASS] test_rejects_an_opaque_field_changed() (gas: 634901)
+[PASS] test_rejects_an_unsupported_hash_algorithm() (gas: 588902)
+[PASS] test_rejects_another_attestation_time() (gas: 634827)
+[PASS] test_rejects_another_direction_or_range() (gas: 610789)
+[PASS] test_rejects_another_policy() (gas: 588243)
+[PASS] test_rejects_another_property_in_the_request_line() (gas: 613124)
+[PASS] test_rejects_another_received_length() (gas: 602786)
+[PASS] test_rejects_another_request_line() (gas: 613177)
+[PASS] test_rejects_another_response_structure() (gas: 613690)
+[PASS] test_rejects_another_verifying_key_field() (gas: 598989)
+[PASS] test_rejects_another_version() (gas: 588824)
+[PASS] test_rejects_hashes_swapped_between_roles() (gas: 634944)
+[PASS] test_rejects_swapped_field_positions() (gas: 634976)
+[PASS] test_rejects_tls13() (gas: 599304)
+Suite result: ok. 26 passed; 0 failed; 0 skipped; finished in 51.13ms (51.71ms CPU time)
+
+Ran 6 tests for test/Encoding.t.sol:EncodingTest
+[PASS] testFuzz_Encoding_applyDigestAgrees((uint256,bytes32,(bytes32,uint256,uint256),bytes32,bytes32,address,bytes32,uint64)) (runs: 256, μ: 52064, ~: 52070)
+[PASS] testFuzz_Encoding_commitmentIsConcatenation((bytes32,uint256,uint256),bytes32,bytes32) (runs: 256, μ: 6790, ~: 6790)
+[PASS] testFuzz_Encoding_registerDigestAgrees((bytes32,(bytes32,uint256,uint256),bytes32,address,bytes32,uint64)) (runs: 256, μ: 47770, ~: 47764)
+[PASS] testFuzz_Encoding_settleDigestAgrees((uint256,uint256,bytes32,(bytes32,uint256,uint256),bytes32,uint256,bytes32,address,bytes32,uint64)) (runs: 256, μ: 56642, ~: 56632)
+[PASS] test_Encoding_domainSeparatorMatchesEip712() (gas: 10869)
+[PASS] test_Encoding_goldenVectorsMatch() (gas: 115546)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 61.63ms (102.65ms CPU time)
+
+Ran 23 tests for test/Payout.t.sol:PayoutTest
+[PASS] testFuzz_Payout_callerGasCannotForceCredit(uint256) (runs: 256, μ: 704422, ~: 712659)
+[PASS] test_Payout_cancel_creditsOwnerThatBurnsGas() (gas: 419417)
+[PASS] test_Payout_cancel_creditsOwnerThatRefuses() (gas: 389513)
+[PASS] test_Payout_cancel_creditsOwnerWithReturnBomb() (gas: 401937)
+[PASS] test_Payout_exhaustingExpire_creditsOwnerThatBurnsGas() (gas: 1594075)
+[PASS] test_Payout_exhaustingExpire_creditsOwnerThatRefuses() (gas: 1564213)
+[PASS] test_Payout_exhaustingExpire_creditsOwnerWithReturnBomb() (gas: 1576572)
+[PASS] test_Payout_expire_creditsCounterpartyThatBurnsGas() (gas: 790058)
+[PASS] test_Payout_expire_creditsCounterpartyThatRefuses() (gas: 760151)
+[PASS] test_Payout_expire_creditsCounterpartyWithReturnBomb() (gas: 772556)
+[PASS] test_Payout_reclaim_creditsDepositorThatBurnsGas() (gas: 631935)
+[PASS] test_Payout_reclaim_creditsDepositorThatRefuses() (gas: 602009)
+[PASS] test_Payout_reclaim_creditsDepositorWithReturnBomb() (gas: 614456)
+[PASS] test_Payout_reentry_cancelCannotCancelAgain() (gas: 419890)
+[PASS] test_Payout_reentry_expireCounterpartyCannotExpireAgain() (gas: 802671)
+[PASS] test_Payout_reentry_reclaimCannotReclaimAgain() (gas: 637226)
+[PASS] test_Payout_reentry_settleOwnerCannotCancel() (gas: 839636)
+[PASS] test_Payout_settle_creditsCounterpartyThatBurnsGas() (gas: 832519)
+[PASS] test_Payout_settle_creditsCounterpartyThatRefuses() (gas: 802681)
+[PASS] test_Payout_settle_creditsCounterpartyWithReturnBomb() (gas: 815086)
+[PASS] test_Payout_settle_creditsOwnerThatBurnsGas() (gas: 843360)
+[PASS] test_Payout_settle_creditsOwnerThatRefuses() (gas: 813434)
+[PASS] test_Payout_settle_creditsOwnerWithReturnBomb() (gas: 825858)
+Suite result: ok. 23 passed; 0 failed; 0 skipped; finished in 60.13ms (74.83ms CPU time)
+
+Ran 32 tests for test/Apply.t.sol:ApplyTest
+[PASS] test_A_a_acceptsActiveListing() (gas: 468897)
+[PASS] test_A_a_acceptsExpiredListing() (gas: 879582)
+[PASS] test_A_a_revertsForCancelledListing() (gas: 342918)
+[PASS] test_A_a_revertsForExhaustedListing() (gas: 1501468)
+[PASS] test_A_a_revertsForLockedListing() (gas: 631375)
+[PASS] test_A_a_revertsForSettledListing() (gas: 750509)
+[PASS] test_A_a_revertsForUnknownListing() (gas: 304306)
+[PASS] test_A_b_acceptsNonOwner() (gas: 468898)
+[PASS] test_A_b_revertsForListingOwner() (gas: 306299)
+[PASS] test_A_c_acceptsRegisteredTxData() (gas: 468965)
+[PASS] test_A_c_revertsWhenSaltAltered() (gas: 313502)
+[PASS] test_A_c_revertsWhenTxDataAltered() (gas: 312923)
+[PASS] test_A_d_acceptsNotarySignature() (gas: 468893)
+[PASS] test_A_d_revertsForOtherListing() (gas: 553774)
+[PASS] test_A_d_revertsForOtherPhaseTag() (gas: 325876)
+[PASS] test_A_d_revertsForOtherSubmitter() (gas: 328035)
+[PASS] test_A_d_revertsForWrongSigner() (gas: 325775)
+[PASS] test_A_d_revertsWhenSignedCbDiffers() (gas: 328296)
+[PASS] test_A_d_revertsWhenSignedUnderRegistrationPolicy() (gas: 325872)
+[PASS] test_A_e_acceptsFreshNonce() (gas: 471992)
+[PASS] test_A_e_revertsForConsumedNonce() (gas: 539169)
+[PASS] test_A_f_acceptsAtAttestationTime() (gas: 469415)
+[PASS] test_A_f_acceptsAtWindowEnd() (gas: 469406)
+[PASS] test_A_f_revertsAfterWindow() (gas: 329244)
+[PASS] test_A_f_revertsForFutureAttestation() (gas: 328968)
+[PASS] test_A_g_acceptsAgainAfterReclaim() (gas: 722243)
+[PASS] test_A_g_acceptsFirstApplication() (gas: 485295)
+[PASS] test_A_g_acceptsOtherApplicants() (gas: 679540)
+[PASS] test_A_g_revertsForSecondPendingApplication() (gas: 539536)
+[PASS] test_A_h_acceptsRequiredEscrow() (gas: 468948)
+[PASS] test_A_h_revertsBelowRequiredEscrow() (gas: 333086)
+[PASS] test_Apply_recordsApplicationAndEmits() (gas: 504937)
+Suite result: ok. 32 passed; 0 failed; 0 skipped; finished in 71.39ms (15.08ms CPU time)
+
+Ran 1 test for test/invariant/Accounting.t.sol:AccountingInvariantTest
+[PASS]
+AccountingInvariantTest invariants:
+[PASS] invariant_atMostOneOpenEngagementPerListing
+[PASS] invariant_balanceEqualsObligations
+[PASS] invariant_listingRecordsMatchState
+[PASS] invariant_openEngagementListingIsLocked
+ AccountingInvariantTest invariants (runs: 256, calls: 32768, reverts: 0)
+
+╭----------+----------+-------+---------+----------╮
+| Contract | Selector | Calls | Reverts | Discards |
++==================================================+
+| Handler  | applyTo  | 3666  | 0       | 0        |
+|----------+----------+-------+---------+----------|
+| Handler  | cancel   | 3575  | 0       | 0        |
+|----------+----------+-------+---------+----------|
+| Handler  | engage   | 3720  | 0       | 0        |
+|----------+----------+-------+---------+----------|
+| Handler  | expire   | 3629  | 0       | 0        |
+|----------+----------+-------+---------+----------|
+| Handler  | reclaim  | 3659  | 0       | 0        |
+|----------+----------+-------+---------+----------|
+| Handler  | register | 3645  | 0       | 0        |
+|----------+----------+-------+---------+----------|
+| Handler  | settle   | 3594  | 0       | 0        |
+|----------+----------+-------+---------+----------|
+| Handler  | warp     | 3647  | 0       | 0        |
+|----------+----------+-------+---------+----------|
+| Handler  | withdraw | 3633  | 0       | 0        |
+╰----------+----------+-------+---------+----------╯
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 14.92s (14.92s CPU time)
+
+Ran 18 test suites in 14.93s (15.30s CPU time): 245 tests passed, 0 failed, 0 skipped (245 total tests)
