@@ -14,19 +14,36 @@ is the snapshot whose records the paper cites.
 
 ## Running it
 
-Install the pinned toolchain and run the circuit setup as described in
-[REPRODUCTION.md](REPRODUCTION.md) sections 2 and 3 (the setup needs a trusted-setup beacon and takes
-about an hour once). After that, the quick check runs without network in about 15 minutes:
+Prerequisites: the pinned toolchain of [REPRODUCTION.md section 2](REPRODUCTION.md#2-requirements)
+(Rust, Foundry, circom, snarkjs via npm, Node.js from `.nvmrc`, Python 3, jq, openssl) and about
+10 GB of disk. No RPC endpoint or wallet is needed for the local run below. From a clean clone:
 
 ```
-(cd contracts && forge test)        # contract tests
-cargo test --release --workspace    # off-chain tests
-script/e2e_register.sh              # Register end to end: TLSNotary session, proof, signature, transaction
-script/e2e_lifecycle.sh             # Register, Apply, Engage, Settle end to end, with negative cases
+git clone --recurse-submodules https://github.com/receptutku/PPREV-prototype.git pprev-prototype
+cd pprev-prototype
+nvm install && nvm use                  # Node.js from .nvmrc
+(cd circuits && npm ci)                 # snarkjs, circomlib
+cargo build --release                   # prover, notary, mock registry
+(cd contracts && forge build)           # contracts
+
+# Trusted-setup beacon for the local run: random bytes, labelled as such in the setup transcript.
+export PPREV_BEACON="$(openssl rand -hex 32)" PPREV_BEACON_SOURCE="local random bytes, not public"
+script/circuits_build.sh                # compile phi_R
+script/circuits_setup.sh                # phi_R setup: downloads the 200 MB phase-1 file, about 65 min once
+script/circuits_build_as.sh             # compile phi_A and phi_S
+script/circuits_setup_as.sh             # phi_A and phi_S setup, a few minutes
+
+# Quick check, about 15 minutes, no network
+(cd contracts && forge test)            # contract tests
+cargo test --release --workspace        # off-chain tests
+script/e2e_register.sh                  # Register end to end: TLSNotary session, proof, signature, transaction
+script/e2e_lifecycle.sh                 # Register, Apply, Engage, Settle end to end, with negative cases
 ```
 
 Expected: `245 tests passed`, `191 passed, 0 failed, 3 ignored`, `checks: 19/19 passed`,
-`checks: 25/25 passed` (gate record `measurements/gate/20261022T184708Z/`).
+`checks: 25/25 passed` (gate record `measurements/gate/20261022T184708Z/`). The end-to-end scripts
+start and stop their own anvil, mock registry, and notary. A beacon from a public source, the
+`.env` variables, and running the parts by hand are in [REPRODUCTION.md section 3](REPRODUCTION.md#3-setup).
 
 ## Cost
 
