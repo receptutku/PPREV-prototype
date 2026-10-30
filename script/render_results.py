@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Renders the "Reproducing the results" table of README.md from the committed records.
+"""Renders the "Reproducing the results" table of REPRODUCTION.md from the committed records.
 
 Every value in the table is read from the newest record of each kind under measurements/; none is
 written by hand. The time column is an estimate for the machine of the records, not a measurement.
 The table goes between the markers `<!-- results:begin -->` and `<!-- results:end -->`.
 
 Usage: python3 script/render_results.py [--check]
-  --check  exit with status 1 if README.md is not up to date, without writing it
+  --check  exit with status 1 if REPRODUCTION.md is not up to date, without writing it
 """
 
 import json
@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-README = ROOT / "README.md"
+README = ROOT / "REPRODUCTION.md"
 BEGIN, END = "<!-- results:begin -->", "<!-- results:end -->"
 
 
@@ -169,7 +169,7 @@ def main():
     start, end = text.index(BEGIN), text.index(END) + len(END)
     updated = text[:start] + table + text[end:]
     if "--check" in sys.argv:
-        sys.exit(0 if updated == text else "README.md results table is out of date; run script/render_results.py")
+        sys.exit(0 if updated == text else "REPRODUCTION.md results table is out of date; run script/render_results.py")
     README.write_text(updated)
 
 
