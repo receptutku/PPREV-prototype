@@ -12,7 +12,7 @@ use std::path::Path;
 use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
 
-use crate::layout::{KEY_ACCOUNT, KEY_RECORD, ResponseShape, Writer, pad_value};
+use crate::layout::{KEY_ACCOUNT, KEY_RECORD, RequestTemplate, ResponseShape, Writer, pad_value};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -28,6 +28,8 @@ pub struct RecordLayout {
     pub server_name: String,
     /// Request target prefix; the target is the prefix followed by the record's subject.
     pub path_prefix: String,
+    /// The notarised request; its target is `{pathPrefix}{subject}`.
+    pub request: RequestTemplate,
     pub status_line: String,
     pub content_type: String,
     /// Single ASCII character that pads every value to its width.
@@ -117,7 +119,7 @@ impl RecordLayout {
                 field.key
             );
         }
-        Ok(())
+        self.request.validate()
     }
 
     pub fn padding_byte(&self) -> u8 {
@@ -131,7 +133,7 @@ impl RecordLayout {
 
     /// First line of the notarised request, without CRLF.
     pub fn request_line(&self, subject: &str) -> String {
-        format!("GET {} HTTP/1.1", self.path(subject))
+        self.request.request_line(&self.path(subject))
     }
 
     /// Pads `value` to `width` with the padding character.
@@ -215,10 +217,14 @@ impl RecordLayout {
     /// The notarised exchange for `subject`; the hidden ranges are the account, then every field.
     pub fn shape(&self, subject: &str) -> Result<ResponseShape> {
         let template = self.template()?;
+        let path = self.path(subject);
+        let (request, credentials) = self.request.render(&path);
         Ok(ResponseShape {
             server_name: self.server_name.clone(),
-            path: self.path(subject),
-            request_line: self.request_line(subject),
+            request_line: self.request.request_line(&path),
+            path,
+            request,
+            credentials,
             len: template.ranges.len,
             revealed: template.ranges.revealed(),
             hidden: template.ranges.hidden(),
@@ -315,6 +321,19 @@ mod tests {
         assert_eq!(&r.hidden()[1..], &r.fields[..]);
         let shape = tenancy().shape("N-0001").unwrap();
         assert_eq!(shape.request_line, "GET /tenancy/N-0001 HTTP/1.1");
+        let token = "f".repeat(64);
+        assert_eq!(
+            shape.render_request(token.as_bytes()).unwrap(),
+            format!(
+                "GET /tenancy/N-0001 HTTP/1.1\r\nhost: registry.pprev.test\r\n\
+                 authorization: Bearer {token}\r\nconnection: close\r\n\r\n"
+            )
+            .as_bytes()
+        );
+        let income = income().shape("").unwrap();
+        assert!(income.request.starts_with(b"GET /income HTTP/1.1\r\n"));
+        assert_eq!(income.credentials.len(), 1);
+        assert_eq!(income.credentials[0].len(), 64);
         assert_eq!(shape.hidden, r.hidden());
         assert_eq!(shape.revealed, r.revealed());
         assert_eq!(shape.len, r.len);
@@ -334,7 +353,8 @@ mod tests {
         let base = serde_json::json!({
             "id": "x", "serverName": "s", "pathPrefix": "/x", "statusLine": "HTTP/1.1 200 OK",
             "contentType": "application/json", "padding": " ", "accountWidth": 16,
-            "fields": [{"key": "a", "width": 1}]
+            "fields": [{"key": "a", "width": 1}],
+            "request": {"method": "GET", "version": "HTTP/1.1", "headers": []}
         });
         assert!(RecordLayout::from_json(&base.to_string()).is_ok());
         let with = |fields: serde_json::Value| {

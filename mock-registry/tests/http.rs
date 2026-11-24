@@ -333,3 +333,43 @@ async fn phase_layouts_must_name_the_registry_server() {
     .await;
     assert!(result.is_err());
 }
+
+#[tokio::test]
+async fn tokens_have_the_credential_width_of_the_request_templates() {
+    let registry = start_with_phases().await;
+    for (account, password) in [
+        ("ACC-000000000001", "owner-one"),
+        ("ACC-000000000003", "tenant"),
+    ] {
+        let token = login(&registry, account, password).await;
+        assert_eq!(token.len(), mock_registry::TOKEN_LEN);
+        assert!(token.bytes().all(|b| b.is_ascii_hexdigit()));
+    }
+    for l in [record_layout("income-v1"), record_layout("tenancy-v1")] {
+        assert_eq!(
+            l.shape("x").unwrap().credentials[0].len(),
+            mock_registry::TOKEN_LEN
+        );
+    }
+    assert_eq!(
+        layout().shape("x").unwrap().credentials[0].len(),
+        mock_registry::TOKEN_LEN
+    );
+}
+
+#[tokio::test]
+async fn layouts_must_fix_the_token_length_for_their_credential() {
+    let mut other = record_layout("tenancy-v1");
+    other.request.headers[1].credential_width = Some(mock_registry::TOKEN_LEN - 1);
+    let result = RunningRegistry::start_with_phases(
+        layout(),
+        PhaseLayouts {
+            income: None,
+            tenancy: Some(other),
+        },
+        fixtures(),
+        "127.0.0.1:0",
+    )
+    .await;
+    assert!(result.is_err());
+}

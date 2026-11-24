@@ -15,8 +15,9 @@ contract PPREVHarness is PPREV {
         uint256 delta,
         uint256 tauLock,
         uint256 maxExpirations,
-        uint256 rho
-    ) PPREV(operator, verifier, delta, tauLock, maxExpirations, rho) {}
+        uint256 rho,
+        uint256 rotationDelay
+    ) PPREV(operator, verifier, delta, tauLock, maxExpirations, rho, rotationDelay) {}
 
     function exposedHashTypedData(bytes32 structHash) external view returns (bytes32) {
         return _hashTypedData(structHash);
@@ -28,6 +29,19 @@ contract PPREVHarness is PPREV {
 
     function exposedHashTxData(TxData calldata txData) external pure returns (bytes32) {
         return PPREVEncoding.hashTxData(txData);
+    }
+
+    function exposedTypehashes()
+        external
+        pure
+        returns (bytes32 txData, bytes32 register_, bytes32 apply_, bytes32 settle_)
+    {
+        return (
+            PPREVEncoding.TX_DATA_TYPEHASH,
+            PPREVEncoding.REGISTER_TYPEHASH,
+            PPREVEncoding.APPLY_TYPEHASH,
+            PPREVEncoding.SETTLE_TYPEHASH
+        );
     }
 
     function exposedHashRegister(PPREVEncoding.RegisterStatement memory x) external pure returns (bytes32) {

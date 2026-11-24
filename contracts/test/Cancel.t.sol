@@ -31,6 +31,16 @@ contract CancelTest is Fixture {
         assertEq(address(pprev).balance, 0);
     }
 
+    function test_Cancel_acceptsAfterRotation() public {
+        Flow memory f = flowRegistered();
+        rotateNotary(ROTATED_PK);
+        uint256 before = owner.balance;
+        vm.prank(owner);
+        pprev.cancel(f.txId);
+        assertState(f.txId, TxState.Cancelled);
+        assertEq(owner.balance - before, COLLATERAL);
+    }
+
     function test_Cancel_keepsPendingDepositsReclaimable() public {
         Flow memory f = flowApplied();
         vm.prank(owner);

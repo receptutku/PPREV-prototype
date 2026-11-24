@@ -5,6 +5,8 @@ import {CommonBase} from "forge-std/Base.sol";
 import {StdCheats} from "forge-std/StdCheats.sol";
 import {StdUtils} from "forge-std/StdUtils.sol";
 import {PPREV} from "../../src/PPREV.sol";
+import {INotaryVerifier} from "../../src/interfaces/INotaryVerifier.sol";
+import {EcdsaNotaryVerifier} from "../../src/verifiers/EcdsaNotaryVerifier.sol";
 import {TxState, AppStatus, EngStatus, TxData, Listing} from "../../src/PPREVTypes.sol";
 import {NotarySigner, XR, XA, XS} from "../utils/NotarySigner.sol";
 import {Records} from "../utils/Records.sol";
@@ -12,12 +14,15 @@ import {Actor} from "../mocks/Actor.sol";
 
 /// @notice Drives random sequences of valid protocol operations. Every call it makes must succeed,
 /// so a revert fails the campaign (fail_on_revert). Participants include a contract that refuses
-/// payments and one that burns the payout gas.
+/// payments and one that burns the payout gas. The operator rotates vk_notary through proposals that
+/// may stay pending; Register and Apply are signed with the current key, Settle with the key pinned to
+/// the engaged application.
 contract Handler is CommonBase, StdCheats, StdUtils, NotarySigner {
     struct ListingInfo {
         TxData txData;
         bytes32 r;
         bytes32 cTx;
+        bytes32 cP;
         bytes32 policyIdR;
         bytes32 policyIdA;
         bytes32 policyIdS;
@@ -45,10 +50,14 @@ contract Handler is CommonBase, StdCheats, StdUtils, NotarySigner {
     uint256[] public engIds;
     mapping(uint256 txId => ListingInfo) internal info;
     uint256 internal seq;
+    /// @dev Notary key of each activated verifier version, and of the pending proposal (0 if none).
+    mapping(uint32 version => uint256 pk) internal keyOf;
+    uint256 internal pendingPk;
 
     constructor(PPREV pprev_, bytes32[6] memory policies) {
         pprev = pprev_;
         signingTarget = address(pprev_);
+        keyOf[1] = NOTARY_PK;
         (rentalR, rentalA, rentalS, saleR, saleA, saleS) =
         (policies[0], policies[1], policies[2], policies[3], policies[4], policies[5]);
         (,,, reqEscrow, minCollateral, maxCollateral) = pprev_.policyRegistry(rentalR);
@@ -84,16 +93,19 @@ contract Handler is CommonBase, StdCheats, StdUtils, NotarySigner {
         });
         li.r = next("r");
         li.cTx = keccak256(abi.encode(li.txData, li.policyIdR, li.r));
+        li.cP = next("c_P");
         XR memory x = XR({
             cTx: li.cTx,
             txData: li.txData,
+            cP: li.cP,
             policyId: li.policyIdR,
             submitter: li.owner,
             eta: next("eta"),
             tAtt: uint64(vm.getBlockTimestamp())
         });
+        bytes memory sigma = signDigest(currentKey(), digest(structHashR(x)));
         bytes memory call =
-            abi.encodeCall(PPREV.register, (li.cTx, li.txData, li.policyIdR, li.r, signR(x), x.eta, x.tAtt));
+            abi.encodeCall(PPREV.register, (li.cTx, li.txData, li.cP, li.policyIdR, li.r, sigma, x.eta, x.tAtt));
         uint256 txId = abi.decode(exec(li.owner, bound(collateralSeed, minCollateral, maxCollateral), call), (uint256));
         info[txId] = li;
         txIds.push(txId);
@@ -121,7 +133,8 @@ contract Handler is CommonBase, StdCheats, StdUtils, NotarySigner {
         x.submitter = who;
         x.eta = next("eta");
         x.tAtt = uint64(vm.getBlockTimestamp());
-        bytes memory call = abi.encodeCall(PPREV.applyFor, (txId, x.txData, li.r, x.cB, signA(x), x.eta, x.tAtt));
+        bytes memory sigma = signDigest(currentKey(), digest(structHashA(x)));
+        bytes memory call = abi.encodeCall(PPREV.applyFor, (txId, x.txData, li.r, x.cB, sigma, x.eta, x.tAtt));
         appIds.push(abi.decode(exec(who, bound(depositSeed, reqEscrow, 1 ether), call), (uint256)));
     }
 
@@ -131,7 +144,7 @@ contract Handler is CommonBase, StdCheats, StdUtils, NotarySigner {
         uint256 start = appSeed % n;
         for (uint256 i; i < n; ++i) {
             uint256 appId = appIds[(start + i) % n];
-            (uint256 txId,, AppStatus status,,) = pprev.applications(appId);
+            (uint256 txId,, AppStatus status,,,) = pprev.applications(appId);
             if (status == AppStatus.Pending && isOpen(txId)) {
                 bytes memory ret = exec(info[txId].owner, 0, abi.encodeCall(PPREV.engage, (txId, appId)));
                 engIds.push(abi.decode(ret, (uint256)));
@@ -145,20 +158,22 @@ contract Handler is CommonBase, StdCheats, StdUtils, NotarySigner {
         if (!found) return;
         (uint256 appId, uint256 expiresAt,) = pprev.engagements(engId);
         if (vm.getBlockTimestamp() > expiresAt) return;
-        (uint256 txId,,,, bytes32 cB) = pprev.applications(appId);
+        (uint256 txId,,, uint32 keyVersion,, bytes32 cB) = pprev.applications(appId);
         ListingInfo storage li = info[txId];
         XS memory x;
         x.engId = engId;
         x.txId = txId;
         x.cTx = li.cTx;
         x.txData = li.txData;
+        x.cP = li.cP;
         x.cB = cB;
         x.expiresAt = expiresAt;
         x.policyId = li.policyIdS;
         x.submitter = li.owner;
         x.eta = next("eta");
         x.tAtt = uint64(vm.getBlockTimestamp());
-        exec(li.owner, 0, abi.encodeCall(PPREV.settle, (engId, x.txData, li.r, signS(x), x.eta, x.tAtt)));
+        bytes memory sigma = signDigest(keyOf[keyVersion], digest(structHashS(x)));
+        exec(li.owner, 0, abi.encodeCall(PPREV.settle, (engId, x.txData, li.r, sigma, x.eta, x.tAtt)));
     }
 
     function expire(uint256 engSeed, uint256 callerSeed) external {
@@ -174,7 +189,7 @@ contract Handler is CommonBase, StdCheats, StdUtils, NotarySigner {
         if (n == 0) return;
         for (uint256 i; i < n; ++i) {
             uint256 appId = appIds[(appSeed % n + i) % n];
-            (, address depositor, AppStatus status,,) = pprev.applications(appId);
+            (, address depositor, AppStatus status,,,) = pprev.applications(appId);
             if (status == AppStatus.Pending) {
                 exec(depositor, 0, abi.encodeCall(PPREV.reclaim, (appId)));
                 return;
@@ -204,6 +219,25 @@ contract Handler is CommonBase, StdCheats, StdUtils, NotarySigner {
         vm.warp(vm.getBlockTimestamp() + bound(secondsSeed, 1, 20 days));
     }
 
+    /// @dev Proposes a verifier with a fresh key, replacing any pending proposal.
+    function proposeRotation(uint256 keySeed) external {
+        uint256 pk = uint256(keccak256(abi.encode("pprev.handler.notary", keySeed, ++seq)));
+        EcdsaNotaryVerifier v = new EcdsaNotaryVerifier(vm.addr(pk));
+        vm.prank(pprev.OPERATOR());
+        pprev.proposeNotaryVerifier(INotaryVerifier(address(v)));
+        pendingPk = pk;
+    }
+
+    /// @dev Waits for the pending proposal, if any, and activates it.
+    function activateRotation(uint256 callerSeed) external {
+        if (pendingPk == 0) return;
+        uint256 effectiveAt = pprev.pendingEffectiveAt();
+        if (vm.getBlockTimestamp() < effectiveAt) vm.warp(effectiveAt);
+        exec(eoas[callerSeed % eoas.length], 0, abi.encodeCall(PPREV.activateNotaryVerifier, ()));
+        keyOf[pprev.notaryKeyVersion()] = pendingPk;
+        pendingPk = 0;
+    }
+
     // ------------------------------------------------------------------ end-of-run drain
 
     /// @notice Closes every open position through the protocol's own exits.
@@ -221,7 +255,7 @@ contract Handler is CommonBase, StdCheats, StdUtils, NotarySigner {
             }
         }
         for (uint256 i; i < appIds.length; ++i) {
-            (, address depositor, AppStatus status,,) = pprev.applications(appIds[i]);
+            (, address depositor, AppStatus status,,,) = pprev.applications(appIds[i]);
             if (status == AppStatus.Pending) exec(depositor, 0, abi.encodeCall(PPREV.reclaim, (appIds[i])));
         }
         withdrawFor(refuser);
@@ -240,13 +274,13 @@ contract Handler is CommonBase, StdCheats, StdUtils, NotarySigner {
             }
         }
         for (uint256 i; i < appIds.length; ++i) {
-            (,, AppStatus status, uint256 deposit,) = pprev.applications(appIds[i]);
+            (,, AppStatus status,, uint256 deposit,) = pprev.applications(appIds[i]);
             if (status == AppStatus.Pending) total += deposit;
         }
         for (uint256 i; i < engIds.length; ++i) {
             (uint256 appId,, EngStatus status) = pprev.engagements(engIds[i]);
             if (status == EngStatus.Open) {
-                (,,, uint256 deposit,) = pprev.applications(appId);
+                (,,,, uint256 deposit,) = pprev.applications(appId);
                 total += deposit;
             }
         }
@@ -260,7 +294,7 @@ contract Handler is CommonBase, StdCheats, StdUtils, NotarySigner {
         for (uint256 i; i < engIds.length; ++i) {
             (uint256 appId,, EngStatus status) = pprev.engagements(engIds[i]);
             if (status != EngStatus.Open) continue;
-            (uint256 txId,,,,) = pprev.applications(appId);
+            (uint256 txId,,,,,) = pprev.applications(appId);
             if (pprev.txState(txId) != TxState.Locked) ++count;
         }
     }
@@ -272,7 +306,7 @@ contract Handler is CommonBase, StdCheats, StdUtils, NotarySigner {
             for (uint256 i; i < engIds.length; ++i) {
                 (uint256 appId,, EngStatus status) = pprev.engagements(engIds[i]);
                 if (status != EngStatus.Open) continue;
-                (uint256 txId,,,,) = pprev.applications(appId);
+                (uint256 txId,,,,,) = pprev.applications(appId);
                 if (txId == txIds[t]) ++count;
             }
             if (count > maxCount) maxCount = count;
@@ -298,6 +332,10 @@ contract Handler is CommonBase, StdCheats, StdUtils, NotarySigner {
 
     function next(string memory tag) internal returns (bytes32) {
         return keccak256(abi.encode(tag, ++seq));
+    }
+
+    function currentKey() internal view returns (uint256) {
+        return keyOf[pprev.notaryKeyVersion()];
     }
 
     function pickOpenListing(uint256 seed) internal view returns (bool, uint256) {

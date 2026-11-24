@@ -2,6 +2,15 @@
   "id": "tenancy-v1",
   "serverName": "registry.pprev.test",
   "pathPrefix": "/tenancy/",
+  "request": {
+    "method": "GET",
+    "version": "HTTP/1.1",
+    "headers": [
+      { "name": "host", "value": "registry.pprev.test" },
+      { "name": "authorization", "value": "Bearer ", "credentialWidth": 64 },
+      { "name": "connection", "value": "close" }
+    ]
+  },
   "statusLine": "HTTP/1.1 200 OK",
   "contentType": "application/json",
   "padding": " ",

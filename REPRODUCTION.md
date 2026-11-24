@@ -164,7 +164,8 @@ target/release/mock-registry --bind 127.0.0.1:4443 --ca-out registry-ca.der \
     --income-layout policies/layouts/income-v1.json --tenancy-layout policies/layouts/tenancy-v1.json
 target/release/pprev-notary --registry-ca registry-ca.der --policy policies/rental-v1.json \
     --attestation-key attestation.key --statement-key statement.key \
-    --chain-id 31337 --contract <PPREV> --tau-lock <TAU_LOCK()> --nonces nonces.log --log events.jsonl
+    --chain-id 31337 --contract <PPREV> --tau-lock <TAU_LOCK()> --nonces nonces.log \
+    --attestations attestations.log --notations notations.log --log events.jsonl
 target/release/pprev-prover register --account ACC-000000000001 ... --out run/register
 target/release/pprev-prover apply    --listing run/register/record.json --account ACC-000000000003 ... --out run/apply
 target/release/pprev-prover engage   --application run/apply/record.json ... --out run/engage.json
@@ -312,11 +313,11 @@ the newest L1 record; `measure_l2.sh` takes ETH/USD from the newest price record
 Settle, a contract that checks the phase's submission on-chain the way PPREV's policy verifier
 checks it off-chain. It verifies the notary's signature over the attestation header (Ethereum-style
 secp256k1 over Keccak-256, an option of tlsn that the prover requests), recomputes the Merkle root
-over every body field, maps each transcript commitment to its role, opens the request line and the
-response structure, checks the connection data, t_att, and freshness, derives the predicate's
-public inputs, and verifies its Groth16 proof. The server identity (certificate chain and DNS name)
-is not checked on-chain: an identity attestor signs it off-chain over the signed header. The notary
-stays trusted for the authenticity of the TLS session.
+over every body field, maps each transcript commitment to its role, opens the request (everything
+but the bearer token) and the response structure, checks the connection data, t_att, and
+freshness, derives the predicate's public inputs, and verifies its Groth16 proof. The server
+identity (certificate chain and DNS name) is not checked on-chain: an identity attestor signs it
+off-chain over the signed header. The notary stays trusted for the authenticity of the TLS session.
 
 The fixtures (`contracts/test/baseline/fixtures/`) come from real notarised sessions with the mock
 registry (`offchain/crates/pprev-prover/tests/e1_attestation.rs`). Their identity signatures are
@@ -530,6 +531,8 @@ Code follows Solidity naming conventions. The table maps the paper's notation to
 | binding of $\pi_\psi$ to $x_\psi$ | public input `bind` = EIP-712 digest of $x_\psi$ mod $r_{\mathrm{BN254}}$ |
 | $\mathsf{sk}_{\mathsf{notary}}$ | `pprev_notary::StatementKey` |
 | nonces the notary has signed | `pprev_notary::NonceStore` (append-only file, shared by all phases) |
+| attestations that have backed a signed statement | `pprev_notary::AttestationStore` (append-only file, shared by all phases; keccak256 of the BCS header) |
+| notation nullifier of Settle | `pprev_notary::NotationStore` (append-only file: (policyID_S, notation) -> (chainId, contract, engId)) |
 | policy verifier | `pprev_notary::PolicyVerifier` (Register in `register.rs`, Apply and Settle in `phases.rs`) |
 
 Undeliverable payouts: every payout made by an algorithm forwards `PAYOUT_GAS` (30,000) gas. If the

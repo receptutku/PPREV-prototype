@@ -128,7 +128,7 @@ APP_ID_DEC="$(cast to-dec "$(jq -r .submission.event.appId "${A}")")"
 check "apply: Applied" included "$(jq -r .outcome "${A}")" true
 ev="$(jq -r .submission.event.cB "${A}")"
 check "apply: Applied.cB is the submitted c_B" "$(jq -r .payload.cB "${A}")" "${ev}" "$(eq "${ev}" "$(jq -r .payload.cB "${A}")")"
-status="$(cast call "${PPREV_ADDRESS}" "applications(uint256)(uint256,address,uint8,uint256,bytes32)" "${APP_ID_DEC}" --rpc-url "${RPC}" | sed -n 3p)"
+status="$(cast call "${PPREV_ADDRESS}" "applications(uint256)(uint256,address,uint8,uint32,uint256,bytes32)" "${APP_ID_DEC}" --rpc-url "${RPC}" | sed -n 3p)"
 check "apply: application Pending (1)" 1 "${status}" "$(eq "${status}" 1)"
 consumed="$(cast call "${PPREV_ADDRESS}" "consumed(bytes32)(bool)" "$(jq -r .eta "${A}")" --rpc-url "${RPC}")"
 check "apply: consumed(eta_A)" true "${consumed}" "$(eq "${consumed}" true)"

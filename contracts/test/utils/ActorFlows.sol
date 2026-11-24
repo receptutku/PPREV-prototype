@@ -19,7 +19,8 @@ abstract contract ActorFlows is Fixture {
         f.rc = registerCall(policyIdR, share, address(actor));
         RegisterCall memory c = f.rc;
         bytes memory sigma = signR(xROf(c));
-        bytes memory call = abi.encodeCall(PPREV.register, (c.cTx, c.txData, c.policyIdR, c.r, sigma, c.eta, c.tAtt));
+        bytes memory call =
+            abi.encodeCall(PPREV.register, (c.cTx, c.txData, c.cP, c.policyIdR, c.r, sigma, c.eta, c.tAtt));
         f.txId = abi.decode(actor.execute(address(pprev), c.collateral, call), (uint256));
     }
 

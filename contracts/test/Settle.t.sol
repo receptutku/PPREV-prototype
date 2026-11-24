@@ -193,6 +193,36 @@ contract SettleTest is Fixture {
         submitSettle(c, sigma);
     }
 
+    function test_S_e_acceptsSignatureOverStoredCp() public {
+        // x_S takes c_P from the listing record: a listing registered with a non-default c_P settles
+        // with a signature over that stored value.
+        Flow memory f;
+        f.rc = registerCall(RENTAL_R, RENTAL_SHARE, owner);
+        f.rc.cP = next("registered c_P");
+        f.txId = doRegister(f.rc);
+        f.ac = applyCall(f, applicant);
+        f.appId = doApply(f.ac);
+        doEngage(f);
+        SettleCall memory c = settleCall(f);
+        assertEq(c.cP, listingOf(f.txId).cP);
+        submitSettle(c, signS(xSOf(c)));
+        assertState(f.txId, TxState.Settled);
+    }
+
+    function test_S_e_revertsWhenSignedCpDiffers() public {
+        // The record must come from the account that proved ownership at Register; c_P comes from
+        // the listing record, not from the submitter.
+        Flow memory f = flowEngaged();
+        SettleCall memory c = settleCall(f);
+        XS memory x = xSOf(c);
+        x.cP = cPOf(attacker);
+        bytes memory sigma = signS(x);
+        vm.expectRevert(InvalidNotarySignature.selector);
+        submitSettle(c, sigma);
+        // The same statement over the stored c_P is accepted.
+        submitSettle(c, signS(xSOf(c)));
+    }
+
     function test_S_e_revertsWhenSignedExpiryDiffers() public {
         Flow memory f = flowEngaged();
         SettleCall memory c = settleCall(f);
@@ -209,6 +239,86 @@ contract SettleTest is Fixture {
         XS memory x = xSOf(c);
         x.submitter = attacker;
         bytes memory sigma = signS(x);
+        vm.expectRevert(InvalidNotarySignature.selector);
+        submitSettle(c, sigma);
+    }
+
+    // S(e) under a rotation of vk_notary: S(e) verifies under the verifier pinned to the application.
+
+    function test_S_e_acceptsCurrentKeyWhileRotationPending() public {
+        Flow memory f = flowEngaged();
+        proposeNotary(ROTATED_PK);
+        doSettle(settleCall(f));
+        assertState(f.txId, TxState.Settled);
+    }
+
+    function test_S_e_revertsForPendingKey() public {
+        Flow memory f = flowEngaged();
+        proposeNotary(ROTATED_PK);
+        SettleCall memory c = settleCall(f);
+        bytes memory sigma = signSWith(ROTATED_PK, c);
+        vm.expectRevert(InvalidNotarySignature.selector);
+        submitSettle(c, sigma);
+    }
+
+    /// @dev A rotation proposed before the application and activated while its deposit is locked.
+    function flowEngagedAcrossRotation() internal returns (Flow memory f) {
+        proposeNotary(ROTATED_PK);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
+        f = flowEngaged();
+        activateWhenDue();
+        assertEq(pprev.notaryKeyVersion(), 2);
+        assertEq(applicationOf(f.appId).keyVersion, 1);
+        assertLe(vm.getBlockTimestamp(), f.expiresAt);
+    }
+
+    function test_S_e_acceptsKeyPinnedAtApplyAfterRotation() public {
+        Flow memory f = flowEngagedAcrossRotation();
+        doSettle(settleCall(f));
+        assertState(f.txId, TxState.Settled);
+    }
+
+    function test_S_e_revertsForRotatedKeyOnPinnedApplication() public {
+        Flow memory f = flowEngagedAcrossRotation();
+        SettleCall memory c = settleCall(f);
+        bytes memory sigma = signSWith(ROTATED_PK, c);
+        vm.expectRevert(InvalidNotarySignature.selector);
+        submitSettle(c, sigma);
+    }
+
+    function test_S_e_acceptsKeyPinnedAtApplyWhenEngagedAfterRotation() public {
+        // The pin is taken at Apply, not at Engage.
+        Flow memory f = flowApplied();
+        rotateNotary(ROTATED_PK);
+        doEngage(f);
+        SettleCall memory c = settleCall(f);
+        bytes memory rotatedSigma = signSWith(ROTATED_PK, c);
+        vm.expectRevert(InvalidNotarySignature.selector);
+        submitSettle(c, rotatedSigma);
+        doSettle(c);
+        assertState(f.txId, TxState.Settled);
+    }
+
+    function test_S_e_acceptsRotatedKeyForApplicationAfterRotation() public {
+        Flow memory f = flowRegistered();
+        rotateNotary(ROTATED_PK);
+        f.ac = applyCall(f, applicant);
+        f.appId = submitApply(f.ac, signAWith(ROTATED_PK, f.ac));
+        doEngage(f);
+        assertEq(applicationOf(f.appId).keyVersion, 2);
+        SettleCall memory c = settleCall(f);
+        submitSettle(c, signSWith(ROTATED_PK, c));
+        assertState(f.txId, TxState.Settled);
+    }
+
+    function test_S_e_revertsForSupersededKeyForApplicationAfterRotation() public {
+        Flow memory f = flowRegistered();
+        rotateNotary(ROTATED_PK);
+        f.ac = applyCall(f, applicant);
+        f.appId = submitApply(f.ac, signAWith(ROTATED_PK, f.ac));
+        doEngage(f);
+        SettleCall memory c = settleCall(f);
+        bytes memory sigma = signS(xSOf(c));
         vm.expectRevert(InvalidNotarySignature.selector);
         submitSettle(c, sigma);
     }

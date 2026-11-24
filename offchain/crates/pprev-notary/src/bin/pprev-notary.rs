@@ -17,8 +17,9 @@ use clap::Parser;
 use pprev_notary::phases::{ApplyPolicy, SettlePolicy};
 use pprev_notary::wire::{RegisterReply, Submission, read_message, write_message};
 use pprev_notary::{
-    DEFAULT_MAX_SESSION_SECS, DEFAULT_PREPROCESS_TIMEOUT, DEFAULT_SESSION_TIMEOUT, Groth16Verifier,
-    NonceStore, NotaryConfig, PolicyVerifier, RegisterPolicy, SessionCut, StatementKey,
+    AttestationStore, DEFAULT_MAX_SESSION_SECS, DEFAULT_PREPROCESS_TIMEOUT,
+    DEFAULT_SESSION_TIMEOUT, Groth16Verifier, NonceStore, NotaryConfig, NotationStore,
+    PolicyVerifier, RegisterPolicy, SessionCut, StatementKey,
 };
 use pprev_types::statement::domain;
 use pprev_types::{Layout, PolicyBundle, RecordLayout};
@@ -62,6 +63,12 @@ struct Args {
     /// Nonce record (D20).
     #[arg(long)]
     nonces: PathBuf,
+    /// Record of the attestations that have backed a signed statement, in any phase (M2).
+    #[arg(long)]
+    attestations: PathBuf,
+    /// Record of the engagement each settlement notation was first signed for (M2).
+    #[arg(long)]
+    notations: PathBuf,
     /// Event log, one JSON object per line.
     #[arg(long)]
     log: PathBuf,
@@ -317,8 +324,14 @@ async fn main() -> Result<()> {
         statement_key,
         domain(args.chain_id, args.contract),
         NonceStore::open(&args.nonces)?,
+        AttestationStore::open(&args.attestations)?,
     )
-    .with_phases(apply, settle, args.tau_lock);
+    .with_phases(
+        apply,
+        settle,
+        args.tau_lock,
+        NotationStore::open(&args.notations)?,
+    );
     let log = EventLog::open(&args.log)?;
 
     let mpc = TcpListener::bind(args.mpc_bind).await?;

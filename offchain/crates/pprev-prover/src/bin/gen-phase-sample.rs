@@ -1,8 +1,10 @@
 //! Writes the phi_A or phi_S witness input behind the sample proofs of `script/circuits_setup_as.sh`:
 //! the apply or settle statement of `test-vectors/eip712.json`, with c_B replaced by the commitment
-//! of the tenant ACC-000000000003 under a fixed salt, for fixture records of the mock registry, with
-//! blinders derived from fixed labels. The engagement day of phi_S is taken from the statement's
-//! expiresAt with the deployment's tau_lock of 14 days and the policy's time zone.
+//! of the tenant ACC-000000000003 under a fixed salt (and, for settle, c_P by the commitment of the
+//! landlord ACC-000000000001, the account of the settlement session, under another fixed salt), for
+//! fixture records of the mock registry, with blinders derived from fixed labels. The engagement day of phi_S is taken from the statement's
+//! expiresAt with the deployment's tau_lock of 14 days and the policy's time zone, its attestation
+//! day from the statement's tAtt in that time zone; the notation is dated on the engagement day.
 //!
 //! Usage: gen-phase-sample <apply|settle> <policy.json> <root> <eip712.json> <out.json>
 
@@ -10,7 +12,7 @@ use alloy_primitives::{Address, B256, U256};
 use anyhow::{Context, Result, bail};
 use pprev_notary::mock::counterparty_commitment;
 use pprev_prover::circuit::{PhiAInput, PhiSInput, commitment, label_blinder, record_openings};
-use pprev_types::calendar::engagement_day;
+use pprev_types::calendar::{attestation_day, engagement_day};
 use pprev_types::circuit::{PhiAPublic, PhiSPublic};
 use pprev_types::statement::{Apply, Settle, TxData, digest, domain};
 use pprev_types::{PolicyBundle, RecordLayout};
@@ -41,6 +43,13 @@ fn tx_data(v: &Value) -> Result<TxData> {
 
 fn salt() -> [u8; 32] {
     let mut salt: [u8; 32] = alloy_primitives::keccak256("pprev.sample.salt").0;
+    salt[0] &= 0x1f;
+    salt
+}
+
+/// s_P of the sample, as `gen-phi-r-sample` derives it.
+fn salt_p() -> [u8; 32] {
+    let mut salt: [u8; 32] = alloy_primitives::keccak256("pprev.sample.salt.p").0;
     salt[0] &= 0x1f;
     salt
 }
@@ -95,11 +104,14 @@ fn main() -> Result<()> {
             let source = policy.settle.context("the policy has no settle source")?;
             let layout = RecordLayout::load(root.join(&source.layout))?;
             let m = &vectors["settle"]["message"];
+            let salt_p = salt_p();
+            let c_p = counterparty_commitment(LANDLORD.as_bytes(), &salt_p)?;
             let x = Settle {
                 engId: parse(&m["engId"])?,
                 txId: parse(&m["txId"])?,
                 cTx: parse(&m["cTx"])?,
                 txData: tx_data(&m["txData"])?,
+                cP: c_p,
                 cB: c_b,
                 expiresAt: parse(&m["expiresAt"])?,
                 policyId: parse(&m["policyId"])?,
@@ -108,6 +120,7 @@ fn main() -> Result<()> {
                 tAtt: parse(&m["tAtt"])?,
             };
             let day = engagement_day(x.expiresAt.try_into()?, TAU_LOCK, source.utc_offset_secs)?;
+            let attested_day = attestation_day(x.tAtt, source.utc_offset_secs)?;
             let date = format!(
                 "{:04}-{:02}-{:02}",
                 day / 10_000,
@@ -128,16 +141,17 @@ fn main() -> Result<()> {
             )?;
             let public = PhiSPublic::new(
                 [
+                    commitment(&openings[0]),
                     commitment(&openings[1]),
                     commitment(&openings[2]),
                     commitment(&openings[3]),
                 ],
                 x.txData.propertyId.0,
-                c_b.0,
-                day,
+                [c_p.0, c_b.0],
+                [day, attested_day],
                 digest(&x, &eip712).0,
             )?;
-            serde_json::to_value(PhiSInput::new(&public, &openings, &salt)?)?
+            serde_json::to_value(PhiSInput::new(&public, &openings, &salt, &salt_p)?)?
         }
         _ => bail!(USAGE),
     };

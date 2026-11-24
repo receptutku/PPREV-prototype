@@ -24,7 +24,7 @@ contract RegisterTest is Fixture {
         RegisterCall memory c = registerCall();
         bytes memory sigma = signR(xROf(c));
         vm.expectEmit(address(pprev));
-        emit Registered(1, owner, c.cTx, RENTAL_R, c.txData, c.r, COLLATERAL);
+        emit Registered(1, owner, c.cTx, c.cP, RENTAL_R, c.txData, c.r, COLLATERAL);
         uint256 txId = submitRegister(c, sigma);
 
         assertEq(txId, 1);
@@ -34,11 +34,24 @@ contract RegisterTest is Fixture {
         assertEq(l.owner, owner);
         assertEq(l.collateral, COLLATERAL);
         assertEq(l.expirations, 0);
+        assertEq(l.cP, c.cP);
         assertState(txId, TxState.Active);
         assertTrue(pprev.registered(c.cTx));
         assertTrue(pprev.consumed(c.eta));
         assertEq(address(pprev).balance, COLLATERAL);
         assertEq(pprev.nextTxId(), 2);
+    }
+
+    /// @dev The contract treats c_P as it treats c_B: no check of its value (only the circuits open
+    /// it), so any signed c_P, zero included, is stored and emitted as submitted.
+    function testFuzz_Register_storesAndEmitsSignedCp(bytes32 cP) public {
+        RegisterCall memory c = registerCall();
+        c.cP = cP;
+        bytes memory sigma = signR(xROf(c));
+        vm.expectEmit(address(pprev));
+        emit Registered(1, owner, c.cTx, cP, RENTAL_R, c.txData, c.r, COLLATERAL);
+        uint256 txId = submitRegister(c, sigma);
+        assertEq(listingOf(txId).cP, cP);
     }
 
     // R(a) -------------------------------------------------------------------------------------
@@ -164,6 +177,33 @@ contract RegisterTest is Fixture {
         submitRegister(c, sigma);
     }
 
+    function test_R_c_acceptsSignatureOverSubmittedCp() public {
+        RegisterCall memory c = registerCall();
+        c.cP = next("other c_P");
+        uint256 txId = submitRegister(c, signR(xROf(c)));
+        assertEq(listingOf(txId).cP, c.cP);
+    }
+
+    function test_R_c_revertsWhenSignedCpDiffers() public {
+        // c_P is part of x_R: a signature over another owner identity commitment does not verify.
+        RegisterCall memory c = registerCall();
+        XR memory x = xROf(c);
+        x.cP = next("other c_P");
+        bytes memory sigma = signR(x);
+        vm.expectRevert(InvalidNotarySignature.selector);
+        submitRegister(c, sigma);
+    }
+
+    function test_R_c_revertsWhenSubmittedCpDiffers() public {
+        // A signature issued for one c_P is rejected when the call carries another.
+        RegisterCall memory c = registerCall();
+        bytes memory sigma = signR(xROf(c));
+        c.cP = next("other c_P");
+        vm.expectRevert(InvalidNotarySignature.selector);
+        submitRegister(c, sigma);
+        assertFalse(pprev.consumed(c.eta));
+    }
+
     function test_R_c_revertsForMalformedSignature() public {
         RegisterCall memory c = registerCall();
         bytes memory sigma = signR(xROf(c));
@@ -182,6 +222,43 @@ contract RegisterTest is Fixture {
         bytes memory malleated = abi.encodePacked(r, bytes32(n - uint256(s)), v == 27 ? uint8(28) : uint8(27));
         vm.expectRevert(InvalidNotarySignature.selector);
         submitRegister(c, malleated);
+    }
+
+    // R(c) under a rotation of vk_notary: R(c) verifies under the current verifier only.
+
+    function test_R_c_acceptsCurrentKeyWhileRotationPending() public {
+        proposeNotary(ROTATED_PK);
+        doRegister(registerCall());
+        // Still the current key once the proposal is due but not activated.
+        vm.warp(pprev.pendingEffectiveAt());
+        doRegister(registerCall());
+    }
+
+    function test_R_c_revertsForPendingKey() public {
+        proposeNotary(ROTATED_PK);
+        RegisterCall memory c = registerCall();
+        bytes memory sigma = signRWith(ROTATED_PK, c);
+        vm.expectRevert(InvalidNotarySignature.selector);
+        submitRegister(c, sigma);
+        vm.warp(pprev.pendingEffectiveAt());
+        c = registerCall();
+        sigma = signRWith(ROTATED_PK, c);
+        vm.expectRevert(InvalidNotarySignature.selector);
+        submitRegister(c, sigma);
+    }
+
+    function test_R_c_acceptsRotatedKeyAfterRotation() public {
+        rotateNotary(ROTATED_PK);
+        RegisterCall memory c = registerCall();
+        submitRegister(c, signRWith(ROTATED_PK, c));
+    }
+
+    function test_R_c_revertsForSupersededKeyAfterRotation() public {
+        rotateNotary(ROTATED_PK);
+        RegisterCall memory c = registerCall();
+        bytes memory sigma = signR(xROf(c));
+        vm.expectRevert(InvalidNotarySignature.selector);
+        submitRegister(c, sigma);
     }
 
     // R(d) -------------------------------------------------------------------------------------

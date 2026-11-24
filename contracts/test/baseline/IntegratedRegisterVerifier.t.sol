@@ -138,6 +138,13 @@ contract IntegratedRegisterVerifierTest is Test, E1Fixtures {
         _rejects(s, IntegratedVerifierBase.BadConnectionInfo.selector);
     }
 
+    function test_rejects_another_sent_length() public {
+        // A longer or shorter request than the template: another header, a body, a second request.
+        IntegratedRegisterVerifier.Submission memory s = _sub();
+        s.att.connectionInfo[9] = bytes1(uint8(s.att.connectionInfo[9]) ^ 1);
+        _rejects(s, IntegratedVerifierBase.BadConnectionInfo.selector);
+    }
+
     function test_rejects_tls13() public {
         IntegratedRegisterVerifier.Submission memory s = _sub();
         s.att.connectionInfo[8] = 0x01;
@@ -204,6 +211,33 @@ contract IntegratedRegisterVerifierTest is Test, E1Fixtures {
         _rejects(s, IntegratedVerifierBase.BadRequestLine.selector);
     }
 
+    function test_rejects_another_request_header_block() public {
+        IntegratedRegisterVerifier.Submission memory s = _sub();
+        s.att.requestHeaders = abi.encodePacked("\r\nrange: bytes=0-15", s.att.requestHeaders);
+        _rejects(s, IntegratedVerifierBase.BadRequestHeaders.selector);
+    }
+
+    function test_rejects_a_request_with_another_header_block() public {
+        // A baseline configured for another header block, and a submission that claims it: the
+        // request commitment opens only to the template's header block.
+        IntegratedRegisterVerifier.Submission memory s = _sub();
+        s.att.requestHeaders = abi.encodePacked("\r\nrange: bytes=0-15", s.att.requestHeaders);
+        IntegratedVerifierBase.BaseConfig memory c = baseConfig(fx);
+        c.requestHeadersHash = keccak256(s.att.requestHeaders);
+        IntegratedRegisterVerifier other = new IntegratedRegisterVerifier(c, IPhiRVerifier(address(0)));
+        vm.expectRevert(IntegratedVerifierBase.BadRequestLine.selector);
+        other.verify(s);
+    }
+
+    function test_rejects_another_credential_range() public {
+        // The request role's ranges are the whole request but the credential.
+        IntegratedRegisterVerifier.Submission memory s = _sub();
+        uint256 last = s.att.prefixes[1].length - 1;
+        s.att.prefixes[1][last] = bytes1(uint8(s.att.prefixes[1][last]) ^ 1);
+        vm.expectRevert(abi.encodeWithSelector(IntegratedVerifierBase.BadPrefix.selector, 1));
+        baseline.verify(s);
+    }
+
     function test_rejects_another_property_in_the_request_line() public {
         IntegratedRegisterVerifier.Submission memory s = _sub();
         s.txData.propertyId = bytes32(uint256(s.txData.propertyId) ^ (1 << 200));
@@ -227,6 +261,18 @@ contract IntegratedRegisterVerifierTest is Test, E1Fixtures {
     function test_rejects_a_statement_changed_after_proving() public {
         IntegratedRegisterVerifier.Submission memory s = _sub();
         s.submitter = address(0xBEEF);
+        _rejects(s, IntegratedVerifierBase.BadProof.selector);
+    }
+
+    function test_rejects_a_c_p_aliasing_above_the_field() public {
+        IntegratedRegisterVerifier.Submission memory s = _sub();
+        s.cP = bytes32(uint256(s.cP) + 21888242871839275222246405745257275088548364400416034343698204186575808495617);
+        _rejects(s, IntegratedRegisterVerifier.BadPublicInput.selector);
+    }
+
+    function test_rejects_another_c_p() public {
+        IntegratedRegisterVerifier.Submission memory s = _sub();
+        s.cP = bytes32(uint256(s.cP) ^ 1);
         _rejects(s, IntegratedVerifierBase.BadProof.selector);
     }
 

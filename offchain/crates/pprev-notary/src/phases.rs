@@ -1,24 +1,28 @@
 //! Policy verifier for Apply and Settle (Section V-B, step (d), for psi in {A, S}). As for Register,
 //! it checks the presentation against the policy's layout, recomputes the EIP-712 digest of x_psi,
 //! verifies the predicate proof under the policy's verifying key with every public input taken from
-//! the attestation and from x_psi, never from the submitter, and signs x_psi at most once per nonce.
+//! the attestation and from x_psi, never from the submitter, and signs x_psi at most once per nonce
+//! and at most once per attestation (M2). A Settle statement is signed on a notation only for the
+//! engagement of the first Settle statement signed on it (the notation nullifier, M2).
 //!
 //! phi_A's public inputs are the attested commitments to the account and the income, c_B, and
-//! txData.amount. phi_S's are the attested commitments to the property, the tenant, and the record
-//! date, txData.propertyId, c_B, and the engagement day, which the notary derives from expiresAt,
-//! the deployment's tau_lock, and the policy's time zone.
+//! txData.amount. phi_S's are the attested commitments to the session's account, the property, the
+//! tenant, and the record date, txData.propertyId, c_P, c_B, the engagement day, which the notary
+//! derives from expiresAt, the deployment's tau_lock, and the policy's time zone, and the
+//! attestation day, the calendar day of t_att in the policy's time zone.
 
 use std::time::Instant;
 
 use alloy_primitives::B256;
 use anyhow::{Context, Result, ensure};
 use pprev_types::RecordLayout;
-use pprev_types::calendar::engagement_day;
+use pprev_types::calendar::{attestation_day, engagement_day};
 use pprev_types::circuit::{PhiAPublic, PhiSPublic};
 use pprev_types::statement::{Apply, Settle, digest};
 use tlsn::attestation::presentation::Presentation;
 
 use crate::groth16::{Groth16Proof, Groth16Verifier};
+use crate::notations::Engagement;
 use crate::presentation::{ShapeExpectation, check_shape};
 use crate::register::{PolicyVerifier, RegisterTimings};
 
@@ -60,7 +64,7 @@ fn millis(since: Instant) -> f64 {
 
 /// A request target segment: letters, digits, and '-' only, so that it cannot change the request
 /// line around it.
-fn check_subject(subject: &str) -> Result<()> {
+pub(crate) fn check_subject(subject: &str) -> Result<()> {
     ensure!(
         !subject.is_empty()
             && subject.len() <= 64
@@ -106,6 +110,7 @@ impl PolicyVerifier {
             x.tAtt,
             attested.t_att
         );
+        self.ensure_unused_attestation(&attested.attestation_id)?;
         let [account_hash, income_hash] = attested.hidden_hashes[..] else {
             anyhow::bail!("the eligibility layout has two hidden fields");
         };
@@ -120,7 +125,7 @@ impl PolicyVerifier {
         );
         timings.verify_ms = millis(started);
         let sign_started = Instant::now();
-        let sigma = self.record_and_sign(x.eta, digest)?;
+        let sigma = self.record_and_sign(x.eta, attested.attestation_id, None, digest)?;
         timings.sign_ms = millis(sign_started);
         Ok((sigma, timings))
     }
@@ -167,16 +172,25 @@ impl PolicyVerifier {
             x.tAtt,
             attested.t_att
         );
-        // The account of the owner's session is committed but phi_S does not read it.
-        let [_account, property_hash, tenant_hash, date_hash] = attested.hidden_hashes[..] else {
+        self.ensure_unused_attestation(&attested.attestation_id)?;
+        // The notation nullifier: the request line has been checked to name this notation.
+        let engagement = self.engagement_of(x)?;
+        self.notations
+            .as_ref()
+            .context("the notary has no notation record for Settle")?
+            .check(x.policyId, &request.notation_id, &engagement)?;
+        let attested_day = attestation_day(attested.t_att, policy.utc_offset_secs)?;
+        // The account of the owner's session: phi_S opens it against c_P.
+        let [account_hash, property_hash, tenant_hash, date_hash] = attested.hidden_hashes[..]
+        else {
             anyhow::bail!("the tenancy layout has four hidden fields");
         };
         let digest = digest(x, &self.domain);
         let public = PhiSPublic::new(
-            [property_hash, tenant_hash, date_hash],
+            [account_hash, property_hash, tenant_hash, date_hash],
             x.txData.propertyId.0,
-            x.cB.0,
-            day,
+            [x.cP.0, x.cB.0],
+            [day, attested_day],
             digest.0,
         )?;
         let groth16_started = Instant::now();
@@ -188,7 +202,12 @@ impl PolicyVerifier {
         );
         timings.verify_ms = millis(started);
         let sign_started = Instant::now();
-        let sigma = self.record_and_sign(x.eta, digest)?;
+        let sigma = self.record_and_sign(
+            x.eta,
+            attested.attestation_id,
+            Some((x.policyId, &request.notation_id, engagement)),
+            digest,
+        )?;
         timings.sign_ms = millis(sign_started);
         Ok((sigma, timings))
     }
@@ -201,6 +220,22 @@ impl PolicyVerifier {
     /// Returns sigma_S, or the reason for refusing it.
     pub fn sign_settle(&mut self, request: SettleRequest) -> Result<[u8; 65]> {
         Ok(self.sign_settle_timed(request)?.0)
+    }
+
+    /// The engagement x_S settles: the chain and verifying contract of the notary's EIP-712 domain,
+    /// and engId.
+    fn engagement_of(&self, x: &Settle) -> Result<Engagement> {
+        Ok(Engagement {
+            chain_id: self
+                .domain
+                .chain_id
+                .context("the EIP-712 domain has no chain ID")?,
+            contract: self
+                .domain
+                .verifying_contract
+                .context("the EIP-712 domain has no verifying contract")?,
+            eng_id: x.engId,
+        })
     }
 
     fn ensure_unsigned(&self, eta: B256) -> Result<()> {

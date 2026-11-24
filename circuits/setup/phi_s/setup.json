@@ -1,7 +1,7 @@
 {
   "circuit": "main_tenancy_v1",
-  "constraints": 89257,
-  "r1csSha256": "73741d474e0052e8edaeb0b7ecb230786538e7dda92cfaee21f7f3bbdc1ca0a4",
+  "constraints": 119188,
+  "r1csSha256": "82d8188f6a96c1c7b71ff588cf4203242e4f3b035972f7f2d7b7fd36b1ec073a",
   "phase1": {
     "source": "PSE perpetual powers of tau, branch ending at contribution 0080 (the file of circuits/setup/setup.json)",
     "sha256": "f807e065fde53f72f4bf4d57140fab85b26daa6cc95bdfec7cce93622b3a367c",
@@ -13,31 +13,31 @@
       {
         "name": "contribution 1",
         "entropy": "64 bytes from /dev/urandom",
-        "hash": "c5fe40cc89b27e764054b7d154fe0aeb0694b04c41d1349c98e66268494339820559d6f4ffb7d9ed26ea43f3e00e74e48457d9287613bb65619600ce112cb9b8"
+        "hash": "a2aecd1147a143e0b58b9cd708bfd9db6ad9a02ec0bca16e2b67ef542bb2442531aef18c4214746df2a043d70b6bc7338d68572420e2d8f46655e544b25933f0"
       },
       {
         "name": "contribution 2",
         "entropy": "64 bytes from /dev/urandom",
-        "hash": "3a9fe2b9749f1be19fafe81670c545e453443351877bed5e2349da2a3363cce60c4adf38ba3686d608ca8c145876463124ad03813cc93442d4a424adc5ba1de5"
+        "hash": "cccc5c11503d92645350bda837a1e9e7407978880d1e1082a50aab524b9efd46d2cc604084e8350d6148a831615712e5c4e9232c9930e2ad3e7c65bf7a5c0cca"
       }
     ],
     "beacon": {
-      "source": "hash of Ethereum mainnet block 26239717 (finalised at setup time)",
-      "value": "789fd237ea66167d55342571c14c67eef7a0e270412fd656c3b82fc1a7391b72",
+      "source": "hash of Ethereum mainnet block 26484879 (finalised at setup time)",
+      "value": "d916af7eb4737ad98f676ac55ef7102745f65d2c8b787c14f2e1145954d637b8",
       "iterationsExp": 10,
-      "hash": "84fe216fff1af94b26aa04a0ea28c9ef7164c845bcd58254f522fe62c4bdcf6d8ed3abf86d5881982a1c048117437687be8bbe7e57f57f766814788ffe5a0c9a"
+      "hash": "1c0b30e35d15d7ba58e3d4067f35edf5ffbfce324c4522518a0ce5b24c63c9aed11205aeb82682e3106182353723e1f213966d673b33676613fd053d06281a7f"
     },
     "snarkjsVerify": "ZKey Ok!"
   },
-  "zkeySha256": "49d5c4cceeec89b845fd090f662b15bb7aab28e76ef74bc80296c2136cc05f0f",
-  "verificationKeySha256": "f72e695584614404e163e4a09ae3728ddc5c3d4c2e97bf811c2a656a56383164",
+  "zkeySha256": "ab0013f9757e9612db8388b6f7b775ca4901d81877114fc377a5ee012d5add21",
+  "verificationKeySha256": "99d75aefadc7a6760f01c2f7618483c904aadcb0078f2760802afc3098888739",
   "tools": {
     "snarkjs": "0.7.6",
     "circom": "circom compiler 2.2.3",
     "node": "v26.9.0"
   },
-  "date": "2026-10-21T08:39:42Z",
-  "solidityVerifierSha256": "87c094c0f0e62aebdf59168cc55927ced349651221d7fd2d4e8b70199cdea246",
+  "date": "2026-11-24T12:25:40Z",
+  "solidityVerifierSha256": "347f05c78498a015ae9bc5968d0738dc712695da6bbd7c83103b36c6fc0db15a",
   "sample": {
     "statement": "settle message of test-vectors/eip712.json, c_B = H_c(ACC-000000000003, fixed salt)",
     "snarkjsVerify": "OK!"

@@ -70,7 +70,8 @@ start pprev-notary "${WORK}/notary.log" "${BIN}/pprev-notary" \
     --registry-ca "${WORK}/registry-ca.der" --policy "${POLICY}" --root "${ROOT}" \
     --attestation-key "${WORK}/attestation.key" --statement-key "${WORK}/statement.key" \
     --chain-id "${CHAIN_ID}" --contract 0x0000000000000000000000000000000000000001 \
-    --tau-lock 1209600 --nonces "${WORK}/nonces.log" --log "${WORK}/notary-events.jsonl" \
+    --tau-lock 1209600 --nonces "${WORK}/nonces.log" --attestations "${WORK}/attestations.log" \
+    --notations "${WORK}/notations.log" --log "${WORK}/notary-events.jsonl" \
     --preprocess-timeout-secs "${PREPROCESS_TIMEOUT_SECS}" --session-timeout-secs "${SESSION_TIMEOUT_SECS}"
 wait_port "${MPC_PORT}" pprev-notary "${PIDS[${#PIDS[@]} - 1]}"
 

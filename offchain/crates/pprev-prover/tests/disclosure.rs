@@ -64,14 +64,26 @@ fn presentation_reveals_exactly_the_d26_set() {
         .verify(&provider(&run.ca_der))
         .expect("verification");
     let transcript = output.transcript.expect("transcript");
-    let request_line = run.layout.request_line(PROPERTY);
+    // The whole request except the bearer token, whose range the template fixes.
+    let shape = run.layout.shape(PROPERTY).unwrap();
     assert_eq!(
         transcript.sent_authed(),
-        &RangeSet::from(0..request_line.len())
+        &RangeSet::from(shape.request_revealed())
     );
+    assert_eq!(run.notarized.request_revealed, shape.request_revealed());
+    let token = shape.credentials[0].clone();
+    assert_eq!(token.len(), run.token.len());
+    let sent = transcript.sent_unsafe();
+    assert_eq!(sent.len(), shape.request.len());
+    let mut seen = sent.to_vec();
+    seen[token.clone()].fill(b'?');
     assert_eq!(
-        &transcript.sent_unsafe()[..request_line.len()],
-        request_line.as_bytes()
+        String::from_utf8(seen).unwrap(),
+        format!(
+            "GET /title/{PROPERTY} HTTP/1.1\r\nhost: registry.pprev.test\r\n\
+             authorization: Bearer {}\r\nconnection: close\r\n\r\n",
+            "?".repeat(64)
+        )
     );
     let ranges = &run.notarized.ranges;
     assert_eq!(
@@ -100,9 +112,10 @@ fn presentation_reveals_exactly_the_d26_set() {
 }
 
 #[test]
-fn hidden_values_headers_and_token_are_absent_from_the_serialised_presentation() {
+fn hidden_values_and_token_are_absent_from_the_serialised_presentation() {
     // The presentation carries only the opened bytes; the hidden field values, the other response
-    // values, the request headers, and the bearer token must not appear anywhere in it.
+    // values, and the bearer token (or any 8-byte piece of it) must not appear anywhere in it. The
+    // request headers are revealed, exactly as the template fixes them.
     let run = run();
     let bytes = bincode::serialize(&presentation()).unwrap();
     let contains = |needle: &[u8]| bytes.windows(needle.len()).any(|w| w == needle);
@@ -111,20 +124,25 @@ fn hidden_values_headers_and_token_are_absent_from_the_serialised_presentation()
         "ACC-000000000002",
         "000000012500000",
         "2026-09-24",
-        "Authorization",
-        "Host:",
     ] {
         assert!(
             !contains(secret.as_bytes()),
             "{secret} appears in the presentation"
         );
     }
-    assert!(
-        !contains(run.token.as_bytes()),
-        "bearer token appears in the presentation"
-    );
-    // The property identifier is public (txData) and appears in the revealed request line.
+    for piece in run.token.as_bytes().windows(8) {
+        assert!(
+            !contains(piece),
+            "a piece of the bearer token appears in the presentation"
+        );
+    }
+    // The property identifier is public (txData) and appears in the revealed request line; the
+    // header block is the template's, up to the token.
     assert!(contains(PROPERTY.as_bytes()));
+    assert!(contains(
+        b"\r\nhost: registry.pprev.test\r\nauthorization: Bearer "
+    ));
+    assert!(contains(b"\r\nconnection: close\r\n\r\n"));
 }
 
 #[test]

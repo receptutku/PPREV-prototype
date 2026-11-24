@@ -18,7 +18,7 @@ contract AccountingInvariantTest is Test, NotarySigner {
         vm.warp(1_760_000_000);
         address operator = makeAddr("operator");
         EcdsaNotaryVerifier v = new EcdsaNotaryVerifier(vm.addr(NOTARY_PK));
-        pprev = new PPREV(operator, INotaryVerifier(address(v)), 300, 14 days, 3, 5000);
+        pprev = new PPREV(operator, INotaryVerifier(address(v)), 300, 14 days, 3, 5000, 14 days);
         bytes32[6] memory policies = [
             keccak256("pprev.rental.register"),
             keccak256("pprev.rental.apply"),
@@ -34,7 +34,7 @@ contract AccountingInvariantTest is Test, NotarySigner {
 
         handler = new Handler(pprev, policies);
         targetContract(address(handler));
-        bytes4[] memory selectors = new bytes4[](9);
+        bytes4[] memory selectors = new bytes4[](11);
         selectors[0] = Handler.register.selector;
         selectors[1] = Handler.applyTo.selector;
         selectors[2] = Handler.engage.selector;
@@ -44,6 +44,8 @@ contract AccountingInvariantTest is Test, NotarySigner {
         selectors[6] = Handler.cancel.selector;
         selectors[7] = Handler.withdraw.selector;
         selectors[8] = Handler.warp.selector;
+        selectors[9] = Handler.proposeRotation.selector;
+        selectors[10] = Handler.activateRotation.selector;
         targetSelector(FuzzSelector({addr: address(handler), selectors: selectors}));
     }
 

@@ -25,13 +25,14 @@ contract ApplyTest is Fixture {
         ApplyCall memory c = applyCall(f, applicant);
         bytes memory sigma = signA(xAOf(c));
         vm.expectEmit(address(pprev));
-        emit Applied(1, f.txId, applicant, c.cB, DEPOSIT);
+        emit Applied(1, f.txId, applicant, c.cB, DEPOSIT, 1);
         uint256 appId = submitApply(c, sigma);
 
         Application memory a = applicationOf(appId);
         assertEq(a.txId, f.txId);
         assertEq(a.depositor, applicant);
         assertEq(uint8(a.status), uint8(AppStatus.Pending));
+        assertEq(a.keyVersion, 1);
         assertEq(a.deposit, DEPOSIT);
         assertEq(a.cB, c.cB);
         assertEq(pprev.pendingApp(f.txId, applicant), appId);
@@ -203,6 +204,47 @@ contract ApplyTest is Fixture {
         XA memory x = xAOf(c);
         x.policyId = RENTAL_R;
         bytes memory sigma = signA(x);
+        vm.expectRevert(InvalidNotarySignature.selector);
+        submitApply(c, sigma);
+    }
+
+    // A(d) under a rotation of vk_notary: A(d) verifies under the current verifier, whose version the
+    // application records.
+
+    function test_A_d_acceptsCurrentKeyWhileRotationPending() public {
+        Flow memory f = flowRegistered();
+        proposeNotary(ROTATED_PK);
+        vm.warp(pprev.pendingEffectiveAt());
+        uint256 appId = doApply(applyCall(f, applicant));
+        assertEq(applicationOf(appId).keyVersion, 1);
+    }
+
+    function test_A_d_revertsForPendingKey() public {
+        Flow memory f = flowRegistered();
+        proposeNotary(ROTATED_PK);
+        ApplyCall memory c = applyCall(f, applicant);
+        bytes memory sigma = signAWith(ROTATED_PK, c);
+        vm.expectRevert(InvalidNotarySignature.selector);
+        submitApply(c, sigma);
+    }
+
+    function test_A_d_acceptsRotatedKeyAfterRotationAndPinsItsVersion() public {
+        // The listing was registered under version 1; the application pins the version current at Apply.
+        Flow memory f = flowRegistered();
+        rotateNotary(ROTATED_PK);
+        ApplyCall memory c = applyCall(f, applicant);
+        bytes memory sigma = signAWith(ROTATED_PK, c);
+        vm.expectEmit(address(pprev));
+        emit Applied(1, f.txId, applicant, c.cB, DEPOSIT, 2);
+        uint256 appId = submitApply(c, sigma);
+        assertEq(applicationOf(appId).keyVersion, 2);
+    }
+
+    function test_A_d_revertsForSupersededKeyAfterRotation() public {
+        Flow memory f = flowRegistered();
+        rotateNotary(ROTATED_PK);
+        ApplyCall memory c = applyCall(f, applicant);
+        bytes memory sigma = signA(xAOf(c));
         vm.expectRevert(InvalidNotarySignature.selector);
         submitApply(c, sigma);
     }

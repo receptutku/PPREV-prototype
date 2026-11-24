@@ -1,7 +1,8 @@
 //! Policy verifier for Register (Section V-B, step (d); D1). It checks the presentation against the
 //! policy's layout, recomputes the EIP-712 digest of x_R, verifies the phi_R proof under the
-//! policy's verifying key with the public inputs taken from the attestation, and signs x_R with
-//! sk_notary at most once per nonce.
+//! policy's verifying key with the public inputs taken from the attestation and from x_R (its
+//! txData.propertyId and c_P), and signs x_R with sk_notary at most once per nonce and at most once
+//! per attestation (M2).
 
 use std::collections::HashMap;
 use std::time::Instant;
@@ -15,8 +16,10 @@ use serde::{Deserialize, Serialize};
 use tlsn::attestation::presentation::Presentation;
 use tlsn::attestation::signing::VerifyingKey;
 
+use crate::attestations::AttestationStore;
 use crate::groth16::{Groth16Proof, Groth16Verifier};
 use crate::nonces::NonceStore;
+use crate::notations::{Engagement, NotationStore};
 use crate::phases::{ApplyPolicy, SettlePolicy};
 use crate::presentation::{Expectation, check_presentation};
 use crate::sigma::StatementKey;
@@ -47,7 +50,8 @@ pub struct RegisterTimings {
     pub groth16_ms: f64,
     /// Every check before signing, the two above included.
     pub verify_ms: f64,
-    /// Recording the nonce (D20) and signing x_R with sk_notary.
+    /// Recording the nonce (D20), the attestation, and for Settle the notation (M2), and signing
+    /// x_psi with sk_notary.
     pub sign_ms: f64,
 }
 
@@ -67,9 +71,14 @@ pub struct PolicyVerifier {
     key: StatementKey,
     pub(crate) domain: Eip712Domain,
     pub(crate) nonces: NonceStore,
+    /// Attestations that have backed a signed statement, in any phase (M2).
+    pub(crate) attestations: AttestationStore,
+    /// The engagement each settlement notation was first signed for (M2); set with the phases.
+    pub(crate) notations: Option<NotationStore>,
 }
 
 impl PolicyVerifier {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         policies: HashMap<B256, RegisterPolicy>,
         attestation_key: VerifyingKey,
@@ -78,6 +87,7 @@ impl PolicyVerifier {
         key: StatementKey,
         domain: Eip712Domain,
         nonces: NonceStore,
+        attestations: AttestationStore,
     ) -> Self {
         Self {
             policies,
@@ -90,26 +100,57 @@ impl PolicyVerifier {
             key,
             domain,
             nonces,
+            attestations,
+            notations: None,
         }
     }
 
-    /// Adds the Apply and Settle policies, each keyed by its own identifier, and the deployment's
-    /// lock window. A statement is signed only under a policy of its own phase.
+    /// Adds the Apply and Settle policies, each keyed by its own identifier, the deployment's lock
+    /// window, and the record of settlement notations. A statement is signed only under a policy of
+    /// its own phase.
     pub fn with_phases(
         mut self,
         apply: HashMap<B256, ApplyPolicy>,
         settle: HashMap<B256, SettlePolicy>,
         tau_lock: Option<u64>,
+        notations: NotationStore,
     ) -> Self {
         self.apply_policies = apply;
         self.settle_policies = settle;
         self.tau_lock = tau_lock;
+        self.notations = Some(notations);
         self
     }
 
-    /// Records the nonce (D20) and signs the digest with sk_notary.
-    pub(crate) fn record_and_sign(&mut self, eta: B256, digest: B256) -> Result<[u8; 65]> {
+    /// Refuses an attestation that has already backed a signed statement (M2). Called once the
+    /// presentation has verified under the attestation key.
+    pub(crate) fn ensure_unused_attestation(&self, id: &[u8; 32]) -> Result<()> {
+        ensure!(
+            !self.attestations.contains(id),
+            "attestation 0x{} has already backed a signed statement",
+            hex::encode(id)
+        );
+        Ok(())
+    }
+
+    /// Records the nonce (D20), the attestation, and for Settle the notation's engagement (M2), in
+    /// that order, and signs the digest with sk_notary. Every record is durable before the signature
+    /// exists. The caller has checked all of them, so a refusal never records anything.
+    pub(crate) fn record_and_sign(
+        &mut self,
+        eta: B256,
+        attestation_id: [u8; 32],
+        notation: Option<(B256, &str, Engagement)>,
+        digest: B256,
+    ) -> Result<[u8; 65]> {
         self.nonces.record(eta.0)?;
+        self.attestations.record(attestation_id)?;
+        if let Some((policy_id, notation_id, engagement)) = notation {
+            self.notations
+                .as_mut()
+                .context("the notary has no notation record for Settle")?
+                .record(policy_id, notation_id, engagement)?;
+        }
         self.key.sign(digest)
     }
 
@@ -159,8 +200,9 @@ impl PolicyVerifier {
             x.tAtt,
             attested.t_att
         );
+        self.ensure_unused_attestation(&attested.attestation_id)?;
         let digest = digest(x, &self.domain);
-        let public = attested.phi_r_public(x.txData.propertyId.0, digest.0)?;
+        let public = attested.phi_r_public(x.txData.propertyId.0, x.cP.0, digest.0)?;
         let groth16_started = Instant::now();
         let valid = policy.verifier.verify(&request.proof, &public.inputs())?;
         timings.groth16_ms = millis(groth16_started);
@@ -171,8 +213,7 @@ impl PolicyVerifier {
         timings.verify_ms = millis(started);
 
         let sign_started = Instant::now();
-        self.nonces.record(x.eta.0)?;
-        let sigma = self.key.sign(digest)?;
+        let sigma = self.record_and_sign(x.eta, attested.attestation_id, None, digest)?;
         timings.sign_ms = millis(sign_started);
         Ok((sigma, timings))
     }

@@ -29,6 +29,10 @@ use tokio_rustls::TlsAcceptor;
 /// Largest request the registry reads.
 const MAX_REQUEST: usize = 8 * 1024;
 
+/// Length of every bearer token the registry issues: 32 random bytes, hex-encoded. The request
+/// template of every layout the registry serves fixes this width for its credential.
+pub const TOKEN_LEN: usize = 64;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Account {
@@ -157,6 +161,23 @@ impl Registry {
     }
 
     pub fn with_phases(layout: Layout, phases: PhaseLayouts, fixtures: Fixtures) -> Result<Self> {
+        // Every credential of a request template is a token of the registry's fixed length.
+        let requests = std::iter::once((&layout.id, &layout.request)).chain(
+            phases
+                .income
+                .iter()
+                .chain(&phases.tenancy)
+                .map(|l| (&l.id, &l.request)),
+        );
+        for (id, request) in requests {
+            for h in &request.headers {
+                if let Some(width) = h.credential_width
+                    && width != TOKEN_LEN
+                {
+                    bail!("layout {id} has a credential of {width} bytes; tokens have {TOKEN_LEN}");
+                }
+            }
+        }
         // Every record must render under its layout before the registry serves anything.
         for record in &fixtures.records {
             for account in &fixtures.accounts {
@@ -210,7 +231,7 @@ impl Registry {
         if !known {
             return Response::status(401, "Unauthorized");
         }
-        let mut raw = [0u8; 32];
+        let mut raw = [0u8; TOKEN_LEN / 2];
         rand::thread_rng().fill_bytes(&mut raw);
         let token = hex::encode(raw);
         self.tokens

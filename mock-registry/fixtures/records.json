@@ -48,6 +48,12 @@
       "propertyId": "TR-06-CANKAYA-000123",
       "tenant": "ACC-000000000002",
       "recordDate": "2026-10-21"
+    },
+    {
+      "id": "N-0005",
+      "propertyId": "TR-06-CANKAYA-000123",
+      "tenant": "ACC-000000000003",
+      "recordDate": "2099-12-31"
     }
   ]
 }

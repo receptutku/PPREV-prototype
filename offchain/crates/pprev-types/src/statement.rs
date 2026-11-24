@@ -19,6 +19,7 @@ sol! {
     struct Register {
         bytes32 cTx;
         TxData txData;
+        bytes32 cP;
         bytes32 policyId;
         address submitter;
         bytes32 eta;
@@ -45,6 +46,7 @@ sol! {
         uint256 txId;
         bytes32 cTx;
         TxData txData;
+        bytes32 cP;
         bytes32 cB;
         uint256 expiresAt;
         bytes32 policyId;
@@ -155,6 +157,7 @@ mod tests {
         let x = Register {
             cTx: b256(&m["cTx"]),
             txData: tx_data(&m["txData"]),
+            cP: b256(&m["cP"]),
             policyId: b256(&m["policyId"]),
             submitter: address(&m["submitter"]),
             eta: b256(&m["eta"]),
@@ -194,6 +197,7 @@ mod tests {
             txId: u256(&m["txId"]),
             cTx: b256(&m["cTx"]),
             txData: tx_data(&m["txData"]),
+            cP: b256(&m["cP"]),
             cB: b256(&m["cB"]),
             expiresAt: u256(&m["expiresAt"]),
             policyId: b256(&m["policyId"]),
@@ -212,6 +216,7 @@ mod tests {
         let x = Register {
             cTx: b256(&m["cTx"]),
             txData: tx_data(&m["txData"]),
+            cP: b256(&m["cP"]),
             policyId: b256(&m["policyId"]),
             submitter: address(&m["submitter"]),
             eta: b256(&m["eta"]),

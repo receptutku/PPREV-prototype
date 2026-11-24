@@ -4,5 +4,5 @@ pragma circom 2.2.0;
 
 include "phi_s.circom";
 
-component main {public [propertyHash, tenantHash, dateHash, propertyId, cB, engagementDay, bind]} =
-    PhiS(20, 16, 32);
+component main {public [accountHash, propertyHash, tenantHash, dateHash, propertyId, cP, cB, engagementDay, attestationDay, bind]} =
+    PhiS(16, 20, 16, 32);

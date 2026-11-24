@@ -8,6 +8,7 @@ import {TxData} from "../../src/PPREVTypes.sol";
 struct XR {
     bytes32 cTx;
     TxData txData;
+    bytes32 cP;
     bytes32 policyId;
     address submitter;
     bytes32 eta;
@@ -30,6 +31,7 @@ struct XS {
     uint256 txId;
     bytes32 cTx;
     TxData txData;
+    bytes32 cP;
     bytes32 cB;
     uint256 expiresAt;
     bytes32 policyId;
@@ -47,11 +49,11 @@ abstract contract NotarySigner is CommonBase {
 
     string internal constant TX_DATA_TYPE = "TxData(bytes32 propertyId,uint256 amount,uint256 settlementShare)";
     string internal constant REGISTER_TYPE =
-        "Register(bytes32 cTx,TxData txData,bytes32 policyId,address submitter,bytes32 eta,uint64 tAtt)";
+        "Register(bytes32 cTx,TxData txData,bytes32 cP,bytes32 policyId,address submitter,bytes32 eta,uint64 tAtt)";
     string internal constant APPLY_TYPE =
         "Apply(uint256 txId,bytes32 cTx,TxData txData,bytes32 cB,bytes32 policyId,address submitter,bytes32 eta,uint64 tAtt)";
     string internal constant SETTLE_TYPE =
-        "Settle(uint256 engId,uint256 txId,bytes32 cTx,TxData txData,bytes32 cB,uint256 expiresAt,bytes32 policyId,address submitter,bytes32 eta,uint64 tAtt)";
+        "Settle(uint256 engId,uint256 txId,bytes32 cTx,TxData txData,bytes32 cP,bytes32 cB,uint256 expiresAt,bytes32 policyId,address submitter,bytes32 eta,uint64 tAtt)";
 
     /// @dev Where signatures are aimed; set by the fixture after deployment.
     address internal signingTarget;
@@ -74,7 +76,7 @@ abstract contract NotarySigner is CommonBase {
 
     /// @dev encodeData(x) without the typehash.
     function encodeDataR(XR memory x) internal pure returns (bytes memory) {
-        return abi.encode(x.cTx, hashTxDataTs(x.txData), x.policyId, x.submitter, x.eta, x.tAtt);
+        return abi.encode(x.cTx, hashTxDataTs(x.txData), x.cP, x.policyId, x.submitter, x.eta, x.tAtt);
     }
 
     function encodeDataA(XA memory x) internal pure returns (bytes memory) {
@@ -82,7 +84,7 @@ abstract contract NotarySigner is CommonBase {
     }
 
     function encodeDataS(XS memory x) internal pure returns (bytes memory) {
-        bytes memory head = abi.encode(x.engId, x.txId, x.cTx, hashTxDataTs(x.txData), x.cB);
+        bytes memory head = abi.encode(x.engId, x.txId, x.cTx, hashTxDataTs(x.txData), x.cP, x.cB);
         return bytes.concat(head, abi.encode(x.expiresAt, x.policyId, x.submitter, x.eta, x.tAtt));
     }
 

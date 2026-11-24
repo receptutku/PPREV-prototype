@@ -10,10 +10,10 @@ use crate::layout::{KEY_PROPERTY_ID, KEY_RECORD_DATE};
 use crate::{Layout, RecordLayout};
 
 /// Number of public inputs of phi_R.
-pub const PHI_R_PUBLIC_INPUTS: usize = 9;
+pub const PHI_R_PUBLIC_INPUTS: usize = 10;
 
 /// What the policy verifier knows of a phi_R instance: the attested commitments, the statement's
-/// `txData.propertyId`, and the EIP-712 digest of x_R.
+/// `txData.propertyId` and c_P, and the EIP-712 digest of x_R.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PhiRPublic {
     /// SHA-256 commitments to the `account`, `owners`, and `propertyId` values.
@@ -22,13 +22,15 @@ pub struct PhiRPublic {
     pub property_hash: [u8; 32],
     /// `txData.propertyId`.
     pub property_id: [u8; 32],
+    /// c_P of x_R; [`check_field_element`] it before use.
+    pub c_p: [u8; 32],
     /// EIP-712 digest of x_R.
     pub digest: [u8; 32],
 }
 
 impl PhiRPublic {
     /// The public inputs in the circuit's order, as decimal strings (the form of snarkjs'
-    /// `public.json`): two limbs per commitment, two limbs of `txData.propertyId`, `bind`.
+    /// `public.json`): two limbs per commitment, two limbs of `txData.propertyId`, c_P, `bind`.
     pub fn inputs(&self) -> Vec<String> {
         let mut out = Vec::with_capacity(PHI_R_PUBLIC_INPUTS);
         for word in [
@@ -39,6 +41,7 @@ impl PhiRPublic {
         ] {
             out.extend(limbs(word));
         }
+        out.push(BigUint::from_bytes_be(&self.c_p).to_str_radix(10));
         out.push(bind_value(&self.digest));
         out
     }
@@ -89,7 +92,7 @@ pub fn main_circom(layout: &Layout) -> Result<String> {
          \n\
          include \"phi_r.circom\";\n\
          \n\
-         component main {{public [accountHash, ownersHash, propertyHash, propertyId, bind]}} =\n    \
+         component main {{public [accountHash, ownersHash, propertyHash, propertyId, cP, bind]}} =\n    \
          PhiR({}, {}, {}, {}, {}, {});\n",
         p.account_width,
         p.owner_slots,
@@ -103,7 +106,7 @@ pub fn main_circom(layout: &Layout) -> Result<String> {
 
 /// Number of public inputs of phi_A and phi_S.
 pub const PHI_A_PUBLIC_INPUTS: usize = 7;
-pub const PHI_S_PUBLIC_INPUTS: usize = 11;
+pub const PHI_S_PUBLIC_INPUTS: usize = 15;
 
 /// Bound on txData.amount in phi_A, in bits; the policy verifier refuses larger amounts.
 pub const PHI_A_AMOUNT_BITS: usize = 96;
@@ -112,13 +115,18 @@ pub const PHI_A_AMOUNT_BITS: usize = 96;
 pub const KEY_MONTHLY_INCOME: &str = "monthlyIncome";
 pub const KEY_TENANT: &str = "tenant";
 
-/// c_B as a public input: the value it encodes, which must be a canonical field element. c_B is a
-/// Poseidon output, so an honest c_B is always below r; a value at or above r would alias a
-/// smaller one.
+/// c_B or c_P as a public input: the value it encodes, which must be a canonical field element.
+/// c_B and c_P are Poseidon outputs, so an honest one is always below r; a value at or above r
+/// would alias a smaller one.
 fn field_element(word: &[u8; 32], name: &str) -> Result<String> {
     let value = BigUint::from_bytes_be(word);
     ensure!(value < bn254_r(), "{name} is not below the field order");
     Ok(value.to_str_radix(10))
+}
+
+/// Rejects a value at or above r, as [`PhiAPublic::new`] and [`PhiSPublic::new`] do for c_B.
+pub fn check_field_element(word: &[u8; 32], name: &str) -> Result<()> {
+    field_element(word, name).map(|_| ())
 }
 
 /// What the policy verifier knows of a phi_A instance: the attested commitments to the account and
@@ -166,50 +174,62 @@ impl PhiAPublic {
     }
 }
 
-/// What the policy verifier knows of a phi_S instance: the attested commitments to the property,
-/// the tenant, and the record date, and txData.propertyId, c_B, the engagement day, and the
-/// EIP-712 digest of x_S.
+/// What the policy verifier knows of a phi_S instance: the attested commitments to the session's
+/// account, the property, the tenant, and the record date, and txData.propertyId, c_P, c_B, the
+/// engagement day, the attestation day (the calendar day of t_att), and the EIP-712 digest of x_S.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PhiSPublic {
+    pub account_hash: [u8; 32],
     pub property_hash: [u8; 32],
     pub tenant_hash: [u8; 32],
     pub date_hash: [u8; 32],
     pub property_id: [u8; 32],
+    c_p: String,
     c_b: String,
     /// Y * 10000 + M * 100 + D.
     pub engagement_day: u32,
+    /// Y * 10000 + M * 100 + D.
+    pub attestation_day: u32,
     pub digest: [u8; 32],
 }
 
 impl PhiSPublic {
-    /// Rejects a c_B at or above r.
+    /// Rejects a c_P or c_B at or above r, and an engagement or attestation day of 27 bits or more.
     pub fn new(
-        [property_hash, tenant_hash, date_hash]: [[u8; 32]; 3],
+        [account_hash, property_hash, tenant_hash, date_hash]: [[u8; 32]; 4],
         property_id: [u8; 32],
-        c_b: [u8; 32],
-        engagement_day: u32,
+        [c_p, c_b]: [[u8; 32]; 2],
+        [engagement_day, attestation_day]: [u32; 2],
         digest: [u8; 32],
     ) -> Result<Self> {
         ensure!(
             engagement_day < 1 << 27,
             "engagement day {engagement_day} exceeds 27 bits"
         );
+        ensure!(
+            attestation_day < 1 << 27,
+            "attestation day {attestation_day} exceeds 27 bits"
+        );
         Ok(Self {
+            account_hash,
             property_hash,
             tenant_hash,
             date_hash,
             property_id,
+            c_p: field_element(&c_p, "c_P")?,
             c_b: field_element(&c_b, "c_B")?,
             engagement_day,
+            attestation_day,
             digest,
         })
     }
 
     /// The public inputs in the circuit's order: two limbs per commitment, two limbs of
-    /// txData.propertyId, c_B, the engagement day, bind.
+    /// txData.propertyId, c_P, c_B, the engagement day, the attestation day, bind.
     pub fn inputs(&self) -> Vec<String> {
         let mut out = Vec::with_capacity(PHI_S_PUBLIC_INPUTS);
         for word in [
+            &self.account_hash,
             &self.property_hash,
             &self.tenant_hash,
             &self.date_hash,
@@ -217,8 +237,10 @@ impl PhiSPublic {
         ] {
             out.extend(limbs(word));
         }
+        out.push(self.c_p.clone());
         out.push(self.c_b.clone());
         out.push(self.engagement_day.to_string());
+        out.push(self.attestation_day.to_string());
         out.push(bind_value(&self.digest));
         out
     }
@@ -271,8 +293,9 @@ pub fn main_circom_phi_s(layout: &RecordLayout) -> Result<String> {
          \n\
          include \"phi_s.circom\";\n\
          \n\
-         component main {{public [propertyHash, tenantHash, dateHash, propertyId, cB, engagementDay, bind]}} =\n    \
-         PhiS({}, {}, {});\n",
+         component main {{public [accountHash, propertyHash, tenantHash, dateHash, propertyId, cP, cB, engagementDay, attestationDay, bind]}} =\n    \
+         PhiS({}, {}, {}, {});\n",
+        layout.account_width,
         layout.width_of(KEY_PROPERTY_ID)?,
         layout.width_of(KEY_TENANT)?,
         layout.padding_byte(),
@@ -307,6 +330,11 @@ mod tests {
             owners_hash: [2; 32],
             property_hash: [3; 32],
             property_id: [4; 32],
+            c_p: {
+                let mut c_p = [0u8; 32];
+                c_p[31] = 7;
+                c_p
+            },
             digest: [5; 32],
         };
         let inputs = public.inputs();
@@ -315,7 +343,18 @@ mod tests {
         for (i, b) in [1u8, 1, 2, 2, 3, 3, 4, 4].into_iter().enumerate() {
             assert_eq!(inputs[i], limb(b), "input {i}");
         }
-        assert_eq!(inputs[8], bind_value(&[5; 32]));
+        assert_eq!(inputs[8], "7");
+        assert_eq!(inputs[9], bind_value(&[5; 32]));
+    }
+
+    #[test]
+    fn phi_r_refuses_non_canonical_c_p() {
+        let r: [u8; 32] = bn254_r().to_bytes_be().try_into().unwrap();
+        let mut r_minus_1 = r;
+        r_minus_1[31] -= 1;
+        assert!(check_field_element(&r_minus_1, "c_P").is_ok());
+        assert!(check_field_element(&r, "c_P").is_err());
+        assert!(check_field_element(&[0xff; 32], "c_P").is_err());
     }
 
     fn record_layout(name: &str) -> RecordLayout {
@@ -384,25 +423,35 @@ mod tests {
 
     #[test]
     fn phi_s_public_inputs_follow_the_circuit_order() {
+        let mut c_p = [0u8; 32];
+        c_p[31] = 6;
         let public = PhiSPublic::new(
-            [[1; 32], [2; 32], [3; 32]],
+            [[9; 32], [1; 32], [2; 32], [3; 32]],
             [4; 32],
-            [0; 32],
-            2026_10_21,
+            [c_p, [0; 32]],
+            [2026_10_21, 2026_11_24],
             [5; 32],
         )
         .unwrap();
         let inputs = public.inputs();
         assert_eq!(inputs.len(), PHI_S_PUBLIC_INPUTS);
         let limb = |b: u8| u128::from_be_bytes([b; 16]).to_string();
-        for (i, b) in [1u8, 1, 2, 2, 3, 3, 4, 4].into_iter().enumerate() {
+        for (i, b) in [9u8, 9, 1, 1, 2, 2, 3, 3, 4, 4].into_iter().enumerate() {
             assert_eq!(inputs[i], limb(b), "input {i}");
         }
-        assert_eq!(inputs[8], "0");
-        assert_eq!(inputs[9], "20261021");
-        assert_eq!(inputs[10], bind_value(&[5; 32]));
-        assert!(PhiSPublic::new([[0; 32]; 3], [0; 32], [0xff; 32], 0, [0; 32]).is_err());
-        assert!(PhiSPublic::new([[0; 32]; 3], [0; 32], [0; 32], 1 << 27, [0; 32]).is_err());
+        assert_eq!(inputs[10], "6");
+        assert_eq!(inputs[11], "0");
+        assert_eq!(inputs[12], "20261021");
+        assert_eq!(inputs[13], "20261124");
+        assert_eq!(inputs[14], bind_value(&[5; 32]));
+        let new = |c: [[u8; 32]; 2], days: [u32; 2]| {
+            PhiSPublic::new([[0; 32]; 4], [0; 32], c, days, [0; 32])
+        };
+        assert!(new([[0; 32], [0xff; 32]], [0, 0]).is_err());
+        assert!(new([[0xff; 32], [0; 32]], [0, 0]).is_err());
+        assert!(new([[0; 32]; 2], [1 << 27, 0]).is_err());
+        assert!(new([[0; 32]; 2], [0, 1 << 27]).is_err());
+        assert!(new([[0; 32]; 2], [(1 << 27) - 1, (1 << 27) - 1]).is_ok());
     }
 
     #[test]

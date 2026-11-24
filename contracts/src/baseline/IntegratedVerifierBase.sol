@@ -6,11 +6,12 @@ pragma solidity 0.8.36;
 /// attestation, for one response layout: the attestation signature, every body field against the
 /// signed Merkle root (exact schema: four fixed fields, one t_att extension, and one transcript
 /// commitment per role, each role exactly once), the attestation time against the handshake time
-/// and the freshness window, the received length, and the revealed request line and response
-/// structure. The server identity (certificate chain, DNS name) is not checked here: an off-chain
-/// identity attestor signs it for the signed header, and this contract checks that signature. The
-/// notary remains trusted for the authenticity of the TLS session. A measurement baseline, not part
-/// of PPREV's deployment; PPREV.sol is unchanged.
+/// and the freshness window, the sent and received lengths, the revealed request (request line and
+/// header block, everything but the credential, whose range the request role's commitment fixes)
+/// and the revealed response structure. The server identity (certificate chain, DNS name) is not
+/// checked here: an off-chain identity attestor signs it for the signed header, and this contract
+/// checks that signature. The notary remains trusted for the authenticity of the TLS session. A
+/// measurement baseline, not part of PPREV's deployment; PPREV.sol is unchanged.
 /// @dev Encoding of tlsn v0.1.0-alpha.15 with the SECP256K1ETH signature and KECCAK256 tree, as
 /// offchain/crates/pprev-prover/src/e1.rs documents and tests against tlsn itself.
 abstract contract IntegratedVerifierBase {
@@ -50,8 +51,12 @@ abstract contract IntegratedVerifierBase {
         bytes32 verifyingKeyHash;
         bytes32 serverNameHash;
         bytes32 structureHash;
+        /// keccak256 of the revealed request after its request line: the header block of the
+        /// request template and the empty line, without the credential.
+        bytes32 requestHeadersHash;
         /// keccak256 of each role's commitment prefix (direction and ranges), in role order.
         bytes32[] prefixHashes;
+        uint32 sentLength;
         uint32 receivedLength;
         uint64 delta;
         uint64 maxSessionSecs;
@@ -63,6 +68,7 @@ abstract contract IntegratedVerifierBase {
     bytes32 public immutable VERIFYING_KEY_HASH;
     bytes32 public immutable SERVER_NAME_HASH;
     bytes32 public immutable STRUCTURE_HASH;
+    bytes32 public immutable REQUEST_HEADERS_HASH;
     uint256 public immutable COMMITMENTS;
     bytes32 internal immutable PREFIX_HASH_0;
     bytes32 internal immutable PREFIX_HASH_1;
@@ -70,6 +76,7 @@ abstract contract IntegratedVerifierBase {
     bytes32 internal immutable PREFIX_HASH_3;
     bytes32 internal immutable PREFIX_HASH_4;
     bytes32 internal immutable PREFIX_HASH_5;
+    uint32 public immutable SENT_LENGTH;
     uint32 public immutable RECEIVED_LENGTH;
     uint64 public immutable DELTA;
     uint64 public immutable MAX_SESSION_SECS;
@@ -94,6 +101,8 @@ abstract contract IntegratedVerifierBase {
         bytes32[] hashes;
         /// Role of each transcript-commitment field, in field-id order.
         uint8[] roleOfField;
+        /// The revealed request after its request line (see BaseConfig.requestHeadersHash).
+        bytes requestHeaders;
         bytes16 requestBlinder;
         bytes structure;
         bytes16 structureBlinder;
@@ -112,6 +121,7 @@ abstract contract IntegratedVerifierBase {
     error BadRoles();
     error BadPrefix(uint256 role);
     error BadRequestLine();
+    error BadRequestHeaders();
     error BadStructure();
     error BadRoot();
     error BadProof();
@@ -125,6 +135,7 @@ abstract contract IntegratedVerifierBase {
         VERIFYING_KEY_HASH = c.verifyingKeyHash;
         SERVER_NAME_HASH = c.serverNameHash;
         STRUCTURE_HASH = c.structureHash;
+        REQUEST_HEADERS_HASH = c.requestHeadersHash;
         COMMITMENTS = n;
         PREFIX_HASH_0 = c.prefixHashes[0];
         PREFIX_HASH_1 = c.prefixHashes[1];
@@ -132,12 +143,14 @@ abstract contract IntegratedVerifierBase {
         PREFIX_HASH_3 = n > 3 ? c.prefixHashes[3] : bytes32(0);
         PREFIX_HASH_4 = n > 4 ? c.prefixHashes[4] : bytes32(0);
         PREFIX_HASH_5 = n > 5 ? c.prefixHashes[5] : bytes32(0);
+        SENT_LENGTH = c.sentLength;
         RECEIVED_LENGTH = c.receivedLength;
         DELTA = c.delta;
         MAX_SESSION_SECS = c.maxSessionSecs;
     }
 
-    /// Checks the attestation for `policyId` with the revealed request line `requestLine`.
+    /// Checks the attestation for `policyId` with the revealed request line `requestLine`, followed
+    /// in the request role's commitment by the policy's header block.
     function _checkAttestation(Attestation calldata a, bytes memory requestLine, bytes32 policyId) internal view {
         if (policyId != POLICY_ID) revert UnknownPolicy();
         bytes32 root = _header(a.header);
@@ -160,7 +173,14 @@ abstract contract IntegratedVerifierBase {
         for (uint256 r = 0; r < n; r++) {
             if (keccak256(a.prefixes[r]) != _prefixHash(r)) revert BadPrefix(r);
         }
-        if (sha256(abi.encodePacked(requestLine, a.requestBlinder)) != a.hashes[ROLE_REQUEST]) {
+        // The request role's ranges (its prefix) are the whole request but the credential, and the
+        // sent length is the template's: so the request is the request line and the header block,
+        // with only the credential unseen.
+        if (keccak256(a.requestHeaders) != REQUEST_HEADERS_HASH) revert BadRequestHeaders();
+        // The header block is fixed by its hash above, so the boundary between it and the request
+        // line cannot move.
+        // forge-lint: disable-next-line(encode-packed-collision)
+        if (sha256(abi.encodePacked(requestLine, a.requestHeaders, a.requestBlinder)) != a.hashes[ROLE_REQUEST]) {
             revert BadRequestLine();
         }
         if (
@@ -210,7 +230,9 @@ abstract contract IntegratedVerifierBase {
     function _connection(bytes calldata c, uint64 tAtt) internal view {
         if (c.length != CONNECTION_INFO_LENGTH || uint8(c[8]) != 0) revert BadConnectionInfo();
         uint64 time = uint64(_le(c[0:8]));
-        if (uint32(_le(c[13:17])) != RECEIVED_LENGTH) revert BadConnectionInfo();
+        if (uint32(_le(c[9:13])) != SENT_LENGTH || uint32(_le(c[13:17])) != RECEIVED_LENGTH) {
+            revert BadConnectionInfo();
+        }
         if (uint256(tAtt) + TLSN_CLOCK_TOLERANCE < time || tAtt > time + MAX_SESSION_SECS) revert BadTime();
         // forge-lint: disable-next-line(block-timestamp)
         if (tAtt > block.timestamp || block.timestamp - tAtt > DELTA) revert NotFresh();

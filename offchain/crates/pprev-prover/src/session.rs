@@ -8,10 +8,6 @@ use std::time::Duration;
 
 use anyhow::{Context, Result, ensure};
 use futures::io::{AsyncReadExt as _, AsyncWriteExt as _};
-use http_body_util::{BodyExt, Empty};
-use hyper::body::Bytes;
-use hyper::{Request, StatusCode};
-use hyper_util::rt::TokioIo;
 use pprev_types::{Layout, ResponseRanges, ResponseShape};
 use tlsn::Session;
 use tlsn::attestation::presentation::Presentation;
@@ -30,7 +26,7 @@ use tlsn::transcript::{
 };
 use tlsn::webpki::{CertificateDer, RootCertStore};
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio_util::compat::{FuturesAsyncReadCompatExt, TokioAsyncReadCompatExt};
+use tokio_util::compat::TokioAsyncReadCompatExt;
 
 /// Owns the session driver task and aborts it if the session ends early, so that the peer sees the
 /// connection close instead of waiting on it.
@@ -161,7 +157,8 @@ pub struct Notarized {
     pub attestation: Attestation,
     pub secrets: Secrets,
     pub openings: HiddenOpenings,
-    pub request_line_len: usize,
+    /// Ranges of the request that the presentation reveals: all of it except the credential.
+    pub request_revealed: Vec<Range<usize>>,
     pub ranges: ResponseRanges,
 }
 
@@ -172,9 +169,9 @@ pub struct NotarizedShape {
     pub secrets: Secrets,
     pub openings: Vec<FieldOpening>,
     pub shape: ResponseShape,
-    /// Openings of the two revealed commitments: the request line, and the response structure (the
-    /// revealed ranges, concatenated in order). A verifier that checks the commitments itself, as
-    /// the integrated on-chain baseline does, needs their blinders.
+    /// Openings of the two revealed commitments: the request without its credential, and the
+    /// response structure (each the revealed ranges, concatenated in order). A verifier that checks
+    /// the commitments itself, as the integrated on-chain baseline does, needs their blinders.
     pub request: CommittedOpening,
     pub structure: CommittedOpening,
 }
@@ -206,7 +203,7 @@ where
             owners,
             property_id,
         },
-        request_line_len: notarized.shape.request_line.len(),
+        request_revealed: notarized.shape.request_revealed(),
         ranges,
     })
 }
@@ -450,7 +447,9 @@ async fn run_mpc(
     (Vec<FieldOpening>, CommittedOpening, CommittedOpening),
 )> {
     let shape = &setup.shape;
-    let request_line = shape.request_line.as_str();
+    // The request, rendered from the layout's template with the bearer token as its credential.
+    let request = shape.render_request(setup.token.as_bytes())?;
+    let request_revealed = RangeSet::from(shape.request_revealed());
     let preprocessing = handle.new_prover(ProverConfig::builder().build()?)?.commit(
         MpcTlsConfig::builder()
             .max_sent_data(setup.max_sent)
@@ -471,7 +470,7 @@ async fn run_mpc(
 
     let server_name = ServerName::Dns(shape.server_name.as_str().try_into()?);
     let tcp = tokio::net::TcpStream::connect(setup.registry_addr).await?;
-    let (tls_connection, prover) = prover.connect(
+    let (mut tls_connection, prover) = prover.connect(
         TlsClientConfig::builder()
             .server_name(server_name.clone())
             .root_store(RootCertStore {
@@ -486,29 +485,24 @@ async fn run_mpc(
     )?;
     let mut prover_task = tokio::spawn(prover.into_future());
 
-    let request = Request::builder()
-        .method("GET")
-        .uri(&shape.path)
-        .header("Host", &shape.server_name)
-        .header("Authorization", format!("Bearer {}", setup.token))
-        .header("Connection", "close")
-        .body(Empty::<Bytes>::new())?;
+    // The request's own bytes, written as they are; the response is read up to the end of its
+    // body, as its Content-Length gives it. The connection is then dropped, which closes it.
     let exchange = async {
-        let (mut sender, connection) =
-            hyper::client::conn::http1::handshake(TokioIo::new(tls_connection.compat())).await?;
-        tokio::spawn(connection);
-        let response = sender.send_request(request).await?;
+        tls_connection.write_all(&request).await?;
+        tls_connection.flush().await?;
+        let response = read_response(&mut tls_connection).await?;
+        let status = response.split(|b| *b == b'\r').next().unwrap_or_default();
         ensure!(
-            response.status() == StatusCode::OK,
-            "registry answered {}",
-            response.status()
+            response.starts_with(b"HTTP/1.1 200 "),
+            "registry answered {:?}",
+            String::from_utf8_lossy(status)
         );
-        response.into_body().collect().await?;
         anyhow::Ok(())
     };
     // If the MPC-TLS session fails (for example, the notary rejects the handshake), the HTTP exchange
     // would wait on a connection that never closes; the prover task ending first is the failure.
     tokio::select! {
+        biased;
         result = exchange => result?,
         ended = &mut prover_task => {
             return Err(match ended {
@@ -518,16 +512,16 @@ async fn run_mpc(
             });
         }
     }
+    drop(tls_connection);
 
     let mut prover = prover_task.await??;
 
     // The transcript must follow the layout before anything is committed.
     let transcript = prover.transcript();
     ensure!(
-        transcript
-            .sent()
-            .starts_with(format!("{request_line}\r\n").as_bytes()),
-        "request does not start with {request_line:?}"
+        transcript.sent() == request.as_slice(),
+        "the sent transcript is not the request {:?}",
+        shape.request_line
     );
     ensure!(
         transcript.received().len() == shape.len,
@@ -536,11 +530,11 @@ async fn run_mpc(
         shape.len
     );
 
-    // D3 and D26: the request line and the response structure are committed to be opened; the three
-    // field values are committed and stay hidden.
+    // D3 and D26: the request without its credential and the response structure are committed to
+    // be opened; the field values are committed and stay hidden; the credential is not committed.
     let mut builder = TranscriptCommitConfig::builder(transcript);
     builder.default_kind(SHA256);
-    builder.commit_sent(&(0..request_line.len()))?;
+    builder.commit_sent(&request_revealed)?;
     builder.commit_recv(RangeSet::from(shape.revealed.clone()))?;
     for r in &shape.hidden {
         builder.commit_recv(r)?;
@@ -579,7 +573,7 @@ async fn run_mpc(
         &prover_transcript,
         &transcript_secrets,
         Direction::Sent,
-        &RangeSet::from(0..request_line.len()),
+        &request_revealed,
     )?;
     let structure = committed_opening(
         &prover_transcript,
@@ -606,6 +600,41 @@ async fn run_mpc(
         .transcript_commitments(transcript_secrets, transcript_commitments);
     let (request, secrets) = builder.build(&CryptoProvider::default())?;
     Ok((request, secrets, (openings, request_opening, structure)))
+}
+
+/// Reads one HTTP/1.1 response from `conn`: its head, then as many body bytes as its Content-Length
+/// gives, and no further.
+async fn read_response<R>(conn: &mut R) -> Result<Vec<u8>>
+where
+    R: futures::io::AsyncRead + Unpin,
+{
+    let mut response = Vec::new();
+    let mut chunk = [0u8; 1024];
+    loop {
+        if let Some(end) = response.windows(4).position(|w| w == b"\r\n\r\n") {
+            let head =
+                std::str::from_utf8(&response[..end]).context("response head is not UTF-8")?;
+            let body_len: usize = head
+                .split("\r\n")
+                .skip(1)
+                .filter_map(|line| line.split_once(':'))
+                .find(|(name, _)| name.trim().eq_ignore_ascii_case("content-length"))
+                .context("response has no Content-Length")?
+                .1
+                .trim()
+                .parse()
+                .context("invalid Content-Length")?;
+            if response.len() >= end + 4 + body_len {
+                return Ok(response);
+            }
+        }
+        let n = conn.read(&mut chunk).await?;
+        ensure!(
+            n > 0,
+            "the registry closed the connection before the response ended"
+        );
+        response.extend_from_slice(&chunk[..n]);
+    }
 }
 
 /// Plaintext (the ranges of `idx`, concatenated in order) and blinder of the hash commitment to
@@ -726,14 +755,14 @@ where
     }
 }
 
-/// Builds the presentation for the policy verifier (D26): server identity, the request line, and the
-/// response structure. The field values stay hidden unless `reveal_hidden` is set, which only the
-/// gate test G2 uses.
+/// Builds the presentation for the policy verifier (D26): server identity, the request without its
+/// credential, and the response structure. The field values stay hidden unless `reveal_hidden` is
+/// set, which only the gate test G2 uses.
 pub fn present(notarized: &Notarized, reveal_hidden: bool) -> Result<Presentation> {
     build_presentation(
         &notarized.attestation,
         &notarized.secrets,
-        notarized.request_line_len,
+        notarized.request_revealed.clone(),
         notarized.ranges.revealed(),
         reveal_hidden.then(|| notarized.ranges.hidden().to_vec()),
     )
@@ -744,7 +773,7 @@ pub fn present_shape(notarized: &NotarizedShape, reveal_hidden: bool) -> Result<
     build_presentation(
         &notarized.attestation,
         &notarized.secrets,
-        notarized.shape.request_line.len(),
+        notarized.shape.request_revealed(),
         notarized.shape.revealed.clone(),
         reveal_hidden.then(|| notarized.shape.hidden.clone()),
     )
@@ -753,13 +782,13 @@ pub fn present_shape(notarized: &NotarizedShape, reveal_hidden: bool) -> Result<
 fn build_presentation(
     attestation: &Attestation,
     secrets: &Secrets,
-    request_line_len: usize,
+    request_revealed: Vec<Range<usize>>,
     revealed: Vec<Range<usize>>,
     hidden: Option<Vec<Range<usize>>>,
 ) -> Result<Presentation> {
     let mut builder = secrets.transcript_proof_builder();
     builder.commitment_kinds(&[SHA256]);
-    builder.reveal_sent(&(0..request_line_len))?;
+    builder.reveal_sent(RangeSet::from(request_revealed))?;
     builder.reveal_recv(RangeSet::from(revealed))?;
     for r in hidden.unwrap_or_default() {
         builder.reveal_recv(&r)?;

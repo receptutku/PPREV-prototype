@@ -324,7 +324,7 @@ fn g3_verifier_reads_the_hidden_index_sets() {
             "{name} is revealed"
         );
     }
-    let request = RangeSet::from(0..run.notarized.request_line_len);
+    let request = RangeSet::from(run.notarized.request_revealed.clone());
     assert!(
         commitments
             .iter()

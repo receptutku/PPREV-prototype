@@ -14,6 +14,8 @@ import {
     Engagement,
     PolicyRegistered,
     NotaryVerifierSet,
+    NotaryVerifierProposed,
+    NotaryVerifierProposalCancelled,
     Registered,
     Applied,
     Engaged,
@@ -26,6 +28,8 @@ import {
     NotOperator,
     InvalidParameters,
     PolicyExists,
+    NoPendingVerifier,
+    RotationNotDue,
     UnknownPolicy,
     CommitmentMismatch,
     InvalidNotarySignature,
@@ -67,7 +71,7 @@ contract PPREV {
     bytes32 private constant NAME_HASH = keccak256("PPREV");
     bytes32 private constant VERSION_HASH = keccak256("1");
 
-    /// @notice Deployment operator: registers policies and rotates the notary verifier.
+    /// @notice Deployment operator: registers policies and proposes rotations of the notary verifier.
     address public immutable OPERATOR;
     /// @notice Freshness window Delta, in seconds.
     uint256 public immutable DELTA;
@@ -77,12 +81,17 @@ contract PPREV {
     uint256 public immutable MAX_EXPIRATIONS;
     /// @notice Survival ratio rho, in basis points of the remaining collateral.
     uint256 public immutable RHO;
+    /// @notice Delay between a proposed rotation of vk_notary and its earliest activation, in seconds;
+    /// at least TAU_LOCK.
+    uint256 public immutable ROTATION_DELAY;
 
     uint256 private immutable CACHED_CHAIN_ID;
     bytes32 private immutable CACHED_DOMAIN_SEPARATOR;
 
-    /// @notice Verifier holding vk_notary.
+    /// @notice Current verifier holding vk_notary. Register and Apply verify under it.
     INotaryVerifier public notaryVerifier;
+    /// @notice Version of the current verifier; packed with notaryVerifier in one slot.
+    uint32 public notaryKeyVersion;
 
     mapping(bytes32 policyIdR => Policy) public policyRegistry;
     mapping(uint256 txId => Listing) public listings;
@@ -102,32 +111,44 @@ contract PPREV {
     uint256 public nextAppId;
     uint256 public nextEngId;
 
+    /// @notice Every activated verifier by version, the current one included. Settle verifies under
+    /// the version pinned to the application.
+    mapping(uint32 version => INotaryVerifier) public notaryVerifierAt;
+    /// @notice Proposed verifier (zero if none) and the time from which it can be activated; one slot.
+    INotaryVerifier public pendingNotaryVerifier;
+    uint64 public pendingEffectiveAt;
+
     constructor(
         address operator,
         INotaryVerifier verifier,
         uint256 delta,
         uint256 tauLock,
         uint256 maxExpirations,
-        uint256 rho
+        uint256 rho,
+        uint256 rotationDelay
     ) {
+        // rotationDelay >= tauLock > 0, so the delay is non-zero.
         if (
             operator == address(0) || address(verifier) == address(0) || delta == 0 || tauLock == 0
-                || maxExpirations == 0 || rho == 0 || rho >= BPS
+                || maxExpirations == 0 || rho == 0 || rho >= BPS || rotationDelay < tauLock
         ) revert InvalidParameters();
         OPERATOR = operator;
         DELTA = delta;
         TAU_LOCK = tauLock;
         MAX_EXPIRATIONS = maxExpirations;
         RHO = rho;
+        ROTATION_DELAY = rotationDelay;
         CACHED_CHAIN_ID = block.chainid;
         CACHED_DOMAIN_SEPARATOR = _buildDomainSeparator();
         notaryVerifier = verifier;
+        notaryKeyVersion = 1;
+        notaryVerifierAt[1] = verifier;
         // Identifiers start at 1 so that 0 marks an absent record. Every assignment then updates an
         // existing counter slot, as in a deployment that has already processed transactions.
         nextTxId = 1;
         nextAppId = 1;
         nextEngId = 1;
-        emit NotaryVerifierSet(address(verifier));
+        emit NotaryVerifierSet(address(verifier), 1);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -161,12 +182,50 @@ contract PPREV {
         emit PolicyRegistered(policyIdR, policyIdA, policyIdS, reqEscrow, minCollateral, maxCollateral);
     }
 
-    /// @notice Rotates vk_notary by installing a new verifier.
-    function setNotaryVerifier(INotaryVerifier verifier) external {
+    /// @notice Proposes a rotation of vk_notary to `verifier`, which can be activated ROTATION_DELAY
+    /// seconds from now. Replaces any pending proposal and restarts the delay. A pending proposal has
+    /// no effect on any algorithm.
+    function proposeNotaryVerifier(INotaryVerifier verifier) external {
         if (msg.sender != OPERATOR) revert NotOperator();
         if (address(verifier) == address(0)) revert InvalidParameters();
+        uint256 effectiveAt = block.timestamp + ROTATION_DELAY;
+        // A due time that does not fit in 64 bits makes rotation impossible instead of truncating it to
+        // an earlier time. The comparison bounds a sum, not a deadline.
+        // forge-lint: disable-next-line(block-timestamp)
+        if (effectiveAt > type(uint64).max) revert InvalidParameters();
+        pendingNotaryVerifier = verifier;
+        // forge-lint: disable-next-line(unsafe-typecast)
+        pendingEffectiveAt = uint64(effectiveAt);
+        emit NotaryVerifierProposed(address(verifier), effectiveAt);
+    }
+
+    /// @notice Withdraws the pending proposal.
+    function cancelNotaryVerifierProposal() external {
+        if (msg.sender != OPERATOR) revert NotOperator();
+        INotaryVerifier verifier = pendingNotaryVerifier;
+        if (address(verifier) == address(0)) revert NoPendingVerifier();
+        delete pendingNotaryVerifier;
+        delete pendingEffectiveAt;
+        emit NotaryVerifierProposalCancelled(address(verifier));
+    }
+
+    /// @notice Installs the pending verifier as the next version once its delay has passed. Callable by
+    /// anyone. Earlier versions stay reachable through notaryVerifierAt for the applications pinned to
+    /// them.
+    function activateNotaryVerifier() external {
+        INotaryVerifier verifier = pendingNotaryVerifier;
+        if (address(verifier) == address(0)) revert NoPendingVerifier();
+        uint256 effectiveAt = pendingEffectiveAt;
+        // Producer influence on block.timestamp (seconds) is small against ROTATION_DELAY (days).
+        // forge-lint: disable-next-line(block-timestamp)
+        if (block.timestamp < effectiveAt) revert RotationNotDue(effectiveAt);
+        uint32 version = notaryKeyVersion + 1;
         notaryVerifier = verifier;
-        emit NotaryVerifierSet(address(verifier));
+        notaryKeyVersion = version;
+        notaryVerifierAt[version] = verifier;
+        delete pendingNotaryVerifier;
+        delete pendingEffectiveAt;
+        emit NotaryVerifierSet(address(verifier), version);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -177,6 +236,7 @@ contract PPREV {
     function register(
         bytes32 cTx,
         TxData calldata txData,
+        bytes32 cP,
         bytes32 policyIdR,
         bytes32 r,
         bytes calldata sigmaR,
@@ -193,11 +253,12 @@ contract PPREV {
             PPREVEncoding.RegisterStatement memory xR;
             xR.cTx = cTx;
             xR.txDataHash = PPREVEncoding.hashTxData(txData);
+            xR.cP = cP;
             xR.policyId = policyIdR;
             xR.submitter = msg.sender;
             xR.eta = etaR;
             xR.tAtt = tAttR;
-            _verifyNotarySignature(PPREVEncoding.hashRegister(xR), sigmaR);
+            _verifyNotarySignature(notaryVerifier, PPREVEncoding.hashRegister(xR), sigmaR);
         }
         // R(d)
         _requireUnconsumed(etaR);
@@ -211,15 +272,18 @@ contract PPREV {
         if (txData.settlementShare > BPS) revert SettlementShareTooHigh(txData.settlementShare);
 
         txId = nextTxId++;
-        Listing storage l = listings[txId];
-        l.cTx = cTx;
-        l.policyIdR = policyIdR;
-        l.owner = msg.sender;
-        l.collateral = msg.value;
+        {
+            Listing storage l = listings[txId];
+            l.cTx = cTx;
+            l.policyIdR = policyIdR;
+            l.owner = msg.sender;
+            l.collateral = msg.value;
+            l.cP = cP;
+        }
         txState[txId] = TxState.Active;
         registered[cTx] = true;
         consumed[etaR] = true;
-        emit Registered(txId, msg.sender, cTx, policyIdR, txData, r, msg.value);
+        emit Registered(txId, msg.sender, cTx, cP, policyIdR, txData, r, msg.value);
     }
 
     /// @notice Apply (Section V-E). msg.value is the escrow deposit. Named applyFor because `apply`
@@ -241,7 +305,8 @@ contract PPREV {
         // A(c)
         if (PPREVEncoding.commitment(txData, l.policyIdR, r) != l.cTx) revert CommitmentMismatch();
         Policy storage p = policyRegistry[l.policyIdR];
-        // A(d): x_A with a_B fixed to the caller; C_tx and policyID_A come from the records.
+        // A(d): x_A with a_B fixed to the caller; C_tx and policyID_A come from the records. sigma_A
+        // verifies under the current verifier, whose version the application records.
         {
             PPREVEncoding.ApplyStatement memory xA;
             xA.txId = txId;
@@ -252,7 +317,7 @@ contract PPREV {
             xA.submitter = msg.sender;
             xA.eta = etaA;
             xA.tAtt = tAttA;
-            _verifyNotarySignature(PPREVEncoding.hashApply(xA), sigmaA);
+            _verifyNotarySignature(notaryVerifier, PPREVEncoding.hashApply(xA), sigmaA);
         }
         // A(e)
         _requireUnconsumed(etaA);
@@ -267,15 +332,17 @@ contract PPREV {
         if (msg.value < p.reqEscrow) revert InsufficientDeposit(msg.value);
 
         appId = nextAppId++;
+        uint32 keyVersion = notaryKeyVersion;
         Application storage a = applications[appId];
         a.txId = txId;
         a.depositor = msg.sender;
         a.status = AppStatus.Pending;
+        a.keyVersion = keyVersion;
         a.deposit = msg.value;
         a.cB = cB;
         pendingApp[txId][msg.sender] = appId;
         consumed[etaA] = true;
-        emit Applied(appId, txId, msg.sender, cB, msg.value);
+        emit Applied(appId, txId, msg.sender, cB, msg.value, keyVersion);
     }
 
     /// @notice Settle (Section V-G).
@@ -294,20 +361,22 @@ contract PPREV {
         if (txState[txId] != TxState.Locked) revert NotLocked(txId);
         // S(d)
         if (PPREVEncoding.commitment(txData, l.policyIdR, r) != l.cTx) revert CommitmentMismatch();
-        // S(e): x_S with a_P fixed to the caller; c_B and expiresAt come from the records.
+        // S(e): x_S with a_P fixed to the caller; c_P, c_B and expiresAt come from the records. sigma_S
+        // verifies under the verifier pinned to the application at Apply, whatever rotations followed.
         {
             PPREVEncoding.SettleStatement memory xS;
             xS.engId = engId;
             xS.txId = txId;
             xS.cTx = l.cTx;
             xS.txDataHash = PPREVEncoding.hashTxData(txData);
+            xS.cP = l.cP;
             xS.cB = a.cB;
             xS.expiresAt = e.expiresAt;
             xS.policyId = policyRegistry[l.policyIdR].policyIdS;
             xS.submitter = msg.sender;
             xS.eta = etaS;
             xS.tAtt = tAttS;
-            _verifyNotarySignature(PPREVEncoding.hashSettle(xS), sigmaS);
+            _verifyNotarySignature(notaryVerifierAt[a.keyVersion], PPREVEncoding.hashSettle(xS), sigmaS);
         }
         // S(f)
         _requireUnconsumed(etaS);
@@ -453,8 +522,8 @@ contract PPREV {
         return (s == TxState.Active || s == TxState.Expired) && listings[txId].expirations < MAX_EXPIRATIONS;
     }
 
-    function _verifyNotarySignature(bytes32 structHash, bytes calldata sigma) internal view {
-        if (!notaryVerifier.verify(_hashTypedData(structHash), sigma)) revert InvalidNotarySignature();
+    function _verifyNotarySignature(INotaryVerifier verifier, bytes32 structHash, bytes calldata sigma) internal view {
+        if (!verifier.verify(_hashTypedData(structHash), sigma)) revert InvalidNotarySignature();
     }
 
     function _requireUnconsumed(bytes32 eta) internal view {

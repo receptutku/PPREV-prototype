@@ -8,6 +8,9 @@ pub mod policy;
 pub mod record;
 pub mod statement;
 
-pub use layout::{Layout, Rendered, ResponseRanges, ResponseShape, TitleRecord};
+pub use layout::{
+    CREDENTIAL_PLACEHOLDER, HeaderTemplate, Layout, Rendered, RequestTemplate, ResponseRanges,
+    ResponseShape, TitleRecord,
+};
 pub use policy::PolicyBundle;
 pub use record::{RecordLayout, RecordRanges, RenderedRecord};

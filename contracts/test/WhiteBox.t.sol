@@ -14,7 +14,7 @@ contract WhiteBoxTest is Fixture {
     PPREVHarness internal harness;
 
     function deploy(INotaryVerifier v) internal override returns (PPREV) {
-        harness = new PPREVHarness(operator, v, DELTA, TAU_LOCK, MAX_EXPIRATIONS, RHO);
+        harness = new PPREVHarness(operator, v, DELTA, TAU_LOCK, MAX_EXPIRATIONS, RHO, ROTATION_DELAY);
         return harness;
     }
 

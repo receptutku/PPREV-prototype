@@ -18,7 +18,7 @@ contract EncodingTest is Fixture, TypedDataJson {
     PPREVHarness internal harness;
 
     function deploy(INotaryVerifier v) internal override returns (PPREV) {
-        harness = new PPREVHarness(operator, v, DELTA, TAU_LOCK, MAX_EXPIRATIONS, RHO);
+        harness = new PPREVHarness(operator, v, DELTA, TAU_LOCK, MAX_EXPIRATIONS, RHO, ROTATION_DELAY);
         return harness;
     }
 
@@ -26,6 +26,7 @@ contract EncodingTest is Fixture, TypedDataJson {
         PPREVEncoding.RegisterStatement memory s = PPREVEncoding.RegisterStatement({
             cTx: x.cTx,
             txDataHash: harness.exposedHashTxData(x.txData),
+            cP: x.cP,
             policyId: x.policyId,
             submitter: x.submitter,
             eta: x.eta,
@@ -54,6 +55,7 @@ contract EncodingTest is Fixture, TypedDataJson {
         s.txId = x.txId;
         s.cTx = x.cTx;
         s.txDataHash = harness.exposedHashTxData(x.txData);
+        s.cP = x.cP;
         s.cB = x.cB;
         s.expiresAt = x.expiresAt;
         s.policyId = x.policyId;
@@ -86,6 +88,54 @@ contract EncodingTest is Fixture, TypedDataJson {
     function testFuzz_Encoding_commitmentIsConcatenation(TxData memory d, bytes32 policyIdR, bytes32 r) public view {
         bytes32 expected = keccak256(abi.encodePacked(d.propertyId, d.amount, d.settlementShare, policyIdR, r));
         assertEq(harness.exposedCommitment(d, policyIdR, r), expected);
+    }
+
+    /// @dev The type strings of the M1 interface, written out in full: c_P directly after txData in
+    /// Register and Settle; Apply unchanged.
+    function test_Encoding_typehashesMatchSpecifiedStrings() public view {
+        (bytes32 txDataTh, bytes32 registerTh, bytes32 applyTh, bytes32 settleTh) = harness.exposedTypehashes();
+        assertEq(txDataTh, keccak256("TxData(bytes32 propertyId,uint256 amount,uint256 settlementShare)"), "TxData");
+        assertEq(
+            registerTh,
+            keccak256(
+                "Register(bytes32 cTx,TxData txData,bytes32 cP,bytes32 policyId,address submitter,bytes32 eta,uint64 tAtt)TxData(bytes32 propertyId,uint256 amount,uint256 settlementShare)"
+            ),
+            "Register"
+        );
+        assertEq(
+            applyTh,
+            keccak256(
+                "Apply(uint256 txId,bytes32 cTx,TxData txData,bytes32 cB,bytes32 policyId,address submitter,bytes32 eta,uint64 tAtt)TxData(bytes32 propertyId,uint256 amount,uint256 settlementShare)"
+            ),
+            "Apply"
+        );
+        assertEq(
+            settleTh,
+            keccak256(
+                "Settle(uint256 engId,uint256 txId,bytes32 cTx,TxData txData,bytes32 cP,bytes32 cB,uint256 expiresAt,bytes32 policyId,address submitter,bytes32 eta,uint64 tAtt)TxData(bytes32 propertyId,uint256 amount,uint256 settlementShare)"
+            ),
+            "Settle"
+        );
+        // The independent test signer uses the same strings.
+        assertEq(registerTh, typehashR(), "test signer Register");
+        assertEq(applyTh, typehashA(), "test signer Apply");
+        assertEq(settleTh, typehashS(), "test signer Settle");
+    }
+
+    /// @dev c_P is a member of x_R and x_S: changing only c_P changes the digest on every encoder.
+    function testFuzz_Encoding_cPChangesRegisterAndSettleDigests(XR memory xR, XS memory xS, bytes32 otherCP)
+        public
+        view
+    {
+        vm.assume(otherCP != xR.cP && otherCP != xS.cP);
+        bytes32 dR = contractDigestR(xR);
+        bytes32 dS = contractDigestS(xS);
+        xR.cP = otherCP;
+        xS.cP = otherCP;
+        assertNotEq(contractDigestR(xR), dR, "register");
+        assertNotEq(contractDigestS(xS), dS, "settle");
+        assertEq(contractDigestR(xR), vm.eip712HashTypedData(typedDataR(xR, vm.getChainId(), address(pprev))));
+        assertEq(contractDigestS(xS), vm.eip712HashTypedData(typedDataS(xS, vm.getChainId(), address(pprev))));
     }
 
     function test_Encoding_domainSeparatorMatchesEip712() public view {

@@ -4,5 +4,5 @@ pragma circom 2.2.0;
 
 include "phi_r.circom";
 
-component main {public [accountHash, ownersHash, propertyHash, propertyId, bind]} =
+component main {public [accountHash, ownersHash, propertyHash, propertyId, cP, bind]} =
     PhiR(16, 4, 19, 73, 20, 32);

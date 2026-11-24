@@ -30,14 +30,20 @@ pub fn commitment(opening: &FieldOpening) -> [u8; 32] {
 }
 
 /// The public side of phi_R as the prover computes it: commitments recomputed from the openings
-/// (they equal the attested ones, see `tests/opening.rs`), `txData.propertyId`, and the EIP-712
-/// digest of x_R.
-pub fn public_of(openings: &HiddenOpenings, property_id: [u8; 32], digest: [u8; 32]) -> PhiRPublic {
+/// (they equal the attested ones, see `tests/opening.rs`), `txData.propertyId`, c_P, and the
+/// EIP-712 digest of x_R.
+pub fn public_of(
+    openings: &HiddenOpenings,
+    property_id: [u8; 32],
+    c_p: [u8; 32],
+    digest: [u8; 32],
+) -> PhiRPublic {
     PhiRPublic {
         account_hash: commitment(&openings.account),
         owners_hash: commitment(&openings.owners),
         property_hash: commitment(&openings.property_id),
         property_id,
+        c_p,
         digest,
     }
 }
@@ -111,7 +117,7 @@ pub fn record_openings(
         .collect())
 }
 
-/// c_B's opening as a circuit input: the salt, a field element, in decimal.
+/// c_B's (or c_P's) opening as a circuit input: the salt, a field element, in decimal.
 fn salt_input(salt: &[u8; 32]) -> String {
     num_bigint::BigUint::from_bytes_be(salt).to_str_radix(10)
 }
@@ -160,27 +166,38 @@ impl PhiAInput {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PhiSInput {
+    pub account_hash: [String; 2],
     pub property_hash: [String; 2],
     pub tenant_hash: [String; 2],
     pub date_hash: [String; 2],
     pub property_id: [String; 2],
+    pub c_p: String,
     pub c_b: String,
     pub engagement_day: String,
+    pub attestation_day: String,
     pub bind: String,
+    pub account: Vec<u8>,
     pub property: Vec<u8>,
     pub tenant: Vec<u8>,
     pub date: Vec<u8>,
+    pub account_blinder: [u8; 16],
     pub property_blinder: [u8; 16],
     pub tenant_blinder: [u8; 16],
     pub date_blinder: [u8; 16],
     pub salt: String,
+    pub salt_p: String,
 }
 
 impl PhiSInput {
-    /// `openings` are those of the tenancy response: account, propertyId, tenant, recordDate; phi_S
-    /// does not read the account. `salt` opens c_B.
-    pub fn new(public: &PhiSPublic, openings: &[FieldOpening], salt: &[u8; 32]) -> Result<Self> {
-        let [_account, property, tenant, date] = openings else {
+    /// `openings` are those of the tenancy response: account, propertyId, tenant, recordDate.
+    /// `salt` opens c_B, `salt_p` opens c_P.
+    pub fn new(
+        public: &PhiSPublic,
+        openings: &[FieldOpening],
+        salt: &[u8; 32],
+        salt_p: &[u8; 32],
+    ) -> Result<Self> {
+        let [account, property, tenant, date] = openings else {
             bail!(
                 "the tenancy layout has four hidden fields, got {}",
                 openings.len()
@@ -188,20 +205,26 @@ impl PhiSInput {
         };
         let p = public.inputs();
         Ok(Self {
-            property_hash: [p[0].clone(), p[1].clone()],
-            tenant_hash: [p[2].clone(), p[3].clone()],
-            date_hash: [p[4].clone(), p[5].clone()],
-            property_id: [p[6].clone(), p[7].clone()],
-            c_b: p[8].clone(),
-            engagement_day: p[9].clone(),
-            bind: p[10].clone(),
+            account_hash: [p[0].clone(), p[1].clone()],
+            property_hash: [p[2].clone(), p[3].clone()],
+            tenant_hash: [p[4].clone(), p[5].clone()],
+            date_hash: [p[6].clone(), p[7].clone()],
+            property_id: [p[8].clone(), p[9].clone()],
+            c_p: p[10].clone(),
+            c_b: p[11].clone(),
+            engagement_day: p[12].clone(),
+            attestation_day: p[13].clone(),
+            bind: p[14].clone(),
+            account: account.plaintext.clone(),
             property: property.plaintext.clone(),
             tenant: tenant.plaintext.clone(),
             date: date.plaintext.clone(),
+            account_blinder: account.blinder,
             property_blinder: property.blinder,
             tenant_blinder: tenant.blinder,
             date_blinder: date.blinder,
             salt: salt_input(salt),
+            salt_p: salt_input(salt_p),
         })
     }
 }
@@ -215,6 +238,7 @@ pub struct PhiRInput {
     pub owners_hash: [String; 2],
     pub property_hash: [String; 2],
     pub property_id: [String; 2],
+    pub c_p: String,
     pub bind: String,
     pub account: Vec<u8>,
     pub owners: Vec<u8>,
@@ -222,23 +246,27 @@ pub struct PhiRInput {
     pub account_blinder: [u8; 16],
     pub owners_blinder: [u8; 16],
     pub property_blinder: [u8; 16],
+    pub salt: String,
 }
 
 impl PhiRInput {
-    pub fn new(public: &PhiRPublic, openings: &HiddenOpenings) -> Self {
+    /// `salt` opens c_P.
+    pub fn new(public: &PhiRPublic, openings: &HiddenOpenings, salt: &[u8; 32]) -> Self {
         let p = public.inputs();
         Self {
             account_hash: [p[0].clone(), p[1].clone()],
             owners_hash: [p[2].clone(), p[3].clone()],
             property_hash: [p[4].clone(), p[5].clone()],
             property_id: [p[6].clone(), p[7].clone()],
-            bind: p[8].clone(),
+            c_p: p[8].clone(),
+            bind: p[9].clone(),
             account: openings.account.plaintext.clone(),
             owners: openings.owners.plaintext.clone(),
             property: openings.property_id.plaintext.clone(),
             account_blinder: openings.account.blinder,
             owners_blinder: openings.owners.blinder,
             property_blinder: openings.property_id.blinder,
+            salt: salt_input(salt),
         }
     }
 }

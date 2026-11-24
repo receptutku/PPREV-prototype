@@ -15,6 +15,8 @@ futures = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 bincode = { workspace = true }
+# BCS of the attestation header, the message the notary signs (the attestation ledger's key).
+bcs = "0.1"
 anyhow = { workspace = true }
 clap = { workspace = true }
 hex = { workspace = true }

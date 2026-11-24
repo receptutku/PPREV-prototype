@@ -13,13 +13,14 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use common::{
     OWNER, PROPERTY, Run, TENANT, attestation_verifying_key, notarize_blocking, workspace_path,
 };
+use pprev_notary::mock::counterparty_commitment;
 use pprev_notary::{
     DEFAULT_MAX_SESSION_SECS, Expectation, Groth16Proof, Groth16Verifier, check_presentation,
 };
 use pprev_prover::circuit::{CircuitFiles, PhiRInput, PhiRProof, prove};
 use pprev_types::circuit::PhiRPublic;
 
-/// Register digest of `test-vectors/eip712.json`, standing in for x_R.
+/// Register digest of `test-vectors/eip712.json` before M1, standing in for x_R.
 const DIGEST: [u8; 32] = [
     0xb9, 0xcb, 0x90, 0xd4, 0x31, 0xdf, 0xd4, 0x32, 0xc5, 0x2a, 0xe7, 0x89, 0x63, 0x54, 0x58, 0xde,
     0x8a, 0xcd, 0xec, 0x66, 0xe1, 0x81, 0x7a, 0x1a, 0xa3, 0x59, 0xbc, 0x97, 0x9a, 0x15, 0x15, 0x64,
@@ -63,6 +64,20 @@ fn run_of(account: (&'static str, &'static str)) -> &'static Run {
     cell.get_or_init(|| notarize_blocking(account, PROPERTY))
 }
 
+/// s_P of the owner's c_P.
+fn salt_p() -> [u8; 32] {
+    let mut salt = [0x3c; 32];
+    salt[0] = 0x02;
+    salt
+}
+
+/// c_P of the owner's account, standing in for x_R's.
+fn owner_c_p() -> [u8; 32] {
+    counterparty_commitment(OWNER.0.as_bytes(), &salt_p())
+        .expect("c_P")
+        .0
+}
+
 /// Public inputs as the policy verifier derives them from a checked presentation.
 fn verifier_public(run: &Run, digest: [u8; 32]) -> PhiRPublic {
     let presentation = pprev_prover::present(&run.notarized, false).expect("presentation");
@@ -77,7 +92,11 @@ fn verifier_public(run: &Run, digest: [u8; 32]) -> PhiRPublic {
         },
     )
     .expect("policy checks")
-    .phi_r_public(run.layout.property_id_word(PROPERTY).unwrap(), digest)
+    .phi_r_public(
+        run.layout.property_id_word(PROPERTY).unwrap(),
+        owner_c_p(),
+        digest,
+    )
     .expect("public inputs")
 }
 
@@ -90,7 +109,7 @@ fn owner_proof() -> &'static (PhiRPublic, PhiRProof) {
         let dir = work_dir("proof");
         let proof = prove(
             &files(),
-            &PhiRInput::new(&public, &run.notarized.openings),
+            &PhiRInput::new(&public, &run.notarized.openings, &salt_p()),
             &dir,
         )
         .expect("proving");
@@ -160,7 +179,15 @@ fn a_proof_is_bound_to_its_statement() {
     let mut other = public.clone();
     other.digest = [0x42; 32];
     // Only bind differs.
+    assert_eq!(other.inputs()[..9], public.inputs()[..9]);
+    assert!(!v.verify(&parsed(proof), &other.inputs()).unwrap());
+    // Only c_P differs: the c_P of another account.
+    let mut other = public.clone();
+    other.c_p = counterparty_commitment(TENANT.0.as_bytes(), &salt_p())
+        .expect("c_P")
+        .0;
     assert_eq!(other.inputs()[..8], public.inputs()[..8]);
+    assert_eq!(other.inputs()[9], public.inputs()[9]);
     assert!(!v.verify(&parsed(proof), &other.inputs()).unwrap());
 }
 

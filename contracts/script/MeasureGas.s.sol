@@ -122,7 +122,9 @@ contract MeasureGas is Fixture {
             p = call(
                 c.caller,
                 c.collateral,
-                abi.encodeCall(PPREV.register, (c.cTx, c.txData, c.policyIdR, c.r, signR(xROf(c)), c.eta, c.tAtt)),
+                abi.encodeCall(
+                    PPREV.register, (c.cTx, c.txData, c.cP, c.policyIdR, c.r, signR(xROf(c)), c.eta, c.tAtt)
+                ),
                 none()
             );
         } else if (op == Op.Apply) {

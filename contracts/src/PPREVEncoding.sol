@@ -11,7 +11,7 @@ library PPREVEncoding {
 
     /// @dev tag_R
     bytes32 internal constant REGISTER_TYPEHASH = keccak256(
-        "Register(bytes32 cTx,TxData txData,bytes32 policyId,address submitter,bytes32 eta,uint64 tAtt)"
+        "Register(bytes32 cTx,TxData txData,bytes32 cP,bytes32 policyId,address submitter,bytes32 eta,uint64 tAtt)"
         "TxData(bytes32 propertyId,uint256 amount,uint256 settlementShare)"
     );
 
@@ -23,8 +23,9 @@ library PPREVEncoding {
 
     /// @dev tag_S
     bytes32 internal constant SETTLE_TYPEHASH = keccak256(
-        "Settle(uint256 engId,uint256 txId,bytes32 cTx,TxData txData,bytes32 cB,uint256 expiresAt,bytes32 policyId,"
-        "address submitter,bytes32 eta,uint64 tAtt)TxData(bytes32 propertyId,uint256 amount,uint256 settlementShare)"
+        "Settle(uint256 engId,uint256 txId,bytes32 cTx,TxData txData,bytes32 cP,bytes32 cB,uint256 expiresAt,"
+        "bytes32 policyId,address submitter,bytes32 eta,uint64 tAtt)"
+        "TxData(bytes32 propertyId,uint256 amount,uint256 settlementShare)"
     );
 
     // Statement structs hold x_psi with txData replaced by its struct hash. Every member encodes to
@@ -33,6 +34,7 @@ library PPREVEncoding {
     struct RegisterStatement {
         bytes32 cTx;
         bytes32 txDataHash;
+        bytes32 cP;
         bytes32 policyId;
         address submitter;
         bytes32 eta;
@@ -55,6 +57,7 @@ library PPREVEncoding {
         uint256 txId;
         bytes32 cTx;
         bytes32 txDataHash;
+        bytes32 cP;
         bytes32 cB;
         uint256 expiresAt;
         bytes32 policyId;

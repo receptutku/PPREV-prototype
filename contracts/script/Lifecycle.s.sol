@@ -101,7 +101,13 @@ contract Lifecycle is Script, NotarySigner {
         vm.startBroadcast(deployerKey);
         EcdsaNotaryVerifier verifier = new EcdsaNotaryVerifier(vm.addr(NOTARY_PK));
         pprev = new PPREV(
-            vm.addr(deployerKey), INotaryVerifier(address(verifier)), p.delta, p.tauLock, p.maxExpirations, p.rho
+            vm.addr(deployerKey),
+            INotaryVerifier(address(verifier)),
+            p.delta,
+            p.tauLock,
+            p.maxExpirations,
+            p.rho,
+            p.tauLock
         );
         pprev.registerPolicy(POLICY_R, POLICY_A, POLICY_S, p.reqEscrow, p.minCollateral, p.maxCollateral);
         vm.stopBroadcast();
@@ -121,11 +127,17 @@ contract Lifecycle is Script, NotarySigner {
         r = next("r");
         cTx = keccak256(abi.encode(d, POLICY_R, r));
         XR memory x = XR({
-            cTx: cTx, txData: d, policyId: POLICY_R, submitter: vm.addr(ownerKey), eta: next("eta"), tAtt: now64()
+            cTx: cTx,
+            txData: d,
+            cP: keccak256(abi.encode("c_P", vm.addr(ownerKey))),
+            policyId: POLICY_R,
+            submitter: vm.addr(ownerKey),
+            eta: next("eta"),
+            tAtt: now64()
         });
         bytes memory sigma = signR(x);
         vm.broadcast(ownerKey);
-        txId = pprev.register{value: p.collateral}(cTx, d, POLICY_R, r, sigma, x.eta, x.tAtt);
+        txId = pprev.register{value: p.collateral}(cTx, d, x.cP, POLICY_R, r, sigma, x.eta, x.tAtt);
     }
 
     function applyFor(uint256 txId, TxData memory d, bytes32 r, bytes32 cTx) internal returns (uint256 appId) {
@@ -151,13 +163,15 @@ contract Lifecycle is Script, NotarySigner {
     }
 
     function settle(uint256 engId, uint256 txId, TxData memory d, bytes32 r, bytes32 cTx, uint256 appId) internal {
-        (,,,, bytes32 cB) = pprev.applications(appId);
+        (,,,,, bytes32 cP) = pprev.listings(txId);
+        (,,,,, bytes32 cB) = pprev.applications(appId);
         (, uint256 expiresAt,) = pprev.engagements(engId);
         XS memory x = XS({
             engId: engId,
             txId: txId,
             cTx: cTx,
             txData: d,
+            cP: cP,
             cB: cB,
             expiresAt: expiresAt,
             policyId: POLICY_S,

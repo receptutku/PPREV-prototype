@@ -17,6 +17,7 @@ use common::{
     workspace_path,
 };
 use num_bigint::BigUint;
+use pprev_notary::mock::counterparty_commitment;
 use pprev_notary::{DEFAULT_MAX_SESSION_SECS, Expectation, check_presentation};
 use pprev_prover::HiddenOpenings;
 use pprev_prover::circuit::{
@@ -43,10 +44,11 @@ const SEPARATOR_QUOTE_2: &str = "owners[k * OWNER_STRIDE + ACCOUNT_W + 2] === 34
 const ACCOUNT_IS_OWNER: &str = "noMatchUpTo[OWNER_SLOTS] === 0;";
 const PROPERTY_HI: &str = "propertyHi.out === propertyId[0];";
 const PROPERTY_LO: &str = "propertyLo.out * (256 ** (32 - PROPERTY_W)) === propertyId[1];";
+const OWNER_C_P: &str = "ownerCommitment.out === cP;";
 // Range check of each byte in Num2Bits(8) (circomlib).
 const BYTE_RANGE: &str = "lc1 === in;";
 
-/// Register digest of `test-vectors/eip712.json`; above r, so `bind` is a reduced value.
+/// Register digest of `test-vectors/eip712.json` before M1; above r, so `bind` is a reduced value.
 const DIGEST: &str = "b9cb90d431dfd432c52ae789635458de8acdec66e1817a1aa359bc979a151564";
 
 fn digest() -> [u8; 32] {
@@ -208,10 +210,26 @@ fn property_word(property: &str) -> [u8; 32] {
     layout().property_id_word(property).expect("property id")
 }
 
-/// Witness input whose public commitments are recomputed from the openings.
+/// s_P of the tests.
+fn salt_p() -> [u8; 32] {
+    let mut salt = [0x3c; 32];
+    salt[0] = 0x02;
+    salt
+}
+
+/// c_P = H_c(identifier, s_P) for an identifier padded to the account width.
+fn c_p_of(identifier: &[u8]) -> [u8; 32] {
+    counterparty_commitment(identifier, &salt_p())
+        .expect("c_P")
+        .0
+}
+
+/// Witness input whose public commitments are recomputed from the openings, with c_P of the
+/// session's account.
 fn honest(openings: &HiddenOpenings, property: &str) -> (PhiRInput, PhiRPublic) {
-    let public = public_of(openings, property_word(property), digest());
-    (PhiRInput::new(&public, openings), public)
+    let c_p = c_p_of(&openings.account.plaintext);
+    let public = public_of(openings, property_word(property), c_p, digest());
+    (PhiRInput::new(&public, openings, &salt_p()), public)
 }
 
 fn as_json(input: &PhiRInput) -> Value {
@@ -232,8 +250,13 @@ fn run_of(account: (&'static str, &'static str)) -> &'static Run {
     cell.get_or_init(|| notarize_blocking(account, PROPERTY))
 }
 
-/// The public side as the policy verifier derives it: commitments from the checked presentation.
+/// The public side as the policy verifier derives it: commitments from the checked presentation,
+/// c_P of the session's own account.
 fn verifier_public(run: &Run) -> PhiRPublic {
+    verifier_public_with(run, c_p_of(&run.notarized.openings.account.plaintext))
+}
+
+fn verifier_public_with(run: &Run, c_p: [u8; 32]) -> PhiRPublic {
     let presentation = pprev_prover::present(&run.notarized, false).expect("presentation");
     let attested = check_presentation(
         presentation,
@@ -247,7 +270,7 @@ fn verifier_public(run: &Run) -> PhiRPublic {
     )
     .expect("policy checks");
     attested
-        .phi_r_public(property_word(PROPERTY), digest())
+        .phi_r_public(property_word(PROPERTY), c_p, digest())
         .expect("public inputs")
 }
 
@@ -257,10 +280,31 @@ fn owner_session_satisfies_phi_r() {
     let public = verifier_public(run);
     // The prover's own view of the public side agrees with the verifier's.
     assert_eq!(
-        public_of(&run.notarized.openings, property_word(PROPERTY), digest()),
+        public_of(
+            &run.notarized.openings,
+            property_word(PROPERTY),
+            c_p_of(OWNER.0.as_bytes()),
+            digest()
+        ),
         public
     );
-    accepted(&PhiRInput::new(&public, &run.notarized.openings), &public);
+    accepted(
+        &PhiRInput::new(&public, &run.notarized.openings, &salt_p()),
+        &public,
+    );
+}
+
+#[test]
+fn owner_session_with_the_c_p_of_another_account_has_no_witness() {
+    let run = run_of(OWNER);
+    // The tenant's identifier, and the other owner of the record, under the owner's salt.
+    for other in [TENANT.0, "ACC-000000000002"] {
+        let public = verifier_public_with(run, c_p_of(other.as_bytes()));
+        rejected_by_phi_r(
+            &PhiRInput::new(&public, &run.notarized.openings, &salt_p()),
+            OWNER_C_P,
+        );
+    }
 }
 
 #[test]
@@ -272,7 +316,7 @@ fn tenant_session_has_no_witness() {
     );
     let public = verifier_public(run);
     rejected_by_phi_r(
-        &PhiRInput::new(&public, &run.notarized.openings),
+        &PhiRInput::new(&public, &run.notarized.openings, &salt_p()),
         ACCOUNT_IS_OWNER,
     );
 }
@@ -316,6 +360,36 @@ fn an_account_outside_the_owner_list_is_rejected() {
 }
 
 #[test]
+fn c_p_must_open_to_the_session_account() {
+    let owners = [OWNER.0, "ACC-000000000002"];
+    let openings = crafted(OWNER.0, &owners, PROPERTY);
+    let (base, _) = honest(&openings, PROPERTY);
+    // The right identifier under another salt.
+    let mut input = base.clone();
+    input.salt = "7".into();
+    rejected_by_phi_r(&input, OWNER_C_P);
+    // c_P of another account, here the second owner of the same record: the session shows
+    // ACC-000000000001, so c_P must name that account and no other owner.
+    for other in ["ACC-000000000002", TENANT.0] {
+        let public = public_of(
+            &openings,
+            property_word(PROPERTY),
+            c_p_of(other.as_bytes()),
+            digest(),
+        );
+        rejected_by_phi_r(&PhiRInput::new(&public, &openings, &salt_p()), OWNER_C_P);
+    }
+    // An unpadded prefix of the identifier is another packed value.
+    let public = public_of(
+        &openings,
+        property_word(PROPERTY),
+        c_p_of(b"ACC-00000000000"),
+        digest(),
+    );
+    rejected_by_phi_r(&PhiRInput::new(&public, &openings, &salt_p()), OWNER_C_P);
+}
+
+#[test]
 fn an_empty_account_does_not_match_an_empty_slot() {
     let (input, _) = honest(&crafted("", &[OWNER.0], PROPERTY), PROPERTY);
     rejected_by_phi_r(&input, ACCOUNT_NOT_EMPTY);
@@ -324,17 +398,28 @@ fn an_empty_account_does_not_match_an_empty_slot() {
 #[test]
 fn another_property_id_is_rejected() {
     let openings = crafted(OWNER.0, &[OWNER.0], PROPERTY);
+    let c_p = c_p_of(OWNER.0.as_bytes());
     // Differs in the first 16 bytes.
-    let public = public_of(&openings, property_word("TR-34-KADIKOY-004567"), digest());
-    rejected_by_phi_r(&PhiRInput::new(&public, &openings), PROPERTY_HI);
+    let public = public_of(
+        &openings,
+        property_word("TR-34-KADIKOY-004567"),
+        c_p,
+        digest(),
+    );
+    rejected_by_phi_r(&PhiRInput::new(&public, &openings, &salt_p()), PROPERTY_HI);
     // Differs only in the last 4 bytes.
-    let public = public_of(&openings, property_word("TR-06-CANKAYA-000124"), digest());
-    rejected_by_phi_r(&PhiRInput::new(&public, &openings), PROPERTY_LO);
+    let public = public_of(
+        &openings,
+        property_word("TR-06-CANKAYA-000124"),
+        c_p,
+        digest(),
+    );
+    rejected_by_phi_r(&PhiRInput::new(&public, &openings, &salt_p()), PROPERTY_LO);
     // Nonzero byte in the 12-byte tail.
     let mut word = property_word(PROPERTY);
     word[31] = 1;
-    let public = public_of(&openings, word, digest());
-    rejected_by_phi_r(&PhiRInput::new(&public, &openings), PROPERTY_LO);
+    let public = public_of(&openings, word, c_p, digest());
+    rejected_by_phi_r(&PhiRInput::new(&public, &openings, &salt_p()), PROPERTY_LO);
 }
 
 #[test]
@@ -342,8 +427,8 @@ fn a_zero_padded_short_property_id_is_rejected() {
     let openings = crafted(OWNER.0, &[OWNER.0], "TR-06-X");
     let mut word = [0u8; 32];
     word[..7].copy_from_slice(b"TR-06-X");
-    let public = public_of(&openings, word, digest());
-    rejected_by_phi_r(&PhiRInput::new(&public, &openings), PROPERTY_HI);
+    let public = public_of(&openings, word, c_p_of(OWNER.0.as_bytes()), digest());
+    rejected_by_phi_r(&PhiRInput::new(&public, &openings, &salt_p()), PROPERTY_HI);
 }
 
 #[test]
@@ -397,6 +482,10 @@ fn a_changed_public_commitment_is_rejected() {
             rejected_by_phi_r(&input, marker);
         }
     }
+    let mut input = as_json(&base);
+    let value = bump(input["cP"].as_str().unwrap());
+    input["cP"] = Value::String(value);
+    rejected_by_phi_r(&input, OWNER_C_P);
 }
 
 #[test]

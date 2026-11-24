@@ -17,6 +17,7 @@ contract Deploy is Script {
     uint256 internal constant TAU_LOCK = 14 days;
     uint256 internal constant MAX_EXPIRATIONS = 3;
     uint256 internal constant RHO = 5000;
+    uint256 internal constant ROTATION_DELAY = 14 days;
 
     function run() external returns (EcdsaNotaryVerifier verifier, PPREV pprev) {
         uint256 deployerKey = vm.envUint("DEPLOYER_KEY");
@@ -33,8 +34,15 @@ contract Deploy is Script {
 
         vm.startBroadcast(deployerKey);
         verifier = new EcdsaNotaryVerifier(vkNotary);
-        pprev =
-            new PPREV(vm.addr(deployerKey), INotaryVerifier(address(verifier)), DELTA, TAU_LOCK, MAX_EXPIRATIONS, RHO);
+        pprev = new PPREV(
+            vm.addr(deployerKey),
+            INotaryVerifier(address(verifier)),
+            DELTA,
+            TAU_LOCK,
+            MAX_EXPIRATIONS,
+            RHO,
+            ROTATION_DELAY
+        );
         pprev.registerPolicy(policyIdR, policyIdA, policyIdS, reqEscrow, minCollateral, maxCollateral);
         vm.stopBroadcast();
 

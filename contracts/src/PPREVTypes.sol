@@ -53,12 +53,17 @@ struct Listing {
     /// @dev The owner's remaining collateral.
     uint256 collateral;
     uint256 expirations;
+    /// @dev Owner identity commitment c_P, fixed at registration and opened by phi_S.
+    bytes32 cP;
 }
 
 struct Application {
     uint256 txId;
     address depositor;
     AppStatus status;
+    /// @dev Version of vk_notary under which sigma_A verified; Settle verifies sigma_S under it. Packed
+    /// with depositor and status.
+    uint32 keyVersion;
     uint256 deposit;
     bytes32 cB;
 }
@@ -78,17 +83,27 @@ event PolicyRegistered(
     uint256 minCollateral,
     uint256 maxCollateral
 );
-event NotaryVerifierSet(address indexed verifier);
+event NotaryVerifierSet(address indexed verifier, uint32 version);
+event NotaryVerifierProposed(address indexed verifier, uint256 effectiveAt);
+event NotaryVerifierProposalCancelled(address indexed verifier);
 event Registered(
     uint256 indexed txId,
     address indexed owner,
     bytes32 cTx,
+    bytes32 cP,
     bytes32 policyIdR,
     TxData txData,
     bytes32 r,
     uint256 collateral
 );
-event Applied(uint256 indexed appId, uint256 indexed txId, address indexed applicant, bytes32 cB, uint256 deposit);
+event Applied(
+    uint256 indexed appId,
+    uint256 indexed txId,
+    address indexed applicant,
+    bytes32 cB,
+    uint256 deposit,
+    uint32 keyVersion
+);
 event Engaged(uint256 indexed engId, uint256 indexed txId, uint256 indexed appId, uint256 expiresAt);
 event Settled(uint256 indexed engId, uint256 indexed txId, uint256 toOwner, uint256 toCounterparty);
 event Expired(
@@ -107,6 +122,10 @@ event Withdrawn(address indexed recipient, uint256 amount);
 error NotOperator();
 error InvalidParameters();
 error PolicyExists(bytes32 policyIdR);
+/// @dev activateNotaryVerifier, cancelNotaryVerifierProposal
+error NoPendingVerifier();
+/// @dev activateNotaryVerifier
+error RotationNotDue(uint256 effectiveAt);
 /// @dev R(a)
 error UnknownPolicy(bytes32 policyIdR);
 /// @dev R(b), A(c), S(d)

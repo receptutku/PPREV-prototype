@@ -25,11 +25,13 @@ abstract contract E1Fixtures is CommonBase {
         c.verifyingKeyHash = keccak256(fx.readBytes(".attestation.fields[0].data"));
         c.serverNameHash = keccak256(bytes(fx.readString(".serverName")));
         c.structureHash = keccak256(fx.readBytes(".structure"));
+        c.requestHeadersHash = keccak256(fx.readBytes(".requestHeaders"));
         bytes[] memory prefixes = fx.readBytesArray(".commitmentPrefixesByRole");
         c.prefixHashes = new bytes32[](prefixes.length);
         for (uint256 r = 0; r < prefixes.length; r++) {
             c.prefixHashes[r] = keccak256(prefixes[r]);
         }
+        c.sentLength = uint32(fx.readUint(".sentLength"));
         c.receivedLength = uint32(fx.readUint(".receivedLength"));
         c.delta = 300;
         c.maxSessionSecs = 120;
@@ -50,6 +52,7 @@ abstract contract E1Fixtures is CommonBase {
         for (uint256 i = 0; i < roles.length; i++) {
             a.roleOfField[i] = uint8(roles[i]);
         }
+        a.requestHeaders = fx.readBytes(".requestHeaders");
         a.requestBlinder = bytes16(fx.readBytes(".requestBlinder"));
         a.structure = fx.readBytes(".structure");
         a.structureBlinder = bytes16(fx.readBytes(".structureBlinder"));
@@ -82,6 +85,7 @@ abstract contract E1Fixtures is CommonBase {
         s.att = attestation(fx);
         s.cTx = fx.readBytes32(".statement.cTx");
         s.txData = txData(fx);
+        s.cP = fx.readBytes32(".statement.cP");
         s.policyId = fx.readBytes32(".statement.policyId");
         s.submitter = fx.readAddress(".statement.submitter");
         s.eta = fx.readBytes32(".statement.eta");
@@ -108,6 +112,7 @@ abstract contract E1Fixtures is CommonBase {
         s.txId = vm.parseUint(fx.readString(".statement.txId"));
         s.cTx = fx.readBytes32(".statement.cTx");
         s.txData = txData(fx);
+        s.cP = fx.readBytes32(".statement.cP");
         s.cB = fx.readBytes32(".statement.cB");
         s.expiresAt = vm.parseUint(fx.readString(".statement.expiresAt"));
         s.policyId = fx.readBytes32(".statement.policyId");

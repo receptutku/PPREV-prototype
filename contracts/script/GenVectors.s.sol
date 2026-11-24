@@ -17,7 +17,7 @@ contract GenVectors is Script, NotarySigner, TypedDataJson {
     string internal constant OUT = "../test-vectors/eip712.json";
 
     function run() external {
-        PPREVHarness h = new PPREVHarness(address(1), INotaryVerifier(address(2)), 300, 14 days, 3, 5000);
+        PPREVHarness h = new PPREVHarness(address(1), INotaryVerifier(address(2)), 300, 14 days, 3, 5000, 14 days);
         uint256 chainId = vm.getChainId();
         address vc = address(h);
 
@@ -95,6 +95,7 @@ contract GenVectors is Script, NotarySigner, TypedDataJson {
         PPREVEncoding.RegisterStatement memory s = PPREVEncoding.RegisterStatement({
             cTx: x.cTx,
             txDataHash: h.exposedHashTxData(x.txData),
+            cP: x.cP,
             policyId: x.policyId,
             submitter: x.submitter,
             eta: x.eta,
@@ -129,6 +130,7 @@ contract GenVectors is Script, NotarySigner, TypedDataJson {
         s.txId = x.txId;
         s.cTx = x.cTx;
         s.txDataHash = h.exposedHashTxData(x.txData);
+        s.cP = x.cP;
         s.cB = x.cB;
         s.expiresAt = x.expiresAt;
         s.policyId = x.policyId;

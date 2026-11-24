@@ -7,9 +7,11 @@
 //! phi_A and phi_S for Apply and Settle ([`phases`]), and signs x_psi with sk_notary (D19, D20);
 //! [`mock::MockNotary`] checks phi_A and phi_S natively on records given in the clear (D23).
 
+pub mod attestations;
 pub mod groth16;
 pub mod mock;
 pub mod nonces;
+pub mod notations;
 pub mod phases;
 pub mod presentation;
 pub mod register;
@@ -17,11 +19,13 @@ pub mod session;
 pub mod sigma;
 pub mod wire;
 
+pub use attestations::AttestationStore;
 pub use groth16::{Groth16Proof, Groth16Verifier};
 pub use nonces::NonceStore;
+pub use notations::{Engagement, NotationStore};
 pub use presentation::{
     Attested, AttestedShape, CommittedHash, Expectation, ShapeExpectation, TLSN_CLOCK_TOLERANCE,
-    attested_commitments, check_presentation, check_shape, check_times,
+    attestation_id, attested_commitments, check_presentation, check_shape, check_times,
 };
 pub use register::{PolicyVerifier, RegisterPolicy, RegisterRequest, RegisterTimings};
 pub use session::{

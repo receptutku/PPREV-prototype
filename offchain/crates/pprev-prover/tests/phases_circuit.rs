@@ -49,6 +49,10 @@ const S_PROPERTY_LO: &str = "propertyLo.out * (256 ** (32 - PROPERTY_W)) === pro
 const S_TENANT_NOT_EMPTY: &str = "tenantIsPadding.out === 0;";
 const S_C_B: &str = "commitment.out === cB;";
 const S_NOT_BEFORE: &str = "notBefore.out === 1;";
+const S_NOT_AFTER: &str = "notAfter.out === 1;";
+const S_OPEN_ACCOUNT: &str = "openAccount.limbs[i] === accountHash[i];";
+const S_ACCOUNT_NOT_EMPTY: &str = "accountIsPadding.out === 0;";
+const S_C_P: &str = "ownerCommitment.out === cP;";
 const SEPARATOR_1: &str = "date[4] === 45;";
 const SEPARATOR_2: &str = "date[7] === 45;";
 const MONTH_NOT_ZERO: &str = "monthZero.out === 0;";
@@ -81,6 +85,20 @@ fn salt() -> [u8; 32] {
 fn c_b(identifier: &str) -> [u8; 32] {
     counterparty_commitment(identifier.as_bytes(), &salt())
         .expect("c_B")
+        .0
+}
+
+/// s_P, the salt of the owner's c_P.
+fn salt_p() -> [u8; 32] {
+    let mut salt = [0x3c; 32];
+    salt[0] = 0x02;
+    salt
+}
+
+/// c_P = H_c(identifier, s_P), the owner's commitment from Register.
+fn c_p(identifier: &str) -> [u8; 32] {
+    counterparty_commitment(identifier.as_bytes(), &salt_p())
+        .expect("c_P")
         .0
 }
 
@@ -352,18 +370,53 @@ fn phi_a_bounds_the_amount() {
 // phi_S
 
 fn tenancy_openings(property: &str, tenant: &str, date: &str) -> Vec<FieldOpening> {
+    tenancy_openings_for(LANDLORD, property, tenant, date)
+}
+
+/// Openings of the notation as the registry serves it to `account`.
+fn tenancy_openings_for(
+    account: &str,
+    property: &str,
+    tenant: &str,
+    date: &str,
+) -> Vec<FieldOpening> {
     record_openings(
         &layout("tenancy-v1"),
-        LANDLORD,
+        account,
         &[property, tenant, date],
         &["account", "propertyId", "tenant", "recordDate"].map(label_blinder),
     )
     .expect("render")
 }
 
+/// The attestation day of the notations, unless a test sets its own: on or after every record date
+/// that a test expects phi_S to accept for another reason.
+const ATTESTED: u32 = 2027_01_05;
+
+/// phi_S with c_P of the landlord, who registered the listing.
 fn phi_s(openings: &[FieldOpening], c_b: [u8; 32], day: u32) -> (PhiSInput, PhiSPublic) {
+    phi_s_with(openings, c_p(LANDLORD), c_b, day)
+}
+
+fn phi_s_with(
+    openings: &[FieldOpening],
+    c_p: [u8; 32],
+    c_b: [u8; 32],
+    day: u32,
+) -> (PhiSInput, PhiSPublic) {
+    phi_s_attested(openings, c_p, c_b, [day, ATTESTED])
+}
+
+/// phi_S with the engagement day and the attestation day.
+fn phi_s_attested(
+    openings: &[FieldOpening],
+    c_p: [u8; 32],
+    c_b: [u8; 32],
+    days: [u32; 2],
+) -> (PhiSInput, PhiSPublic) {
     let public = PhiSPublic::new(
         [
+            commitment(&openings[0]),
             commitment(&openings[1]),
             commitment(&openings[2]),
             commitment(&openings[3]),
@@ -371,13 +424,13 @@ fn phi_s(openings: &[FieldOpening], c_b: [u8; 32], day: u32) -> (PhiSInput, PhiS
         layout("tenancy-v1")
             .word("propertyId", PROPERTY)
             .expect("word"),
-        c_b,
-        day,
+        [c_p, c_b],
+        days,
         DIGEST,
     )
     .expect("public");
     (
-        PhiSInput::new(&public, openings, &salt()).expect("input"),
+        PhiSInput::new(&public, openings, &salt(), &salt_p()).expect("input"),
         public,
     )
 }
@@ -417,6 +470,57 @@ fn phi_s_fails_the_day_before_the_engagement_day() {
     phi_s_rejected_at(&input, PHI_S, "PhiS", S_NOT_BEFORE);
 }
 
+/// phi_S for a notation of the listed property and the tenant in c_B, dated `date`, with the
+/// engagement day and the attestation day.
+fn attested_notation(date: &str, days: [u32; 2]) -> (PhiSInput, PhiSPublic) {
+    phi_s_attested(
+        &tenancy_openings(PROPERTY, TENANT, date),
+        c_p(LANDLORD),
+        c_b(TENANT),
+        days,
+    )
+}
+
+#[test]
+fn phi_s_holds_up_to_the_attestation_day() {
+    // On the attestation day, between the two days, and on the engagement day.
+    for date in ["2026-11-24", "2026-11-01", "2026-10-21"] {
+        let (input, public) = attested_notation(date, [2026_10_21, 2026_11_24]);
+        phi_s_accepted(&input, &public);
+    }
+    // Engaged and attested on the day of the notation.
+    let (input, public) = attested_notation("2026-11-24", [2026_11_24, 2026_11_24]);
+    phi_s_accepted(&input, &public);
+}
+
+#[test]
+fn phi_s_fails_the_day_after_the_attestation_day() {
+    let (input, _) = attested_notation("2026-11-25", [2026_10_21, 2026_11_24]);
+    phi_s_rejected_at(&input, PHI_S, "PhiS", S_NOT_AFTER);
+    // Across a month and a year boundary, and far in the future.
+    let (input, _) = attested_notation("2026-12-01", [2026_10_21, 2026_11_30]);
+    phi_s_rejected_at(&input, PHI_S, "PhiS", S_NOT_AFTER);
+    let (input, _) = attested_notation("2027-01-01", [2026_10_21, 2026_12_31]);
+    phi_s_rejected_at(&input, PHI_S, "PhiS", S_NOT_AFTER);
+    let (input, _) = attested_notation("2099-12-31", [2026_10_21, 2026_11_24]);
+    phi_s_rejected_at(&input, PHI_S, "PhiS", S_NOT_AFTER);
+    // An attestation day before the engagement day leaves no date at all.
+    let (input, _) = attested_notation("2026-10-21", [2026_10_21, 2026_10_20]);
+    phi_s_rejected_at(&input, PHI_S, "PhiS", S_NOT_AFTER);
+}
+
+#[test]
+fn phi_s_bounds_the_attestation_day() {
+    let (input, _) = attested_notation("2026-10-21", [2026_10_21, 2026_11_24]);
+    let mut v = json(&input);
+    v["attestationDay"] = (1u32 << 27).to_string().into();
+    phi_s_rejected_at(&v, BITIFY, "Num2Bits", NUM2BITS);
+    // A field element that wraps around: r - 1 is not below 2^27 either.
+    let mut v = json(&input);
+    v["attestationDay"] = (bn254_r() - 1u32).to_string().into();
+    phi_s_rejected_at(&v, BITIFY, "Num2Bits", NUM2BITS);
+}
+
 #[test]
 fn phi_s_fails_for_a_notation_on_another_property() {
     let openings = tenancy_openings(OTHER_PROPERTY, TENANT, "2026-10-21");
@@ -440,6 +544,52 @@ fn phi_s_fails_for_an_empty_tenant() {
     let openings = tenancy_openings(PROPERTY, "", "2026-10-21");
     let (input, _) = phi_s(&openings, c_b(&" ".repeat(16)), 2026_10_21);
     phi_s_rejected_at(&input, PHI_S, "PhiS", S_TENANT_NOT_EMPTY);
+}
+
+#[test]
+fn phi_s_fails_when_the_session_is_not_the_account_in_c_p() {
+    // The registry served the notation to the tenant, and to another owner of the property; c_P
+    // names the landlord who registered the listing.
+    for account in [TENANT, OTHER] {
+        let openings = tenancy_openings_for(account, PROPERTY, TENANT, "2026-10-21");
+        let (input, _) = phi_s(&openings, c_b(TENANT), 2026_10_21);
+        phi_s_rejected_at(&input, PHI_S, "PhiS", S_C_P);
+        // The same session holds with c_P of its own account.
+        let (input, public) = phi_s_with(&openings, c_p(account), c_b(TENANT), 2026_10_21);
+        phi_s_accepted(&input, &public);
+    }
+}
+
+#[test]
+fn phi_s_fails_for_another_owner_salt() {
+    let (mut input, _) = notation("2026-10-21", 2026_10_21);
+    input.salt_p = "7".into();
+    phi_s_rejected_at(&input, PHI_S, "PhiS", S_C_P);
+    // The tenant's salt opens c_B, not c_P.
+    let (mut input, _) = notation("2026-10-21", 2026_10_21);
+    input.salt_p = input.salt.clone();
+    phi_s_rejected_at(&input, PHI_S, "PhiS", S_C_P);
+}
+
+#[test]
+fn phi_s_fails_for_an_empty_account() {
+    let openings = tenancy_openings_for("", PROPERTY, TENANT, "2026-10-21");
+    let blank = " ".repeat(16);
+    let (input, _) = phi_s_with(&openings, c_p(&blank), c_b(TENANT), 2026_10_21);
+    phi_s_rejected_at(&input, PHI_S, "PhiS", S_ACCOUNT_NOT_EMPTY);
+}
+
+#[test]
+fn phi_s_fails_when_the_account_does_not_match_its_commitment() {
+    let (input, _) = notation("2026-10-21", 2026_10_21);
+    let mut v = json(&input);
+    v["accountHash"][1] = "1".into();
+    phi_s_rejected_at(&v, PHI_S, "PhiS", S_OPEN_ACCOUNT);
+    // The landlord's identifier in place of the tenant's session account.
+    let openings = tenancy_openings_for(TENANT, PROPERTY, TENANT, "2026-10-21");
+    let (mut input, _) = phi_s(&openings, c_b(TENANT), 2026_10_21);
+    input.account = LANDLORD.as_bytes().to_vec();
+    phi_s_rejected_at(&input, PHI_S, "PhiS", S_OPEN_ACCOUNT);
 }
 
 #[test]

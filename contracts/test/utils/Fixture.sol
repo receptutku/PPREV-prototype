@@ -14,6 +14,7 @@ import {Records} from "./Records.sol";
 struct RegisterCall {
     bytes32 cTx;
     TxData txData;
+    bytes32 cP;
     bytes32 policyIdR;
     bytes32 r;
     bytes32 eta;
@@ -46,6 +47,7 @@ struct SettleCall {
     address caller;
     uint256 txId;
     bytes32 cTx;
+    bytes32 cP;
     bytes32 cB;
     uint256 expiresAt;
     bytes32 policyIdS;
@@ -67,6 +69,7 @@ abstract contract Fixture is Test, NotarySigner {
     uint256 internal constant TAU_LOCK = 14 days;
     uint256 internal constant MAX_EXPIRATIONS = 3;
     uint256 internal constant RHO = 5000;
+    uint256 internal constant ROTATION_DELAY = 14 days;
     uint256 internal constant MIN_COLLATERAL = 0.1 ether;
     uint256 internal constant MAX_COLLATERAL = 1 ether;
     uint256 internal constant REQ_ESCROW = 0.05 ether;
@@ -111,7 +114,7 @@ abstract contract Fixture is Test, NotarySigner {
     }
 
     function deploy(INotaryVerifier v) internal virtual returns (PPREV) {
-        return new PPREV(operator, v, DELTA, TAU_LOCK, MAX_EXPIRATIONS, RHO);
+        return new PPREV(operator, v, DELTA, TAU_LOCK, MAX_EXPIRATIONS, RHO, ROTATION_DELAY);
     }
 
     // ------------------------------------------------------------------ values
@@ -150,6 +153,10 @@ abstract contract Fixture is Test, NotarySigner {
         return keccak256(abi.encode("c_B", who));
     }
 
+    function cPOf(address who) internal pure returns (bytes32) {
+        return keccak256(abi.encode("c_P", who));
+    }
+
     // ------------------------------------------------------------------ Register
 
     function registerCall(bytes32 policyIdR, uint256 share, address caller) internal returns (RegisterCall memory c) {
@@ -157,6 +164,7 @@ abstract contract Fixture is Test, NotarySigner {
         c.policyIdR = policyIdR;
         c.r = next("r");
         c.cTx = commitmentOf(c.txData, policyIdR, c.r);
+        c.cP = cPOf(caller);
         c.eta = next("eta");
         c.tAtt = now64();
         c.collateral = COLLATERAL;
@@ -170,6 +178,7 @@ abstract contract Fixture is Test, NotarySigner {
     function xROf(RegisterCall memory c) internal pure returns (XR memory x) {
         x.cTx = c.cTx;
         x.txData = c.txData;
+        x.cP = c.cP;
         x.policyId = c.policyIdR;
         x.submitter = c.caller;
         x.eta = c.eta;
@@ -178,7 +187,7 @@ abstract contract Fixture is Test, NotarySigner {
 
     function submitRegister(RegisterCall memory c, bytes memory sigma) internal returns (uint256) {
         vm.prank(c.caller);
-        return pprev.register{value: c.collateral}(c.cTx, c.txData, c.policyIdR, c.r, sigma, c.eta, c.tAtt);
+        return pprev.register{value: c.collateral}(c.cTx, c.txData, c.cP, c.policyIdR, c.r, sigma, c.eta, c.tAtt);
     }
 
     function doRegister(RegisterCall memory c) internal returns (uint256) {
@@ -240,6 +249,7 @@ abstract contract Fixture is Test, NotarySigner {
         c.caller = f.rc.caller;
         c.txId = f.txId;
         c.cTx = f.rc.cTx;
+        c.cP = f.rc.cP;
         c.cB = f.ac.cB;
         c.expiresAt = f.expiresAt;
         c.policyIdS = policyS(f.rc.policyIdR);
@@ -250,6 +260,7 @@ abstract contract Fixture is Test, NotarySigner {
         x.txId = c.txId;
         x.cTx = c.cTx;
         x.txData = c.txData;
+        x.cP = c.cP;
         x.cB = c.cB;
         x.expiresAt = c.expiresAt;
         x.policyId = c.policyIdS;
@@ -310,6 +321,53 @@ abstract contract Fixture is Test, NotarySigner {
         pprev.expire(f.engId);
     }
 
+    // ------------------------------------------------------------------ rotation of vk_notary
+
+    /// @dev Key of the verifier a rotation installs in tests (version 2).
+    uint256 internal constant ROTATED_PK = uint256(keccak256("pprev.test.notary.rotated"));
+
+    /// @dev The operator proposes a verifier holding the address of `pk`.
+    function proposeNotary(uint256 pk) internal returns (EcdsaNotaryVerifier v) {
+        v = new EcdsaNotaryVerifier(vm.addr(pk));
+        vm.prank(operator);
+        pprev.proposeNotaryVerifier(INotaryVerifier(address(v)));
+    }
+
+    /// @dev Waits for the pending proposal to become due and activates it (from a non-operator).
+    function activateWhenDue() internal {
+        uint256 effectiveAt = pprev.pendingEffectiveAt();
+        if (vm.getBlockTimestamp() < effectiveAt) vm.warp(effectiveAt);
+        vm.prank(attacker);
+        pprev.activateNotaryVerifier();
+    }
+
+    /// @dev Proposes and activates a verifier holding the address of `pk`.
+    function rotateNotary(uint256 pk) internal returns (EcdsaNotaryVerifier v) {
+        v = proposeNotary(pk);
+        activateWhenDue();
+    }
+
+    function signRWith(uint256 pk, RegisterCall memory c) internal view returns (bytes memory) {
+        return signDigest(pk, digest(structHashR(xROf(c))));
+    }
+
+    function signAWith(uint256 pk, ApplyCall memory c) internal view returns (bytes memory) {
+        return signDigest(pk, digest(structHashA(xAOf(c))));
+    }
+
+    function signSWith(uint256 pk, SettleCall memory c) internal view returns (bytes memory) {
+        return signDigest(pk, digest(structHashS(xSOf(c))));
+    }
+
+    /// @dev Register, Apply and Engage with every notary signature made with `pk`.
+    function flowEngagedWith(uint256 pk) internal returns (Flow memory f) {
+        f.rc = registerCall();
+        f.txId = submitRegister(f.rc, signRWith(pk, f.rc));
+        f.ac = applyCall(f, applicant);
+        f.appId = submitApply(f.ac, signAWith(pk, f.ac));
+        doEngage(f);
+    }
+
     // ------------------------------------------------------------------ record getters
 
     function listingOf(uint256 txId) internal view returns (Listing memory) {
@@ -317,7 +375,7 @@ abstract contract Fixture is Test, NotarySigner {
     }
 
     function applicationOf(uint256 appId) internal view returns (Application memory a) {
-        (a.txId, a.depositor, a.status, a.deposit, a.cB) = pprev.applications(appId);
+        (a.txId, a.depositor, a.status, a.keyVersion, a.deposit, a.cB) = pprev.applications(appId);
     }
 
     function engagementOf(uint256 engId) internal view returns (Engagement memory e) {

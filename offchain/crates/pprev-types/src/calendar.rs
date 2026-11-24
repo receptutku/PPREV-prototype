@@ -33,6 +33,17 @@ pub fn engagement_day(expires_at: u64, tau_lock: u64, utc_offset_secs: i64) -> R
     ymd_of_days(local.div_euclid(SECS_PER_DAY))
 }
 
+/// The attestation day of phi_S (M2): the calendar day, in a time zone `utc_offset_secs` ahead of
+/// UTC, of the attestation time `t_att`, as Y * 10000 + M * 100 + D. phi_S bounds the record date by
+/// it from above, as it bounds it by the engagement day from below.
+pub fn attestation_day(t_att: u64, utc_offset_secs: i64) -> Result<u32> {
+    let local = i64::try_from(t_att)
+        .ok()
+        .and_then(|t| t.checked_add(utc_offset_secs))
+        .context("attestation time out of range")?;
+    ymd_of_days(local.div_euclid(SECS_PER_DAY))
+}
+
 #[cfg(test)]
 // Dates are written Y_MM_DD, as phi_S encodes them.
 #[allow(clippy::inconsistent_digit_grouping)]
@@ -69,5 +80,28 @@ mod tests {
             2026_09_24
         );
         assert!(engagement_day(tau - 1, tau, 0).is_err());
+    }
+
+    #[test]
+    fn the_attestation_day_is_taken_in_the_registry_time_zone() {
+        // 2026-09-24T21:30:00Z is 2026-09-25 00:30 in UTC+3.
+        let t_att = 1_790_285_400;
+        assert_eq!(attestation_day(t_att, 0).unwrap(), 2026_09_24);
+        assert_eq!(attestation_day(t_att, 3 * 3600).unwrap(), 2026_09_25);
+        assert_eq!(attestation_day(t_att, -12 * 3600).unwrap(), 2026_09_24);
+        // The last and the first second of a local day.
+        let midnight = 1_790_294_400 - 3 * 3600; // 2026-09-25T00:00:00 in UTC+3
+        assert_eq!(attestation_day(midnight - 1, 3 * 3600).unwrap(), 2026_09_24);
+        assert_eq!(attestation_day(midnight, 3 * 3600).unwrap(), 2026_09_25);
+        // The same calendar code as the engagement day.
+        let tau = 14 * 86_400;
+        for t in [0, midnight - 1, midnight, t_att, 4_102_444_799] {
+            assert_eq!(
+                attestation_day(t, 3 * 3600).unwrap(),
+                engagement_day(t + tau, tau, 3 * 3600).unwrap()
+            );
+        }
+        assert!(attestation_day(u64::MAX, 0).is_err());
+        assert!(attestation_day(300_000_000_000, 0).is_err());
     }
 }

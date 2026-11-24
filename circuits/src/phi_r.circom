@@ -1,6 +1,7 @@
 pragma circom 2.2.0;
 
 include "circomlib/circuits/comparators.circom";
+include "circomlib/circuits/poseidon.circom";
 include "lib/bytes.circom";
 
 // phi_R, rental ownership (Sections IV and VI-A): the registry record names the account holder of
@@ -9,6 +10,9 @@ include "lib/bytes.circom";
 // The three private byte strings are the values of the `account`, `owners`, and `propertyId` fields
 // of the registry response. TLSNotary committed to each with SHA-256(value || blinder) (D3); the
 // policy verifier checks the attestation and passes the committed hashes as public inputs.
+//
+// c_P = H_c(account, salt) from x_R commits to the registry identifier of that account holder;
+// phi_S opens it again at Settle (M1).
 //
 // Parameters come from the response layout:
 //   ACCOUNT_W     width of an account identifier (and of an owner slot)
@@ -28,6 +32,7 @@ template PhiR(ACCOUNT_W, OWNER_SLOTS, OWNER_STRIDE, OWNERS_LEN, PROPERTY_W, PAD)
     signal input ownersHash[2];
     signal input propertyHash[2];
     signal input propertyId[2];
+    signal input cP;
     signal input bind;
 
     // Private inputs.
@@ -37,6 +42,7 @@ template PhiR(ACCOUNT_W, OWNER_SLOTS, OWNER_STRIDE, OWNERS_LEN, PROPERTY_W, PAD)
     signal input accountBlinder[16];
     signal input ownersBlinder[16];
     signal input propertyBlinder[16];
+    signal input salt;
 
     // (1) The private values open the attested commitments.
     component openAccount = OpenCommitment(ACCOUNT_W);
@@ -105,7 +111,13 @@ template PhiR(ACCOUNT_W, OWNER_SLOTS, OWNER_STRIDE, OWNERS_LEN, PROPERTY_W, PAD)
     propertyHi.out === propertyId[0];
     propertyLo.out * (256 ** (32 - PROPERTY_W)) === propertyId[1];
 
-    // (4) The proof is bound to one statement x_R: bind is its EIP-712 digest modulo the field order.
+    // (4) c_P = H_c(identifier, salt) names the account holder of the session, the owner of (2).
+    component ownerCommitment = Poseidon(2);
+    ownerCommitment.inputs[0] <== accountPacked.out;
+    ownerCommitment.inputs[1] <== salt;
+    ownerCommitment.out === cP;
+
+    // (5) The proof is bound to one statement x_R: bind is its EIP-712 digest modulo the field order.
     signal bindSquared;
     bindSquared <== bind * bind;
 }

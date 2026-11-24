@@ -53,6 +53,12 @@ contract ReclaimTest is Fixture {
         assertReclaims(f.appId, applicant, f.txId);
     }
 
+    function test_Reclaim_acceptsAfterRotation() public {
+        Flow memory f = flowApplied();
+        rotateNotary(ROTATED_PK);
+        assertReclaims(f.appId, applicant, f.txId);
+    }
+
     function test_Reclaim_revertsForNonDepositor() public {
         Flow memory f = flowApplied();
         vm.expectRevert(NotDepositor.selector);

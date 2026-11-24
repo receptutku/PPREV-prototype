@@ -109,13 +109,15 @@ contract L2Campaign is Script, NotarySigner {
         load();
         PPREV a = deployment(".pprevA");
         signingTarget = address(a);
-        (,,,, bytes32 cB) = a.applications(1);
+        (,,,,, bytes32 cP) = a.listings(1);
+        (,,,,, bytes32 cB) = a.applications(1);
         (, uint256 expiresAt,) = a.engagements(1);
         XS memory x = XS({
             engId: 1,
             txId: 1,
             cTx: commitment(a, 1),
             txData: txData(),
+            cP: cP,
             cB: cB,
             expiresAt: expiresAt,
             policyId: POLICY_S,
@@ -151,7 +153,9 @@ contract L2Campaign is Script, NotarySigner {
     function pprevInitcode(address verifier, uint256 tauLock) internal view returns (bytes memory) {
         return abi.encodePacked(
             type(PPREV).creationCode,
-            abi.encode(owner, INotaryVerifier(verifier), env("DELTA"), tauLock, env("MAX_EXPIRATIONS"), env("RHO"))
+            abi.encode(
+                owner, INotaryVerifier(verifier), env("DELTA"), tauLock, env("MAX_EXPIRATIONS"), env("RHO"), tauLock
+            )
         );
     }
 
@@ -160,13 +164,14 @@ contract L2Campaign is Script, NotarySigner {
         XR memory x = XR({
             cTx: commitment(pprev, i),
             txData: txData(),
+            cP: keccak256(abi.encode("c_P", owner)),
             policyId: POLICY_R,
             submitter: owner,
             eta: derive("eta-R", pprev, i),
             tAtt: uint64(block.timestamp)
         });
         bytes memory data =
-            abi.encodeCall(PPREV.register, (x.cTx, x.txData, POLICY_R, salt(pprev, i), signR(x), x.eta, x.tAtt));
+            abi.encodeCall(PPREV.register, (x.cTx, x.txData, x.cP, POLICY_R, salt(pprev, i), signR(x), x.eta, x.tAtt));
         step(label, "owner", address(pprev), env("COLLATERAL"), data, address(0));
     }
 

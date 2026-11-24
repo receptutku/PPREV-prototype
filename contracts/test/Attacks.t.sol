@@ -5,6 +5,7 @@ import {Fixture, Flow, RegisterCall, ApplyCall, SettleCall} from "./utils/Fixtur
 import {XA, XS} from "./utils/NotarySigner.sol";
 import {PPREV} from "../src/PPREV.sol";
 import {INotaryVerifier} from "../src/interfaces/INotaryVerifier.sol";
+import {EcdsaNotaryVerifier} from "../src/verifiers/EcdsaNotaryVerifier.sol";
 import {
     TxState,
     InvalidNotarySignature,
@@ -71,14 +72,18 @@ contract AttacksTest is Fixture {
     }
 
     function test_P2_signatureBoundToDeployment() public {
-        PPREV other = new PPREV(operator, INotaryVerifier(address(verifier)), DELTA, TAU_LOCK, MAX_EXPIRATIONS, RHO);
+        PPREV other = new PPREV(
+            operator, INotaryVerifier(address(verifier)), DELTA, TAU_LOCK, MAX_EXPIRATIONS, RHO, ROTATION_DELAY
+        );
         vm.prank(operator);
         other.registerPolicy(RENTAL_R, RENTAL_A, RENTAL_S, REQ_ESCROW, MIN_COLLATERAL, MAX_COLLATERAL);
         RegisterCall memory rc = registerCall();
         bytes memory sigmaForPprev = signR(xROf(rc));
         vm.expectRevert(InvalidNotarySignature.selector);
         vm.prank(owner);
-        other.register{value: rc.collateral}(rc.cTx, rc.txData, rc.policyIdR, rc.r, sigmaForPprev, rc.eta, rc.tAtt);
+        other.register{value: rc.collateral}(
+            rc.cTx, rc.txData, rc.cP, rc.policyIdR, rc.r, sigmaForPprev, rc.eta, rc.tAtt
+        );
         // The same payload is accepted by the deployment it was signed for.
         submitRegister(rc, sigmaForPprev);
     }
@@ -93,6 +98,42 @@ contract AttacksTest is Fixture {
         vm.expectRevert(InvalidNotarySignature.selector);
         submitRegister(rc, sigmaThisChain);
         submitRegister(rc, signR(xROf(rc)));
+    }
+
+    function test_P2_settleSignatureNotReplayableAcrossOwnerCommitment() public {
+        // Two listings of the same owner with the same txData and policy, differing in c_P (and, as
+        // R(f) requires, in the salt r). A sigma_S issued for the first does not settle the second,
+        // nor does a sigma_S over the second's statement with the first listing's c_P.
+        Flow memory f1 = flowEngaged();
+        Flow memory f2;
+        f2.rc = registerCall(RENTAL_R, RENTAL_SHARE, owner);
+        f2.rc.cP = next("second c_P");
+        f2.txId = doRegister(f2.rc);
+        f2.ac = applyCall(f2, applicant2);
+        f2.appId = doApply(f2.ac);
+        doEngage(f2);
+        assertNotEq(listingOf(f1.txId).cP, listingOf(f2.txId).cP);
+
+        SettleCall memory forFirst = settleCall(f1);
+        bytes memory sigmaFirst = signS(xSOf(forFirst));
+        SettleCall memory c = settleCall(f2);
+        c.eta = forFirst.eta;
+        c.tAtt = forFirst.tAtt;
+        vm.expectRevert(InvalidNotarySignature.selector);
+        submitSettle(c, sigmaFirst);
+
+        XS memory x = xSOf(c);
+        x.cP = f1.rc.cP;
+        bytes memory sigmaOtherCp = signS(x);
+        vm.expectRevert(InvalidNotarySignature.selector);
+        submitSettle(c, sigmaOtherCp);
+
+        // Each listing settles with a sigma_S over its own statement.
+        c.eta = next("eta");
+        submitSettle(c, signS(xSOf(c)));
+        submitSettle(forFirst, sigmaFirst);
+        assertState(f1.txId, TxState.Settled);
+        assertState(f2.txId, TxState.Settled);
     }
 
     // ------------------------------------------------------------------ P3 cross-phase substitution
@@ -175,6 +216,31 @@ contract AttacksTest is Fixture {
         sigma = signS(xSOf(c));
         vm.expectRevert(abi.encodeWithSelector(NotLocked.selector, f.txId));
         submitSettle(c, sigma);
+    }
+
+    function test_P4_colludingOperatorKeyRotationCannotForgeSettlementOfLockedDeposit() public {
+        // The operator colludes with the owner of a sale listing: it announces a rotation to a key it
+        // controls, the counterparty's deposit is locked under the honest key, and once the rotation is
+        // active the owner presents a sigma_S forged under the operator's key to take the settlement
+        // share. Settle verifies under the key pinned at Apply, so the forgery fails.
+        EcdsaNotaryVerifier rogue = proposeNotary(ROGUE_PK);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
+        Flow memory f = flowEngaged(SALE_R, SALE_SHARE);
+        activateWhenDue();
+        assertEq(address(pprev.notaryVerifier()), address(rogue));
+        assertLe(vm.getBlockTimestamp(), f.expiresAt);
+
+        SettleCall memory c = settleCall(f);
+        bytes memory forged = signSWith(ROGUE_PK, c);
+        vm.expectRevert(InvalidNotarySignature.selector);
+        submitSettle(c, forged);
+        assertState(f.txId, TxState.Locked);
+
+        // Without a genuine sigma_S under the pinned key the lock window lapses and the counterparty
+        // recovers the deposit with compensation.
+        uint256 before = applicant.balance;
+        lapseAndExpire(f);
+        assertEq(applicant.balance - before, DEPOSIT + COLLATERAL - COLLATERAL * RHO / 10_000);
     }
 
     function test_P4_selfApplicationRejected() public {

@@ -94,7 +94,8 @@ struct PhaseSessionArgs {
     /// File with the submitter's private key (hex).
     #[arg(long)]
     key_file: PathBuf,
-    /// `record.json` of the `register` run that created the listing.
+    /// `record.json` of the `register` run that created the listing (with, for `settle`, the salt
+    /// of c_P).
     #[arg(long)]
     listing: PathBuf,
     #[arg(long, default_value = "circuits")]
@@ -262,6 +263,12 @@ struct RegisterArgs {
     /// Nonce to use instead of a fresh one.
     #[arg(long)]
     eta: Option<B256>,
+    /// Salt s_P of c_P to use instead of a fresh one.
+    #[arg(long)]
+    salt_p: Option<B256>,
+    /// Identifier for c_P instead of the session's account.
+    #[arg(long)]
+    identifier: Option<String>,
     /// `proof.json` to submit instead of the owner's own proof.
     #[arg(long)]
     proof_from: Option<PathBuf>,
@@ -348,7 +355,7 @@ where
     text.parse().map_err(|e| anyhow::anyhow!("{pointer}: {e}"))
 }
 
-/// The listing from the record of a `register` run.
+/// The listing from the record of a `register` run; c_P as the `Registered` event recorded it.
 fn listing_of(record: &std::path::Path) -> Result<Listing> {
     let v = read_json(record)?;
     Ok(Listing {
@@ -359,6 +366,7 @@ fn listing_of(record: &std::path::Path) -> Result<Listing> {
             settlementShare: field(&v, "/payload/settlementShare")?,
         },
         r: field(&v, "/payload/r")?,
+        c_p: field(&v, "/submission/event/cP")?,
     })
 }
 
@@ -466,6 +474,7 @@ async fn settle(args: SettleArgs) -> Result<()> {
         c_b: field(&application, "/payload/cB")?,
         identifier: field(&application, "/payload/identifier")?,
         salt: field(&application, "/payload/salt")?,
+        salt_p: field(&read_json(&s.listing)?, "/payload/saltP")?,
         notation_id: args.notation.clone(),
         circuits: s.circuits(CircuitFiles::phi_s),
         out: s.out.clone(),
@@ -614,6 +623,8 @@ async fn register(args: Box<RegisterArgs>) -> Result<()> {
         max_retries: s.max_retries,
         preprocess_timeout: std::time::Duration::from_secs(s.preprocess_timeout_secs),
         eta: args.eta,
+        salt_p: args.salt_p,
+        identifier: args.identifier,
         proof_from: args.proof_from,
         submit: !args.no_submit,
     };

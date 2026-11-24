@@ -1,7 +1,8 @@
 //! Apply and Settle end to end (Sections V-E and V-G), as `register` runs Register: registry login,
 //! MPC-TLS session, presentation, x_psi, the predicate proof, sigma_psi from the policy verifier, and
 //! the transaction. The counterparty runs Apply against its eligibility record; the owner runs
-//! Settle against a tenancy notation, with the opening of c_B that the counterparty handed over.
+//! Settle against a tenancy notation, with the opening of c_B that the counterparty handed over and
+//! the salt of its own c_P from Register.
 //! Every run yields a [`PhaseRecord`] with the time of each step.
 
 use std::net::SocketAddr;
@@ -16,7 +17,7 @@ use pprev_notary::presentation::t_att_of;
 use pprev_notary::wire::{
     ApplySubmission, RegisterReply, SettleSubmission, Submission, submit as submit_to_verifier,
 };
-use pprev_types::calendar::engagement_day;
+use pprev_types::calendar::{attestation_day, engagement_day};
 use pprev_types::circuit::{PhiAPublic, PhiSPublic};
 use pprev_types::statement::{Apply, Settle, TxData, commitment, digest, domain};
 use pprev_types::{PolicyBundle, RecordLayout, ResponseShape};
@@ -50,12 +51,13 @@ pub struct SessionConfig {
     pub preprocess_timeout: Duration,
 }
 
-/// The listing as Register published it: txID, txData, and the opening r of C_tx.
+/// The listing as Register published it: txID, txData, the opening r of C_tx, and c_P.
 #[derive(Clone, Debug)]
 pub struct Listing {
     pub tx_id: U256,
     pub tx_data: TxData,
     pub r: B256,
+    pub c_p: B256,
 }
 
 pub struct ApplyConfig {
@@ -101,6 +103,8 @@ pub struct SettleConfig {
     pub c_b: B256,
     pub identifier: String,
     pub salt: B256,
+    /// The salt s_P of the listing's c_P, which the owner kept from Register.
+    pub salt_p: B256,
     /// The tenancy notation to retrieve: the request target.
     pub notation_id: String,
     pub circuits: CircuitFiles,
@@ -352,8 +356,8 @@ fn finish<P, E>(
     record
 }
 
-/// A fresh salt for c_B: 32 random bytes below the field order (the top three bits cleared).
-fn fresh_salt() -> B256 {
+/// A fresh salt for c_B or c_P: 32 random bytes below the field order (the top three bits cleared).
+pub(crate) fn fresh_salt() -> B256 {
     let mut salt: [u8; 32] = rand::random();
     salt[0] &= 0x1f;
     B256::from(salt)
@@ -528,6 +532,8 @@ pub async fn run_settle(config: &SettleConfig) -> Result<SettleRecord> {
     let day = engagement_day(expires_at, tau_lock, settle.utc_offset_secs)?;
 
     let attested = attest(&config.session, config.layout.shape(&config.notation_id)?).await?;
+    // The attestation day as the policy verifier derives it: t_att in the registry's time zone.
+    let attested_day = attestation_day(attested.t_att, settle.utc_offset_secs)?;
 
     // x_S (Table III) with a_P = the owner's account.
     let listing = &config.listing;
@@ -537,6 +543,7 @@ pub async fn run_settle(config: &SettleConfig) -> Result<SettleRecord> {
         txId: listing.tx_id,
         cTx: commitment(&listing.tx_data, config.policy.policy_id_r(), listing.r),
         txData: listing.tx_data.clone(),
+        cP: listing.c_p,
         cB: config.c_b,
         expiresAt: config.engagement.expires_at,
         policyId: policy_id_s,
@@ -552,13 +559,14 @@ pub async fn run_settle(config: &SettleConfig) -> Result<SettleRecord> {
     );
     let public = PhiSPublic::new(
         [
+            field_commitment(&openings[0]),
             field_commitment(&openings[1]),
             field_commitment(&openings[2]),
             field_commitment(&openings[3]),
         ],
         listing.tx_data.propertyId.0,
-        config.c_b.0,
-        day,
+        [listing.c_p.0, config.c_b.0],
+        [day, attested_day],
         d.0,
     )?;
 
@@ -585,12 +593,13 @@ pub async fn run_settle(config: &SettleConfig) -> Result<SettleRecord> {
     };
 
     // The identifier of the opening is the one the counterparty committed to; phi_S compares it
-    // with the notation's tenant through c_B.
+    // with the notation's tenant through c_B. c_P is not checked here: phi_S compares it with the
+    // session's account, and has no witness when the session is another account's.
     ensure!(
         counterparty_commitment(config.identifier.as_bytes(), &config.salt.0)? == config.c_b,
         "the opening does not open c_B"
     );
-    let input = PhiSInput::new(&public, openings, &config.salt.0)?;
+    let input = PhiSInput::new(&public, openings, &config.salt.0, &config.salt_p.0)?;
     let Some(proof_json) = prove_or_borrow(
         &config.circuits,
         &input,

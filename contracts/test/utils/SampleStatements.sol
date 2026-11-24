@@ -24,6 +24,7 @@ library SampleStatements {
     function register() internal pure returns (XR memory x) {
         x.cTx = cTx();
         x.txData = txData();
+        x.cP = keccak256("vector c_P");
         x.policyId = POLICY_R;
         x.submitter = OWNER;
         x.eta = keccak256("vector eta R");
@@ -46,6 +47,7 @@ library SampleStatements {
         x.txId = 1;
         x.cTx = cTx();
         x.txData = txData();
+        x.cP = keccak256("vector c_P");
         x.cB = keccak256("vector c_B");
         x.expiresAt = 1_761_209_700;
         x.policyId = POLICY_S;

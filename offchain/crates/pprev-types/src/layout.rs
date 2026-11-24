@@ -1,8 +1,8 @@
 //! Fixed-layout title response (D4).
 //!
-//! The layout file holds the parameters: widths, server name, path, status line. This module owns
-//! the template and computes every byte range from it, so the registry, the prover, and the policy
-//! verifier agree on offsets without any offset being written by hand.
+//! The layout file holds the parameters: widths, server name, path, request template, status line.
+//! This module owns the template and computes every byte range from it, so the registry, the
+//! prover, and the policy verifier agree on offsets without any offset being written by hand.
 
 use std::ops::Range;
 use std::path::Path;
@@ -25,6 +25,8 @@ pub struct Layout {
     pub id: String,
     pub server_name: String,
     pub path_prefix: String,
+    /// The notarised request; its target is `{pathPrefix}{propertyId}`.
+    pub request: RequestTemplate,
     pub status_line: String,
     pub content_type: String,
     /// Single ASCII character that pads every value to its width.
@@ -120,7 +122,7 @@ impl Layout {
         ] {
             ensure!(w > 0, "{name} must be positive");
         }
-        Ok(())
+        self.request.validate()
     }
 
     pub fn padding_byte(&self) -> u8 {
@@ -134,7 +136,7 @@ impl Layout {
 
     /// First line of the notarised request, without CRLF.
     pub fn request_line(&self, property_id: &str) -> String {
-        format!("GET {} HTTP/1.1", self.path(property_id))
+        self.request.request_line(&self.path(property_id))
     }
 
     /// Pads `value` to `width` with the padding character; rejects values that are too long or that
@@ -236,10 +238,14 @@ impl Layout {
     /// and hidden ranges, the hidden ones in the order account, owners, propertyId.
     pub fn shape(&self, property_id: &str) -> Result<ResponseShape> {
         let template = self.template()?;
+        let path = self.path(property_id);
+        let (request, credentials) = self.request.render(&path);
         Ok(ResponseShape {
             server_name: self.server_name.clone(),
-            path: self.path(property_id),
-            request_line: self.request_line(property_id),
+            request_line: self.request.request_line(&path),
+            path,
+            request,
+            credentials,
             len: template.ranges.len,
             revealed: template.ranges.revealed(),
             hidden: template.ranges.hidden().to_vec(),
@@ -263,8 +269,9 @@ impl Layout {
 }
 
 /// One notarised exchange as the prover and the policy verifier see it, whatever the layout: the
-/// request line, the response of an empty record (the reference for every revealed byte), and the
-/// ranges that the presentation reveals and that stay hidden behind hash commitments (D3, D26).
+/// request (rendered from the layout's request template, its credentials hidden), the response of
+/// an empty record (the reference for every revealed byte), and the ranges that the presentation
+/// reveals and that stay hidden behind hash commitments (D3, D26).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResponseShape {
     pub server_name: String,
@@ -272,12 +279,155 @@ pub struct ResponseShape {
     pub path: String,
     /// First line of the notarised request, without CRLF.
     pub request_line: String,
+    /// The whole notarised request, with every credential byte set to [`CREDENTIAL_PLACEHOLDER`]:
+    /// the reference for every revealed byte of the sent transcript.
+    pub request: Vec<u8>,
+    /// Ranges of the credentials in `request`, in order: the only sent bytes that stay hidden.
+    pub credentials: Vec<Range<usize>>,
     pub template: Vec<u8>,
     /// Total response length (head and body).
     pub len: usize,
     pub revealed: Vec<Range<usize>>,
     /// Hidden field values, in the layout's order.
     pub hidden: Vec<Range<usize>>,
+}
+
+impl ResponseShape {
+    /// Ranges of the request that the presentation reveals: all of it except the credentials.
+    pub fn request_revealed(&self) -> Vec<Range<usize>> {
+        let mut credentials = self.credentials.clone();
+        credentials.sort_by_key(|r| r.start);
+        let mut out = Vec::new();
+        let mut at = 0;
+        for c in credentials {
+            if c.start > at {
+                out.push(at..c.start);
+            }
+            at = at.max(c.end);
+        }
+        if self.request.len() > at {
+            out.push(at..self.request.len());
+        }
+        out
+    }
+
+    /// The request the prover sends: `request` with the bytes of `credential` written into the
+    /// credential ranges, in order. A credential byte may not be a control character, so that it
+    /// cannot end its header line.
+    pub fn render_request(&self, credential: &[u8]) -> Result<Vec<u8>> {
+        let width: usize = self.credentials.iter().map(|r| r.len()).sum();
+        ensure!(
+            credential.len() == width,
+            "the credential has {} bytes, the request template has room for {width}",
+            credential.len()
+        );
+        ensure!(
+            !credential
+                .iter()
+                .any(|b| b.is_ascii_control() || !b.is_ascii()),
+            "the credential contains a control or non-ASCII byte"
+        );
+        let mut out = self.request.clone();
+        let mut rest = credential;
+        for r in &self.credentials {
+            ensure!(
+                r.end <= out.len(),
+                "credential range {r:?} exceeds the request"
+            );
+            let (value, tail) = rest.split_at(r.len());
+            out[r.clone()].copy_from_slice(value);
+            rest = tail;
+        }
+        Ok(out)
+    }
+}
+
+/// Fills the credential bytes of a rendered request template; never compared with anything.
+pub const CREDENTIAL_PLACEHOLDER: u8 = b'*';
+
+/// One header line of a request template: `{name}: {value}`, followed, if `credentialWidth` is
+/// set, by a secret credential of exactly that many bytes, which the presentation hides.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct HeaderTemplate {
+    pub name: String,
+    pub value: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_width: Option<usize>,
+}
+
+/// The notarised request: `{method} {target} {version}`, the header lines in this order, the empty
+/// line, and no body. Every byte but the credentials is fixed by the template and the target.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RequestTemplate {
+    pub method: String,
+    pub version: String,
+    pub headers: Vec<HeaderTemplate>,
+}
+
+impl RequestTemplate {
+    pub fn validate(&self) -> Result<()> {
+        ensure!(
+            !self.method.is_empty() && self.method.bytes().all(|b| b.is_ascii_uppercase()),
+            "request method {:?} is not an upper-case token",
+            self.method
+        );
+        ensure!(
+            !self.version.is_empty() && self.version.bytes().all(|b| b.is_ascii_graphic()),
+            "request version {:?} is not a token",
+            self.version
+        );
+        for h in &self.headers {
+            ensure!(
+                !h.name.is_empty()
+                    && h.name
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b == b'-'),
+                "header name {:?} is not a token",
+                h.name
+            );
+            ensure!(
+                h.value
+                    .bytes()
+                    .all(|b| b.is_ascii() && !b.is_ascii_control()),
+                "header value {:?} contains a control or non-ASCII byte",
+                h.value
+            );
+            ensure!(
+                h.credential_width != Some(0),
+                "the credential of header {:?} has width 0",
+                h.name
+            );
+        }
+        Ok(())
+    }
+
+    /// `{method} {target} {version}`, without CRLF.
+    pub fn request_line(&self, target: &str) -> String {
+        format!("{} {} {}", self.method, target, self.version)
+    }
+
+    /// The request for `target`, with every credential byte set to [`CREDENTIAL_PLACEHOLDER`], and
+    /// the range of each credential.
+    pub fn render(&self, target: &str) -> (Vec<u8>, Vec<Range<usize>>) {
+        let mut w = Writer::default();
+        let mut credentials = Vec::new();
+        w.lit(&self.request_line(target));
+        w.lit("\r\n");
+        for h in &self.headers {
+            w.lit(&format!("{}: {}", h.name, h.value));
+            if let Some(width) = h.credential_width {
+                let start = w.bytes.len();
+                w.bytes
+                    .extend(std::iter::repeat_n(CREDENTIAL_PLACEHOLDER, width));
+                credentials.push(start..w.bytes.len());
+            }
+            w.lit("\r\n");
+        }
+        w.lit("\r\n");
+        (w.bytes, credentials)
+    }
 }
 
 /// Pads `value` to `width` with `padding`; rejects values that are too long or that could break
@@ -439,6 +589,82 @@ mod tests {
         ] {
             assert!(l.render_response(bad, &record(&[])).is_err(), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn renders_the_request_template_with_its_credential_range() {
+        let shape = layout().shape("TR-06-CANKAYA-000123").unwrap();
+        let token = "0123456789abcdef".repeat(4);
+        let expected = format!(
+            "GET /title/TR-06-CANKAYA-000123 HTTP/1.1\r\nhost: registry.pprev.test\r\n\
+             authorization: Bearer {token}\r\nconnection: close\r\n\r\n"
+        );
+        let sent = shape.render_request(token.as_bytes()).unwrap();
+        assert_eq!(sent, expected.as_bytes());
+        assert_eq!(shape.request.len(), sent.len());
+        assert_eq!(shape.credentials.len(), 1);
+        let credential = shape.credentials[0].clone();
+        assert_eq!(&sent[credential.clone()], token.as_bytes());
+        assert!(
+            shape.request[credential.clone()]
+                .iter()
+                .all(|b| *b == CREDENTIAL_PLACEHOLDER)
+        );
+        assert_eq!(
+            shape.request_revealed(),
+            vec![0..credential.start, credential.end..sent.len()]
+        );
+        for r in shape.request_revealed() {
+            assert_eq!(sent[r.clone()], shape.request[r]);
+        }
+        assert!(sent.starts_with(format!("{}\r\n", shape.request_line).as_bytes()));
+    }
+
+    #[test]
+    fn a_credential_must_fill_its_range_without_control_bytes() {
+        let shape = layout().shape("TR-06-CANKAYA-000123").unwrap();
+        let token = "a".repeat(64);
+        assert!(shape.render_request(&token.as_bytes()[..63]).is_err());
+        assert!(
+            shape
+                .render_request(format!("{token}a").as_bytes())
+                .is_err()
+        );
+        let mut injected = token.into_bytes();
+        injected[10] = b'\r';
+        assert!(shape.render_request(&injected).is_err());
+        injected[10] = b'\n';
+        assert!(shape.render_request(&injected).is_err());
+    }
+
+    #[test]
+    fn rejects_malformed_request_templates() {
+        let base: serde_json::Value =
+            serde_json::from_str(include_str!("../../../../policies/layouts/title-v1.json"))
+                .unwrap();
+        assert!(Layout::from_json(&base.to_string()).is_ok());
+        for (pointer, bad) in [
+            ("/request/method", serde_json::json!("get")),
+            ("/request/method", serde_json::json!("GET /x")),
+            ("/request/version", serde_json::json!("HTTP/1.1\r\n")),
+            ("/request/headers/0/name", serde_json::json!("ho st")),
+            ("/request/headers/0/name", serde_json::json!("")),
+            (
+                "/request/headers/0/value",
+                serde_json::json!("x\r\nrange: bytes=0-1"),
+            ),
+            ("/request/headers/1/credentialWidth", serde_json::json!(0)),
+        ] {
+            let mut v = base.clone();
+            *v.pointer_mut(pointer).unwrap() = bad.clone();
+            assert!(
+                Layout::from_json(&v.to_string()).is_err(),
+                "{pointer} = {bad}"
+            );
+        }
+        let mut v = base.clone();
+        v.as_object_mut().unwrap().remove("request");
+        assert!(Layout::from_json(&v.to_string()).is_err());
     }
 
     #[test]

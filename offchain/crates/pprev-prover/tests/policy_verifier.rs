@@ -1,6 +1,6 @@
 //! The policy verifier's Register path (Section V-B, step (d)): presentation checks, the digest of
 //! x_R, Groth16 verification with public inputs from the attestation, the policy's own verifying
-//! key, and one signature per nonce (D20).
+//! key, one signature per nonce (D20), and one signed statement per attestation (M2).
 //!
 //! Requires the proving key of `script/circuits_setup.sh`.
 
@@ -15,6 +15,8 @@ use common::{
     OWNER, PROPERTY, Run, TENANT, attestation_verifying_key, notarize_blocking, provider,
     workspace_path,
 };
+use pprev_notary::attestations::AttestationStore;
+use pprev_notary::mock::counterparty_commitment;
 use pprev_notary::nonces::NonceStore;
 use pprev_notary::presentation::t_att_of;
 use pprev_notary::register::{PolicyVerifier, RegisterPolicy, RegisterRequest};
@@ -74,6 +76,8 @@ fn policy_verifier(ca_der: &[u8]) -> PolicyVerifier {
     std::fs::create_dir_all(&dir).unwrap();
     let nonces = dir.join("nonces.log");
     let _ = std::fs::remove_file(&nonces);
+    let attestations = dir.join("attestations.log");
+    let _ = std::fs::remove_file(&attestations);
     let layout = common::layout();
     let policies = HashMap::from([
         (
@@ -99,6 +103,7 @@ fn policy_verifier(ca_der: &[u8]) -> PolicyVerifier {
         key(),
         domain(CHAIN_ID, contract()),
         NonceStore::open(nonces).unwrap(),
+        AttestationStore::open(attestations).unwrap(),
     )
 }
 
@@ -122,7 +127,20 @@ fn attested_t_att(run: &Run) -> u64 {
     t_att_of(&output).expect("t_att")
 }
 
-/// x_R as the owner builds it after the session: t_att from the attestation.
+/// s_P of the tests.
+fn salt_p() -> [u8; 32] {
+    let mut salt = [0x3c; 32];
+    salt[0] = 0x02;
+    salt
+}
+
+/// c_P = H_c(identifier, s_P) for a padded identifier.
+fn c_p(identifier: &[u8]) -> B256 {
+    counterparty_commitment(identifier, &salt_p()).expect("c_P")
+}
+
+/// x_R as the owner builds it after the session: t_att from the attestation, c_P of the session's
+/// account.
 fn statement(run: &Run, policy_id: B256, eta: u8) -> Register {
     Register {
         cTx: keccak256("C_tx"),
@@ -131,6 +149,7 @@ fn statement(run: &Run, policy_id: B256, eta: u8) -> Register {
             amount: U256::from(10u64).pow(U256::from(18)),
             settlementShare: U256::ZERO,
         },
+        cP: c_p(&run.notarized.openings.account.plaintext),
         policyId: policy_id,
         submitter: Address::repeat_byte(0x11),
         eta: B256::repeat_byte(eta),
@@ -141,7 +160,7 @@ fn statement(run: &Run, policy_id: B256, eta: u8) -> Register {
 /// The owner's proof for `x`, made from the openings of its own session.
 fn proof_for(run: &Run, x: &Register) -> Groth16Proof {
     let d = digest(x, &domain(CHAIN_ID, contract()));
-    let public = public_of(&run.notarized.openings, x.txData.propertyId.0, d.0);
+    let public = public_of(&run.notarized.openings, x.txData.propertyId.0, x.cP.0, d.0);
     static NEXT: AtomicUsize = AtomicUsize::new(0);
     let dir = std::env::temp_dir().join(format!(
         "pprev-pv-proof-{}-{}",
@@ -151,7 +170,7 @@ fn proof_for(run: &Run, x: &Register) -> Groth16Proof {
     std::fs::create_dir_all(&dir).unwrap();
     let proof = prove(
         &files(),
-        &PhiRInput::new(&public, &run.notarized.openings),
+        &PhiRInput::new(&public, &run.notarized.openings, &salt_p()),
         &dir,
     )
     .expect("proving");
@@ -236,6 +255,30 @@ fn refuses_a_statement_changed_after_proving() {
 }
 
 #[test]
+fn refuses_a_c_p_other_than_the_proven_one() {
+    let run = run_of(OWNER);
+    let (x, proof) = honest().clone();
+    let mut pv = policy_verifier(&run.ca_der);
+    // c_P of another account: the proof was made for the owner's c_P.
+    let mut changed = x.clone();
+    changed.cP = c_p(TENANT.0.as_bytes());
+    refused(
+        &mut pv,
+        request(run, changed, proof.clone()),
+        "does not verify",
+    );
+    // A value at or above the field order would alias a smaller one.
+    let mut changed = x.clone();
+    changed.cP = B256::repeat_byte(0xff);
+    refused(
+        &mut pv,
+        request(run, changed, proof.clone()),
+        "not below the field order",
+    );
+    pv.sign_register(request(run, x, proof)).unwrap();
+}
+
+#[test]
 fn refuses_a_t_att_other_than_the_attested_time() {
     let run = run_of(OWNER);
     let (x, proof) = honest().clone();
@@ -291,4 +334,26 @@ fn refuses_a_property_other_than_the_notarised_one() {
     req.property_id = "TR-34-KADIKOY-004567".into();
     // The presentation's request line names the notarised property.
     assert!(pv.sign_register(req).is_err());
+}
+
+#[test]
+fn one_attestation_backs_one_register_statement() {
+    let run = run_of(OWNER);
+    let (x, proof) = honest().clone();
+    let mut pv = policy_verifier(&run.ca_der);
+    pv.sign_register(request(run, x.clone(), proof)).unwrap();
+    // The same title session for another listing of the property (another amount and submitter),
+    // with a fresh nonce and a valid proof.
+    let mut other = statement(run, policy_r(), 2);
+    other.txData.amount += U256::from(1);
+    other.submitter = Address::repeat_byte(0x99);
+    let other_proof = proof_for(run, &other);
+    for _ in 0..2 {
+        // Refused the second time for the same reason: the refusal left the nonce unused.
+        refused(
+            &mut pv,
+            request(run, other.clone(), other_proof.clone()),
+            "has already backed a signed statement",
+        );
+    }
 }

@@ -31,6 +31,21 @@ contract ExpireTest is Fixture {
         assertEq(address(pprev).balance, COLLATERAL * RHO / 10_000);
     }
 
+    function test_Expire_unaffectedByRotation() public {
+        proposeNotary(ROTATED_PK);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
+        Flow memory f = flowEngaged();
+        activateWhenDue();
+        uint256 applicantBefore = applicant.balance;
+        uint256 compensation = COLLATERAL - COLLATERAL * RHO / 10_000;
+        vm.warp(f.expiresAt + 1);
+        vm.expectEmit(address(pprev));
+        emit Expired(f.engId, f.txId, compensation, 1, false, 0);
+        pprev.expire(f.engId);
+        assertState(f.txId, TxState.Expired);
+        assertEq(applicant.balance - applicantBefore, DEPOSIT + compensation);
+    }
+
     function test_Expire_callableByAnyone() public {
         Flow memory f = flowEngaged();
         vm.warp(f.expiresAt + 1);

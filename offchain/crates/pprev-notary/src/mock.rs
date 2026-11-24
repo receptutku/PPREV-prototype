@@ -1,8 +1,9 @@
 //! Mock notary for Apply and Settle (D23). It evaluates phi_A and phi_S natively on records given
 //! in the clear, with no TLSNotary session and no circuit, and signs x_A and x_S with sk_notary.
 //! It keeps the rules that the contract leaves to the notary (Table VI, off-chain column): the
-//! predicate and phase of each policy, t_att from the notary's own clock, phi_S's check of c_B and
-//! of the record date, and one signature per nonce.
+//! predicate and phase of each policy, t_att from the notary's own clock, phi_S's checks of c_P, of
+//! c_B, and of the record date (from the engagement day to the attestation day), and one signature
+//! per nonce.
 
 use std::collections::HashMap;
 
@@ -42,7 +43,7 @@ fn be_limbs(bytes: &[u8; 32]) -> [u64; 4] {
     limbs
 }
 
-/// The opening of c_B that the witness carries.
+/// The opening of c_B (or of c_P) that the witness carries.
 #[derive(Clone, Debug)]
 pub struct CommitmentOpening {
     /// The identifier under which the settlement registry names B, padded to its layout width.
@@ -61,6 +62,8 @@ pub struct EligibilityRecord {
 /// phi_S's source record: the tenancy notation of the settlement registry.
 #[derive(Clone, Debug)]
 pub struct SettlementRecord {
+    /// Identifier of the account the registry served the notation to, padded to its layout width.
+    pub account: Vec<u8>,
     /// Identifier of the property the notation is registered on, padded to its layout width.
     pub property_id: Vec<u8>,
     /// Identifier of the registered tenant, padded to its layout width.
@@ -78,7 +81,8 @@ pub struct ApplyPolicy {
 
 /// phi_S of the rental instantiation: a tenancy notation on the property of `txData` that names the
 /// identifier in c_B and is dated no earlier than the engagement day, the calendar day in the
-/// registry's time zone of `expiresAt - tau_lock` (Section V-E).
+/// registry's time zone of `expiresAt - tau_lock` (Section V-E), and no later than the attestation
+/// day, the calendar day in that time zone of t_att (M2).
 #[derive(Clone, Debug)]
 pub struct SettlePolicy {
     pub tau_lock: u64,
@@ -111,6 +115,7 @@ pub struct SettleRequest {
     pub tx_id: U256,
     pub c_tx: B256,
     pub tx_data: TxData,
+    pub c_p: B256,
     pub c_b: B256,
     pub expires_at: U256,
     pub policy_id: B256,
@@ -189,11 +194,13 @@ impl MockNotary {
     }
 
     /// Checks phi_S for `request` and returns x_S, with t_att from the notary's clock, and sigma_S.
+    /// `opening` opens c_B, `owner` opens c_P.
     pub fn sign_settle(
         &mut self,
         request: &SettleRequest,
         record: &SettlementRecord,
         opening: &CommitmentOpening,
+        owner: &CommitmentOpening,
     ) -> Result<(Settle, [u8; 65])> {
         let Some(MockPolicy::Settle(policy)) = self.policies.get(&request.policy_id) else {
             bail!(
@@ -217,6 +224,14 @@ impl MockNotary {
             .expires_at
             .try_into()
             .context("expiresAt exceeds 64 bits")?;
+        ensure!(
+            counterparty_commitment(&owner.identifier, &owner.salt)? == request.c_p,
+            "c_P does not open to the given identifier and salt"
+        );
+        ensure!(
+            record.account == owner.identifier,
+            "the settlement record was not served to the account in c_P"
+        );
         let engaged = expires_at
             .checked_sub(policy.tau_lock)
             .context("expiresAt precedes tau_lock")?;
@@ -226,17 +241,25 @@ impl MockNotary {
             "the record date {} precedes the engagement day",
             record.record_date
         );
+        let t_att = (self.clock)();
+        let attestation_day = (t_att as i64 + policy.utc_offset_secs).div_euclid(86_400);
+        ensure!(
+            day_number(&record.record_date)? <= attestation_day,
+            "the record date {} follows the attestation day",
+            record.record_date
+        );
         let statement = Settle {
             engId: request.eng_id,
             txId: request.tx_id,
             cTx: request.c_tx,
             txData: request.tx_data.clone(),
+            cP: request.c_p,
             cB: request.c_b,
             expiresAt: request.expires_at,
             policyId: request.policy_id,
             submitter: request.submitter,
             eta: request.eta,
-            tAtt: (self.clock)(),
+            tAtt: t_att,
         };
         let sigma = self.sign(request.eta, digest(&statement, &self.domain))?;
         Ok((statement, sigma))

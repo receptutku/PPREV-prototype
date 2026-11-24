@@ -15,6 +15,8 @@ use pprev_types::statement::{TxData, commitment};
 use serde::{Deserialize, Serialize};
 
 sol! {
+    // `register` takes eight arguments since c_P (M1).
+    #[allow(clippy::too_many_arguments)]
     #[sol(all_derives)]
     interface IPPREV {
         struct TxDataAbi {
@@ -26,6 +28,7 @@ sol! {
         function register(
             bytes32 cTx,
             TxDataAbi txData,
+            bytes32 cP,
             bytes32 policyIdR,
             bytes32 r,
             bytes sigmaR,
@@ -37,6 +40,7 @@ sol! {
             uint256 indexed txId,
             address indexed owner,
             bytes32 cTx,
+            bytes32 cP,
             bytes32 policyIdR,
             TxDataAbi txData,
             bytes32 r,
@@ -71,7 +75,8 @@ sol! {
             uint256 indexed txId,
             address indexed applicant,
             bytes32 cB,
-            uint256 deposit
+            uint256 deposit,
+            uint32 keyVersion
         );
         event Engaged(uint256 indexed engId, uint256 indexed txId, uint256 indexed appId, uint256 expiresAt);
         event Settled(uint256 indexed engId, uint256 indexed txId, uint256 toOwner, uint256 toCounterparty);
@@ -110,7 +115,8 @@ fn tx_data_abi(tx_data: &TxData) -> IPPREV::TxDataAbi {
 /// t_incl on a chain that includes the transaction at once.
 pub const RECEIPT_POLL_INTERVAL: Duration = Duration::from_millis(10);
 
-/// Arguments of one `register` call and the value sent with it.
+/// Arguments of one `register` call and the value sent with it, with the opening of c_P that the
+/// owner keeps for phi_S (Section V-G).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RegisterPayload {
@@ -122,12 +128,16 @@ pub struct RegisterPayload {
     pub property_id: B256,
     pub amount: U256,
     pub settlement_share: U256,
+    pub c_p: B256,
     pub policy_id_r: B256,
     pub r: B256,
     pub sigma_r: Bytes,
     pub eta_r: B256,
     pub t_att_r: u64,
     pub collateral: U256,
+    /// Opening of c_P: the identifier, padded to its layout width, and the salt s_P.
+    pub identifier: String,
+    pub salt_p: B256,
 }
 
 impl RegisterPayload {
@@ -147,6 +157,7 @@ impl RegisterPayload {
                 amount: self.amount,
                 settlementShare: self.settlement_share,
             },
+            cP: self.c_p,
             policyIdR: self.policy_id_r,
             r: self.r,
             sigmaR: self.sigma_r.clone(),
@@ -164,6 +175,7 @@ pub struct RegisteredEvent {
     pub tx_id: U256,
     pub owner: Address,
     pub c_tx: B256,
+    pub c_p: B256,
     pub policy_id_r: B256,
     pub property_id: B256,
     pub amount: U256,
@@ -288,6 +300,7 @@ pub async fn submit_register(
             tx_id: e.txId,
             owner: e.owner,
             c_tx: e.cTx,
+            c_p: e.cP,
             policy_id_r: e.policyIdR,
             property_id: e.txData.propertyId,
             amount: e.txData.amount,
@@ -432,6 +445,8 @@ pub struct AppliedEvent {
     pub applicant: Address,
     pub c_b: B256,
     pub deposit: U256,
+    /// Version of the notary verifier pinned at Apply (M4).
+    pub key_version: u32,
 }
 
 /// Sends the `applyFor` transaction from `key` with the deposit and waits for its receipt.
@@ -458,6 +473,7 @@ pub async fn submit_apply(
                 applicant: e.applicant,
                 c_b: e.cB,
                 deposit: e.deposit,
+                key_version: e.keyVersion,
             }
         },
         "Applied",

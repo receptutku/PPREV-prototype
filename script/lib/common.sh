@@ -270,7 +270,8 @@ start_stack() {
         --registry-ca "${WORK}/registry-ca.der" --policy "${POLICY}" --root "${ROOT}" \
         --attestation-key "${WORK}/attestation.key" --statement-key "${WORK}/statement.key" \
         --chain-id "${CHAIN_ID}" --contract "${PPREV_ADDRESS}" --tau-lock "${TAU_LOCK}" \
-        --nonces "${WORK}/nonces.log" --log "${WORK}/notary-events.jsonl"
+        --nonces "${WORK}/nonces.log" --attestations "${WORK}/attestations.log" \
+        --notations "${WORK}/notations.log" --log "${WORK}/notary-events.jsonl"
     wait_port "${MPC_PORT}" pprev-notary "${PIDS[${#PIDS[@]} - 1]}"
     wait_port "${VERIFIER_PORT}" pprev-notary "${PIDS[${#PIDS[@]} - 1]}"
 }

@@ -16,7 +16,7 @@ interface IPhiAVerifier {
 }
 
 /// @title Integrated on-chain verification of an Apply submission (measurement baseline)
-/// @notice The income layout (roles: structure, request line, account, monthlyIncome) and phi_A,
+/// @notice The income layout (roles: structure, request, account, monthlyIncome) and phi_A,
 /// with its public inputs from the attested commitments and x_A. The request line is fixed by the
 /// layout. See IntegratedVerifierBase.
 contract IntegratedApplyVerifier is IntegratedVerifierBase {

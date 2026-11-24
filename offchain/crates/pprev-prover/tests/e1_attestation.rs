@@ -1,7 +1,7 @@
 //! The reference encoding of `pprev_prover::e1` against real attestations: notarised title, income,
 //! and tenancy sessions with the Ethereum-compatible algorithms, whose Merkle root the encoding must
 //! recompute and whose signature must recover to the notary's attestation key; the revealed
-//! commitments must open to the request line and the response structure. Each test also proves its
+//! commitments must open to the request (without its credential) and the response structure. Each test also proves its
 //! phase predicate for a statement in the baseline's EIP-712 domain and, with `PPREV_E1_FIXTURES`
 //! set to a directory, writes the Solidity fixture of the integrated on-chain verification baseline
 //! (`contracts/test/baseline/`).
@@ -24,7 +24,7 @@ use pprev_prover::e1::{EncodedAttestation, FieldKind, encode};
 use pprev_prover::{
     DEFAULT_MAX_RETRIES, HiddenOpenings, NotarizedShape, ShapeSetup, present_shape,
 };
-use pprev_types::calendar::engagement_day;
+use pprev_types::calendar::{attestation_day, engagement_day};
 use pprev_types::circuit::{PhiAPublic, PhiSPublic};
 use pprev_types::statement::{Apply, Register, Settle, TxData, digest, domain};
 use pprev_types::{RecordLayout, ResponseShape};
@@ -82,6 +82,19 @@ fn salt() -> [u8; 32] {
     let mut salt = keccak256("pprev.e1.salt").0;
     salt[0] &= 0x1f;
     salt
+}
+
+/// s_P, the salt of the owner's c_P.
+fn salt_p() -> [u8; 32] {
+    let mut salt = keccak256("pprev.e1.salt.p").0;
+    salt[0] &= 0x1f;
+    salt
+}
+
+/// c_P of the owner's account.
+fn owner_c_p() -> B256 {
+    let identifier = layout().pad(OWNER.0, 16).unwrap();
+    counterparty_commitment(identifier.as_bytes(), &salt_p()).unwrap()
 }
 
 /// One notarised session with the Ethereum-compatible algorithms, and its encoding.
@@ -143,7 +156,7 @@ async fn notarize(account: (&str, &str), shape: ResponseShape) -> Session {
 }
 
 /// Checks the attestation's schema and its revealed commitments, and returns the attestation part
-/// of the fixture and the hash of each role: structure, request line, then the hidden fields in
+/// of the fixture and the hash of each role: structure, request, then the hidden fields in
 /// the order of `hidden` (indices into the session's openings).
 fn attestation_part(
     s: &Session,
@@ -171,7 +184,16 @@ fn attestation_part(
     assert_eq!(ids, (0..ids.len() as u32).collect::<Vec<_>>());
 
     let shape = &s.notarized.shape;
-    assert_eq!(s.notarized.request.plaintext, shape.request_line.as_bytes());
+    // The request commitment opens to the request without its credential: the request line, then
+    // the template's header block.
+    let request: Vec<u8> = shape
+        .request_revealed()
+        .iter()
+        .flat_map(|r| shape.request[r.clone()].to_vec())
+        .collect();
+    assert_eq!(s.notarized.request.plaintext, request);
+    assert!(request.starts_with(format!("{}\r\n", shape.request_line).as_bytes()));
+    let request_headers = &request[shape.request_line.len()..];
     let revealed: Vec<u8> = shape
         .revealed
         .iter()
@@ -210,7 +232,7 @@ fn attestation_part(
 
     // The identity attestor signs only a presentation it has verified the way PPREV's policy
     // verifier does: the attestation key and signature, the certificate chain against the registry's
-    // CA and the DNS name, t_att, the response length, and the revealed request line and structure.
+    // CA and the DNS name, t_att, the response length, and the revealed request and structure.
     // The signature covers the signed header, the attestation key, the server, and the policy.
     let presentation = present_shape(&s.notarized, false).expect("presentation");
     let attested = check_shape(
@@ -224,6 +246,8 @@ fn attestation_part(
     )
     .expect("the presentation verifies");
     assert_eq!(attested.t_att, t_att);
+    // The notary's attestation ledger names the attestation by the hash of the signed header.
+    assert_eq!(attested.attestation_id, keccak256(&e.header).0);
     let identity_digest = keccak256(
         (
             keccak256("PPREV.identity.v1"),
@@ -264,9 +288,11 @@ fn attestation_part(
         "commitmentHashesByRole": role_hashes.iter().map(|h| hex(h)).collect::<Vec<_>>(),
         "roleOfField": role_of_field,
         "requestLine": shape.request_line,
+        "requestHeaders": hex(request_headers),
         "requestBlinder": hex(&s.notarized.request.blinder),
         "structure": hex(&s.notarized.structure.plaintext),
         "structureBlinder": hex(&s.notarized.structure.blinder),
+        "sentLength": shape.request.len(),
         "receivedLength": shape.len,
         "tAtt": t_att,
         "serverName": shape.server_name,
@@ -313,9 +339,11 @@ async fn register_attestation_and_fixture() {
         &["structure", "request", "account", "owners", "propertyId"],
         policy_id,
     );
+    let c_p = owner_c_p();
     let x = Register {
         cTx: keccak256("C_tx"),
         txData: tx_data(),
+        cP: c_p,
         policyId: policy_id,
         submitter: Address::repeat_byte(0x11),
         eta: B256::repeat_byte(0x42),
@@ -329,10 +357,10 @@ async fn register_attestation_and_fixture() {
         owners,
         property_id,
     };
-    let public = public_of(&openings, x.txData.propertyId.0, d.0);
+    let public = public_of(&openings, x.txData.propertyId.0, c_p.0, d.0);
     let proof = prove_with(
         CircuitFiles::new(workspace_path("circuits")),
-        &PhiRInput::new(&public, &openings),
+        &PhiRInput::new(&public, &openings, &salt_p()),
     );
     write_fixture(
         "register",
@@ -340,7 +368,8 @@ async fn register_attestation_and_fixture() {
         json!({
             "statement": {
                 "cTx": x.cTx, "propertyId": x.txData.propertyId, "amount": x.txData.amount.to_string(),
-                "settlementShare": "0", "policyId": policy_id, "submitter": x.submitter, "eta": x.eta,
+                "settlementShare": "0", "cP": c_p, "policyId": policy_id, "submitter": x.submitter,
+                "eta": x.eta,
             },
             "digest": d,
             "publicInputs": public.inputs(),
@@ -398,7 +427,7 @@ async fn apply_attestation_and_fixture() {
 async fn settle_attestation_and_fixture() {
     let s = notarize(OWNER, record_layout("tenancy-v1").shape("N-0001").unwrap()).await;
     let policy_id = keccak256("pprev.rental.settle");
-    // Hidden openings of the tenancy layout: account (not read by phi_S), propertyId, tenant,
+    // Hidden openings of the tenancy layout: account (opened against c_P), propertyId, tenant,
     // recordDate.
     let (part, roles, t_att) = attestation_part(
         &s,
@@ -415,12 +444,14 @@ async fn settle_attestation_and_fixture() {
     );
     let identifier = record_layout("tenancy-v1").pad(TENANT.0, 16).unwrap();
     let c_b = counterparty_commitment(identifier.as_bytes(), &salt()).unwrap();
+    let c_p = owner_c_p();
     let expires_at = ENGAGED + TAU_LOCK;
     let x = Settle {
         engId: U256::from(1),
         txId: U256::from(1),
         cTx: keccak256("C_tx"),
         txData: tx_data(),
+        cP: c_p,
         cB: c_b,
         expiresAt: U256::from(expires_at),
         policyId: policy_id,
@@ -430,17 +461,18 @@ async fn settle_attestation_and_fixture() {
     };
     let d = digest(&x, &domain(CHAIN_ID, BASELINE));
     let day = engagement_day(expires_at, TAU_LOCK, UTC_OFFSET).unwrap();
+    let attested_day = attestation_day(t_att, UTC_OFFSET).unwrap();
     let public = PhiSPublic::new(
-        [roles[3], roles[4], roles[5]],
+        [roles[2], roles[3], roles[4], roles[5]],
         x.txData.propertyId.0,
-        c_b.0,
-        day,
+        [c_p.0, c_b.0],
+        [day, attested_day],
         d.0,
     )
     .unwrap();
     let proof = prove_with(
         CircuitFiles::phi_s(workspace_path("circuits")),
-        &PhiSInput::new(&public, &s.notarized.openings, &salt()).unwrap(),
+        &PhiSInput::new(&public, &s.notarized.openings, &salt(), &salt_p()).unwrap(),
     );
     write_fixture(
         "settle",
@@ -450,10 +482,11 @@ async fn settle_attestation_and_fixture() {
             "tauLock": TAU_LOCK,
             "utcOffsetSecs": UTC_OFFSET,
             "engagementDay": day,
+            "attestationDay": attested_day,
             "statement": {
                 "engId": "1", "txId": "1", "cTx": x.cTx, "propertyId": x.txData.propertyId,
-                "amount": x.txData.amount.to_string(), "settlementShare": "0", "cB": c_b,
-                "expiresAt": expires_at.to_string(), "policyId": policy_id,
+                "amount": x.txData.amount.to_string(), "settlementShare": "0", "cP": c_p,
+                "cB": c_b, "expiresAt": expires_at.to_string(), "policyId": policy_id,
                 "submitter": x.submitter, "eta": x.eta,
             },
             "digest": d,

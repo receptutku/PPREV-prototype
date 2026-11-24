@@ -1,6 +1,7 @@
 //! Mock notary for Apply and Settle (D23): the notary-side rules of Table VI's off-chain column,
 //! that is, per-policy predicates with a matching phase, t_att from the notary's clock, phi_S's
-//! check of c_B and of the record date, and one signature per nonce.
+//! checks of c_P, of c_B, and of the record date against the engagement and attestation days, and
+//! one signature per nonce.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -17,12 +18,14 @@ use pprev_types::statement::{TxData, digest, domain};
 
 const TENANT: &[u8; 16] = b"ACC-000000000003";
 const OTHER: &[u8; 16] = b"ACC-000000000009";
+/// The owner who registered the listing and runs the settlement session.
+const OWNER: &[u8; 16] = b"ACC-000000000001";
 const RENT: u64 = 1_000_000_000_000_000_000;
 const TAU_LOCK: u64 = 14 * 86_400;
 /// UTC+3, the registry's time zone in these tests.
 const UTC_OFFSET: i64 = 3 * 3600;
-/// Clock of the mock notary: 2026-09-25T12:00:00Z.
-const NOW: u64 = 1_790_337_600;
+/// Clock of the mock notary: 2026-10-08T12:00:00Z, 15:00 in UTC+3. The attestation day is 2026-10-08.
+const NOW: u64 = 1_791_460_800;
 
 fn policy_a() -> B256 {
     keccak256("rental-v1/A")
@@ -37,6 +40,10 @@ fn key() -> StatementKey {
 }
 
 fn notary() -> MockNotary {
+    notary_at(|| NOW)
+}
+
+fn notary_at(clock: fn() -> u64) -> MockNotary {
     static NEXT: AtomicUsize = AtomicUsize::new(0);
     let dir: PathBuf = std::env::temp_dir().join(format!(
         "pprev-mock-{}-{}",
@@ -64,7 +71,7 @@ fn notary() -> MockNotary {
         key(),
         domain(31337, Address::repeat_byte(0x5a)),
         NonceStore::open(path).unwrap(),
-        || NOW,
+        clock,
     )
 }
 
@@ -84,6 +91,25 @@ fn opening(identifier: &[u8]) -> CommitmentOpening {
 
 fn c_b() -> B256 {
     counterparty_commitment(TENANT, &salt()).unwrap()
+}
+
+/// s_P, the salt of the owner's c_P.
+fn salt_p() -> [u8; 32] {
+    let mut salt = keccak256("salt p").0;
+    salt[0] = 0x02;
+    salt
+}
+
+/// The opening of c_P that the owner kept from Register.
+fn owner() -> CommitmentOpening {
+    CommitmentOpening {
+        identifier: OWNER.to_vec(),
+        salt: salt_p(),
+    }
+}
+
+fn c_p() -> B256 {
+    counterparty_commitment(OWNER, &salt_p()).unwrap()
 }
 
 fn tx_data() -> TxData {
@@ -115,6 +141,7 @@ fn settle_request(eta: u8) -> SettleRequest {
         tx_id: U256::from(1),
         c_tx: B256::repeat_byte(0xc7),
         tx_data: tx_data(),
+        c_p: c_p(),
         c_b: c_b(),
         expires_at: U256::from(ENGAGED + TAU_LOCK),
         policy_id: policy_s(),
@@ -136,6 +163,7 @@ fn eligibility(account: &[u8], tenths: u64) -> EligibilityRecord {
 
 fn settlement(tenant: &[u8], date: &str) -> SettlementRecord {
     SettlementRecord {
+        account: OWNER.to_vec(),
         property_id: tx_data().propertyId.to_vec(),
         tenant: tenant.to_vec(),
         record_date: date.into(),
@@ -249,6 +277,7 @@ fn a_statement_is_signed_only_under_a_policy_of_its_phase() {
             &request,
             &settlement(TENANT, "2026-10-01"),
             &opening(TENANT),
+            &owner(),
         )
         .unwrap_err()
         .to_string();
@@ -284,6 +313,7 @@ fn a_nonce_is_signed_once_across_phases() {
             &settle_request(7),
             &settlement(TENANT, "2026-10-01"),
             &opening(TENANT),
+            &owner(),
         )
         .unwrap_err()
         .to_string();
@@ -320,10 +350,12 @@ fn settle_is_signed_for_a_notation_on_or_after_the_engagement_day() {
             &settle_request(1),
             &settlement(TENANT, "2026-09-25"),
             &opening(TENANT),
+            &owner(),
         )
         .unwrap();
     assert_eq!(x.tAtt, NOW);
     assert_eq!(x.cB, c_b());
+    assert_eq!(x.cP, c_p());
     assert!(recovers_to_vk(
         digest(&x, &domain(31337, Address::repeat_byte(0x5a))),
         &sigma
@@ -332,6 +364,7 @@ fn settle_is_signed_for_a_notation_on_or_after_the_engagement_day() {
         &settle_request(2),
         &settlement(TENANT, "2026-10-08"),
         &opening(TENANT),
+        &owner(),
     )
     .unwrap();
 }
@@ -344,6 +377,7 @@ fn settle_is_refused_for_a_notation_before_the_engagement_day() {
             &settle_request(1),
             &settlement(TENANT, "2026-09-24"),
             &opening(TENANT),
+            &owner(),
         )
         .unwrap_err()
         .to_string();
@@ -358,6 +392,7 @@ fn settle_is_refused_when_the_notation_names_another_tenant() {
             &settle_request(1),
             &settlement(OTHER, "2026-10-01"),
             &opening(TENANT),
+            &owner(),
         )
         .unwrap_err()
         .to_string();
@@ -368,6 +403,7 @@ fn settle_is_refused_when_the_notation_names_another_tenant() {
             &settle_request(2),
             &settlement(OTHER, "2026-10-01"),
             &opening(OTHER),
+            &owner(),
         )
         .unwrap_err()
         .to_string();
@@ -381,7 +417,7 @@ fn settle_is_refused_when_the_notation_is_on_another_property() {
     let mut elsewhere = settlement(TENANT, "2026-10-01");
     elsewhere.property_id = B256::repeat_byte(0x99).to_vec();
     let err = n
-        .sign_settle(&settle_request(1), &elsewhere, &opening(TENANT))
+        .sign_settle(&settle_request(1), &elsewhere, &opening(TENANT), &owner())
         .unwrap_err()
         .to_string();
     assert!(err.contains("not on the property of txData"), "{err}");
@@ -393,6 +429,7 @@ fn settle_is_refused_when_the_notation_is_on_another_property() {
             &request,
             &settlement(TENANT, "2026-10-01"),
             &opening(TENANT),
+            &owner(),
         )
         .unwrap_err()
         .to_string();
@@ -402,6 +439,114 @@ fn settle_is_refused_when_the_notation_is_on_another_property() {
         &settle_request(1),
         &settlement(TENANT, "2026-10-01"),
         &opening(TENANT),
+        &owner(),
+    )
+    .unwrap();
+}
+
+#[test]
+fn settle_is_refused_when_the_session_is_not_the_account_in_c_p() {
+    let mut n = notary();
+    // The registry served the notation to the tenant's account, not to the owner's.
+    let mut served = settlement(TENANT, "2026-10-01");
+    served.account = TENANT.to_vec();
+    let err = n
+        .sign_settle(&settle_request(1), &served, &opening(TENANT), &owner())
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("not served to the account in c_P"), "{err}");
+    // The tenant's own identifier does not open the owner's c_P.
+    let tenant_as_owner = CommitmentOpening {
+        identifier: TENANT.to_vec(),
+        salt: salt_p(),
+    };
+    let err = n
+        .sign_settle(
+            &settle_request(2),
+            &served,
+            &opening(TENANT),
+            &tenant_as_owner,
+        )
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("c_P does not open"), "{err}");
+    // Nor does the owner's identifier under another salt.
+    let mut wrong_salt = owner();
+    wrong_salt.salt[31] ^= 1;
+    let err = n
+        .sign_settle(
+            &settle_request(3),
+            &settlement(TENANT, "2026-10-01"),
+            &opening(TENANT),
+            &wrong_salt,
+        )
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("c_P does not open"), "{err}");
+    // The refusals left the nonces unused.
+    n.sign_settle(
+        &settle_request(1),
+        &settlement(TENANT, "2026-10-01"),
+        &opening(TENANT),
+        &owner(),
+    )
+    .unwrap();
+}
+
+#[test]
+fn settle_is_signed_for_a_notation_on_the_attestation_day() {
+    let mut n = notary();
+    let (x, _) = n
+        .sign_settle(
+            &settle_request(1),
+            &settlement(TENANT, "2026-10-08"),
+            &opening(TENANT),
+            &owner(),
+        )
+        .unwrap();
+    assert_eq!(x.tAtt, NOW);
+    // At 2026-10-08T21:30:00Z it is 2026-10-09 00:30 in the registry's time zone.
+    let mut n = notary_at(|| NOW + 9 * 3600 + 1800);
+    n.sign_settle(
+        &settle_request(2),
+        &settlement(TENANT, "2026-10-09"),
+        &opening(TENANT),
+        &owner(),
+    )
+    .unwrap();
+}
+
+#[test]
+fn settle_is_refused_for_a_notation_after_the_attestation_day() {
+    let mut n = notary();
+    let err = n
+        .sign_settle(
+            &settle_request(1),
+            &settlement(TENANT, "2026-10-09"),
+            &opening(TENANT),
+            &owner(),
+        )
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("follows the attestation day"), "{err}");
+    // 2026-10-08T20:59:59Z is the last second of 2026-10-08 in the registry's time zone.
+    let mut late = notary_at(|| NOW + 9 * 3600 - 1);
+    let err = late
+        .sign_settle(
+            &settle_request(1),
+            &settlement(TENANT, "2026-10-09"),
+            &opening(TENANT),
+            &owner(),
+        )
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("follows the attestation day"), "{err}");
+    // The refusal left the nonce unused.
+    n.sign_settle(
+        &settle_request(1),
+        &settlement(TENANT, "2026-10-08"),
+        &opening(TENANT),
+        &owner(),
     )
     .unwrap();
 }

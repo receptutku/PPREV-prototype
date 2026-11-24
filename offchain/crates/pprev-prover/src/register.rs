@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 use alloy::signers::local::PrivateKeySigner;
 use alloy_primitives::{B256, Bytes, U256};
 use anyhow::{Context, Result};
+use pprev_notary::mock::counterparty_commitment;
 use pprev_notary::presentation::t_att_of;
 use pprev_notary::wire::{
     RegisterReply, RegisterSubmission, submit_register as submit_to_verifier,
@@ -23,6 +24,7 @@ use tlsn::webpki::{CertificateDer, RootCertStore};
 use crate::chain::{self, RegisterPayload, SubmitOutcome};
 use crate::circuit::{CircuitFiles, PhiRInput, Unsatisfied, prove, public_of, read_borrowed_proof};
 use crate::counting::{ByteCounts, CountingStream, Traffic};
+use crate::phases::fresh_salt;
 use crate::session::{ProverSetup, notarize_with_retries, present};
 
 pub struct RegisterConfig {
@@ -51,6 +53,11 @@ pub struct RegisterConfig {
     pub preprocess_timeout: Duration,
     /// Nonce to use instead of a fresh one (negative test: a nonce the notary has signed).
     pub eta: Option<B256>,
+    /// Salt s_P of c_P to use instead of a fresh one.
+    pub salt_p: Option<B256>,
+    /// Identifier for c_P instead of the session's account (negative test: c_P naming another
+    /// account than the one the session shows as an owner).
+    pub identifier: Option<String>,
     /// A `proof.json` to submit instead of the owner's own proof (negative test: a proof made for
     /// another session and statement).
     pub proof_from: Option<PathBuf>,
@@ -221,11 +228,12 @@ pub async fn run(config: &RegisterConfig) -> Result<RegisterRecord> {
     let submitter = config.key.address();
     let chain_id = chain::chain_id(&config.rpc_url).await?;
 
-    // (a) Fresh nonce and salt.
+    // (a) Fresh nonce and salts.
     let eta = config
         .eta
         .unwrap_or_else(|| B256::from(rand::random::<[u8; 32]>()));
     let r = B256::from(rand::random::<[u8; 32]>());
+    let salt_p = config.salt_p.unwrap_or_else(fresh_salt);
 
     // (b) Login, notarised session, presentation.
     let started = Instant::now();
@@ -296,6 +304,13 @@ pub async fn run(config: &RegisterConfig) -> Result<RegisterRecord> {
     timings.inside_delta.read_t_att_ms = millis(started);
     timings.attestation_arrival_minus_t_att_ms = arrival_unix_ms - i128::from(t_att) * 1000;
 
+    // c_P = H_c(identifier, s_P), the identifier padded to the account width, as c_B (M1).
+    let identifier = config.layout.pad(
+        config.identifier.as_deref().unwrap_or(&config.account),
+        config.layout.account_width,
+    )?;
+    let c_p = counterparty_commitment(identifier.as_bytes(), &salt_p.0)?;
+
     // x_R (Table III) with a_P = the owner's account.
     let policy_id_r = config.policy.policy_id_r();
     let tx_data = TxData {
@@ -307,6 +322,7 @@ pub async fn run(config: &RegisterConfig) -> Result<RegisterRecord> {
     let x = Register {
         cTx: c_tx,
         txData: tx_data.clone(),
+        cP: c_p,
         policyId: policy_id_r,
         submitter,
         eta,
@@ -348,10 +364,10 @@ pub async fn run(config: &RegisterConfig) -> Result<RegisterRecord> {
     };
 
     // (c) phi_R proof.
-    let public = public_of(&notarized.openings, x.txData.propertyId.0, d.0);
+    let public = public_of(&notarized.openings, x.txData.propertyId.0, c_p.0, d.0);
     let own = prove(
         &config.circuits,
-        &PhiRInput::new(&public, &notarized.openings),
+        &PhiRInput::new(&public, &notarized.openings, &salt_p.0),
         &config.out,
     );
     let proof_json = match own {
@@ -432,12 +448,15 @@ pub async fn run(config: &RegisterConfig) -> Result<RegisterRecord> {
         property_id: tx_data.propertyId,
         amount: tx_data.amount,
         settlement_share: tx_data.settlementShare,
+        c_p,
         policy_id_r,
         r,
         sigma_r: Bytes::from(sigma),
         eta_r: eta,
         t_att_r: t_att,
         collateral: config.collateral,
+        identifier,
+        salt_p,
     };
     std::fs::write(
         config.out.join("payload.json"),

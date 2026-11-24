@@ -13,14 +13,14 @@ abstract contract TypedDataJson is CommonBase {
     string internal constant TX_DATA_TYPE_JSON = '"TxData":[{"name":"propertyId","type":"bytes32"},{"name":"amount","type":"uint256"},'
         '{"name":"settlementShare","type":"uint256"}]';
     string internal constant REGISTER_TYPE_JSON = '"Register":[{"name":"cTx","type":"bytes32"},{"name":"txData","type":"TxData"},'
-        '{"name":"policyId","type":"bytes32"},{"name":"submitter","type":"address"},'
+        '{"name":"cP","type":"bytes32"},{"name":"policyId","type":"bytes32"},{"name":"submitter","type":"address"},'
         '{"name":"eta","type":"bytes32"},{"name":"tAtt","type":"uint64"}]';
     string internal constant APPLY_TYPE_JSON = '"Apply":[{"name":"txId","type":"uint256"},{"name":"cTx","type":"bytes32"},'
         '{"name":"txData","type":"TxData"},{"name":"cB","type":"bytes32"},{"name":"policyId","type":"bytes32"},'
         '{"name":"submitter","type":"address"},{"name":"eta","type":"bytes32"},{"name":"tAtt","type":"uint64"}]';
     string internal constant SETTLE_TYPE_JSON = '"Settle":[{"name":"engId","type":"uint256"},{"name":"txId","type":"uint256"},'
-        '{"name":"cTx","type":"bytes32"},{"name":"txData","type":"TxData"},{"name":"cB","type":"bytes32"},'
-        '{"name":"expiresAt","type":"uint256"},{"name":"policyId","type":"bytes32"},'
+        '{"name":"cTx","type":"bytes32"},{"name":"txData","type":"TxData"},{"name":"cP","type":"bytes32"},'
+        '{"name":"cB","type":"bytes32"},{"name":"expiresAt","type":"uint256"},{"name":"policyId","type":"bytes32"},'
         '{"name":"submitter","type":"address"},{"name":"eta","type":"bytes32"},{"name":"tAtt","type":"uint64"}]';
 
     function q(string memory s) internal pure returns (string memory) {
@@ -61,6 +61,8 @@ abstract contract TypedDataJson is CommonBase {
             hexField("cTx", x.cTx),
             ",",
             field("txData", txDataJson(x.txData)),
+            ",",
+            hexField("cP", x.cP),
             ",",
             hexField("policyId", x.policyId),
             ",",
@@ -108,6 +110,8 @@ abstract contract TypedDataJson is CommonBase {
             hexField("cTx", x.cTx),
             ",",
             field("txData", txDataJson(x.txData)),
+            ",",
+            hexField("cP", x.cP),
             ",",
             hexField("cB", x.cB),
             ","
