@@ -1,0 +1,454 @@
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.50s
+     Running unittests src/lib.rs (/Users/receptutku/src/pprev-m/target/release/deps/mock_registry-6d90b2b317c3239c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/Users/receptutku/src/pprev-m/target/release/deps/mock_registry-1cd7240cbe8e12bf)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/http.rs (/Users/receptutku/src/pprev-m/target/release/deps/http-e4b76d79d8473d4a)
+
+running 12 tests
+test phase_layouts_must_name_the_registry_server ... ok
+test layouts_must_fix_the_token_length_for_their_credential ... ok
+test rejects_a_tls13_only_client ... ok
+test login_rejects_wrong_credentials ... ok
+test serves_tls12_with_the_mpc_suite_only ... ok
+test title_requires_a_valid_token ... ok
+test tokens_have_the_credential_width_of_the_request_templates ... ok
+test unknown_property_is_not_found ... ok
+test without_phase_layouts_the_phase_routes_are_not_served ... ok
+test tenancy_notations_follow_the_layout_for_any_account ... ok
+test income_is_the_record_of_the_logged_in_account ... ok
+test every_title_response_follows_the_layout ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (/Users/receptutku/src/pprev-m/target/release/deps/pprev_notary-77a11313b773800d)
+
+running 22 tests
+test groth16::tests::g1_points_must_be_affine_and_on_the_curve ... ok
+test groth16::tests::field_elements_must_be_canonical_decimals ... ok
+test mock::tests::day_numbers_follow_the_calendar ... ok
+test mock::tests::property_words_are_zero_padded_to_32_bytes ... ok
+test groth16::tests::g2_coordinates_are_read_real_part_first ... ok
+test groth16::tests::g2_points_outside_the_subgroup_are_rejected ... ok
+test attestations::tests::a_malformed_record_is_rejected ... ok
+test groth16::tests::scheme_and_key_shape_are_checked ... ok
+test attestations::tests::the_record_survives_a_restart ... ok
+test nonces::tests::a_malformed_record_is_rejected ... ok
+test attestations::tests::an_attestation_is_recorded_once ... ok
+test nonces::tests::the_record_survives_a_restart ... ok
+test phases::tests::subjects_cannot_change_the_request_line ... ok
+test presentation::tests::t_att_may_follow_the_connection_time_by_the_session_bound ... ok
+test presentation::tests::t_att_may_precede_the_connection_time_by_the_tlsn_tolerance ... ok
+test nonces::tests::a_nonce_is_recorded_once ... ok
+test sigma::tests::notary_signature_vector_is_current ... ok
+test presentation::tests::the_request_check_accepts_exactly_the_template ... ok
+test sigma::tests::sigma_recovers_to_vk_notary ... ok
+test notations::tests::the_record_survives_a_restart ... ok
+test notations::tests::a_notation_settles_one_engagement ... ok
+test notations::tests::a_malformed_record_is_rejected ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running unittests src/bin/phi-r-verify.rs (/Users/receptutku/src/pprev-m/target/release/deps/phi_r_verify-a655abee654847c5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/pprev-notary.rs (/Users/receptutku/src/pprev-m/target/release/deps/pprev_notary-5de69bbeea28a61e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/mock.rs (/Users/receptutku/src/pprev-m/target/release/deps/mock-ce580ee9a9683d9d)
+
+running 15 tests
+test h_c_rejects_a_salt_outside_the_field ... ok
+test h_c_is_circomlib_poseidon ... ok
+test a_statement_is_signed_only_under_a_policy_of_its_phase ... ok
+test apply_is_refused_below_the_income_threshold ... ok
+test settle_is_refused_for_a_notation_before_the_engagement_day ... ok
+test apply_is_refused_when_c_b_does_not_name_the_account_holder ... ok
+test a_nonce_is_signed_once_across_phases ... ok
+test apply_is_signed_when_phi_a_holds ... ok
+test a_refused_request_does_not_use_up_its_nonce ... ok
+test settle_is_refused_when_the_notation_names_another_tenant ... ok
+test settle_is_refused_when_the_notation_is_on_another_property ... ok
+test settle_is_refused_for_a_notation_after_the_attestation_day ... ok
+test settle_is_refused_when_the_session_is_not_the_account_in_c_p ... ok
+test settle_is_signed_for_a_notation_on_or_after_the_engagement_day ... ok
+test settle_is_signed_for_a_notation_on_the_attestation_day ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/sample_proof.rs (/Users/receptutku/src/pprev-m/target/release/deps/sample_proof-0e79a103c82cd349)
+
+running 4 tests
+test sample_public_inputs_encode_the_register_statement ... ok
+test sample_proof_verifies ... ok
+test a_changed_proof_is_rejected ... ok
+test changing_any_public_input_breaks_the_proof ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/lib.rs (/Users/receptutku/src/pprev-m/target/release/deps/pprev_prover-ca39a4b7d73eeef1)
+
+running 28 tests
+test circuit::tests::reads_the_peak_rss_of_time_l ... ok
+test circuit::tests::reads_the_failed_assertion ... ok
+test netem::tests::chunks_in_flight_share_the_delay ... ok
+test netem::tests::bandwidth_serialises_back_to_back_chunks ... ok
+test e1::tests::an_odd_node_moves_up_unhashed ... ok
+test netem::tests::parameters_are_validated ... ok
+test netem::tests::total_time_of_a_bulk_transfer_is_size_over_bandwidth_plus_delay ... ok
+test probe::tests::differences_are_positions_split_at_the_head ... ok
+test counting::tests::counts_both_directions ... ok
+test session::tests::a_closure_failure_is_a_stall_without_the_driver ... ok
+test circuit::tests::a_borrowed_proof_is_named_by_its_digest_not_its_path ... ok
+test session::tests::a_final_failure_stays_final_even_when_the_driver_ended_cleanly ... ok
+test session::tests::a_driver_end_without_a_prover_failure_is_a_stall_only_if_it_is_a_closure ... ok
+test session::tests::a_driver_panic_or_protocol_error_is_not_a_cut ... ok
+test session::tests::a_closure_failure_with_a_failed_driver_is_final ... ok
+test session::tests::after_the_driver_ends_a_prover_failure_before_preprocessing_is_classified ... ok
+test session::tests::a_lossy_failure_is_a_stall_only_if_the_driver_shows_the_closure ... ok
+test session::tests::a_prover_timeout_with_a_failed_driver_is_final ... ok
+test session::tests::closures_are_recognised_through_wrappers ... ok
+test session::tests::failures_are_classified_by_type ... ok
+test session::tests::other_failures_are_not_closures ... ok
+test session::tests::preprocessing_completing_while_waiting_on_the_prover_makes_the_failure_final ... ok
+test session::tests::the_driver_ending_cleanly_or_with_a_closure_is_a_cut ... ok
+test netem::tests::a_client_disconnect_ends_the_connection ... ok
+test netem::tests::a_half_close_keeps_the_other_direction_open ... ok
+test netem::tests::dropping_the_server_aborts_open_connections ... ok
+test netem::tests::an_early_downstream_close_with_a_full_queue_ends_the_connection ... ok
+test session::tests::a_hung_prover_leaves_the_decision_to_the_driver ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+     Running unittests src/bin/gen-phase-sample.rs (/Users/receptutku/src/pprev-m/target/release/deps/gen_phase_sample-68bd23268cc6ad77)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/gen-phi-r-sample.rs (/Users/receptutku/src/pprev-m/target/release/deps/gen_phi_r_sample-51535b1c180b2c5d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/netem-calibrate.rs (/Users/receptutku/src/pprev-m/target/release/deps/netem_calibrate-521028b9612e0d96)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/netem-proxy.rs (/Users/receptutku/src/pprev-m/target/release/deps/netem_proxy-a4e2abb98eb87c26)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/phi-r-prove.rs (/Users/receptutku/src/pprev-m/target/release/deps/phi_r_prove-45690ca40d9d6e89)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/Users/receptutku/src/pprev-m/target/release/deps/pprev_prover-da946566955526b7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/probe-portal.rs (/Users/receptutku/src/pprev-m/target/release/deps/probe_portal-218dcf6dae90cb4d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/circuit.rs (/Users/receptutku/src/pprev-m/target/release/deps/circuit-95fc6a18c4d23c13)
+
+running 15 tests
+test a_byte_above_255_is_rejected ... ok
+test an_empty_account_does_not_match_an_empty_slot ... ok
+test a_zero_padded_short_property_id_is_rejected ... ok
+test a_short_identifier_matches_with_its_padding ... ok
+test an_account_outside_the_owner_list_is_rejected ... ok
+test a_changed_value_does_not_open_its_commitment ... ok
+test a_changed_blinder_does_not_open_its_commitment ... ok
+test another_property_id_is_rejected ... ok
+test owner_session_satisfies_phi_r ... ok
+test c_p_must_open_to_the_session_account ... ok
+test a_changed_public_commitment_is_rejected ... ok
+test tenant_session_has_no_witness ... ok
+test owner_session_with_the_c_p_of_another_account_has_no_witness ... ok
+test an_owner_in_any_slot_satisfies_phi_r ... ok
+test misplaced_separators_are_rejected ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.88s
+
+     Running tests/disclosure.rs (/Users/receptutku/src/pprev-m/target/release/deps/disclosure-38dbc5980c44895d)
+
+running 10 tests
+test check_presentation_rejects_an_untrusted_attestation_key ... ok
+test check_presentation_rejects_a_presentation_without_a_hidden_commitment ... ok
+test check_presentation_rejects_an_untrusted_registry_ca ... ok
+test check_presentation_rejects_another_property_id ... ok
+test check_presentation_rejects_another_response_length ... ok
+test hidden_values_and_token_are_absent_from_the_serialised_presentation ... ok
+test check_presentation_rejects_revealed_field_values ... ok
+test check_presentation_rejects_another_server_name ... ok
+test presentation_reveals_exactly_the_d26_set ... ok
+test check_presentation_accepts_the_honest_presentation ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+
+     Running tests/e1_attestation.rs (/Users/receptutku/src/pprev-m/target/release/deps/e1_attestation-53fbdacba50d724a)
+
+running 3 tests
+test apply_attestation_and_fixture ... ok
+test register_attestation_and_fixture ... ok
+test settle_attestation_and_fixture ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.52s
+
+     Running tests/gate.rs (/Users/receptutku/src/pprev-m/target/release/deps/gate-dc1f1e7e2ddd92c7)
+
+running 13 tests
+test g1_altered_connection_time_is_rejected ... ok
+test g1_altered_hash_is_rejected ... ok
+test g1_flipped_direction_is_rejected ... ok
+test g1_control_untampered_presentation_verifies_after_json_round_trip ... ok
+test g1_removed_commitment_is_rejected ... ok
+test g1_altered_t_att_extension_is_rejected ... ok
+test g1_altered_opened_commitment_index_is_rejected ... ok
+test g1_narrowed_index_set_is_rejected ... ok
+test g1_shifted_index_set_is_rejected ... ok
+test g2_committed_bytes_are_the_bytes_the_registry_sent ... ok
+test g3_verifier_reads_the_hidden_index_sets ... ok
+test g2_opening_with_altered_bytes_is_rejected ... ok
+test g3_attestation_body_layout_matches_golden ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+
+     Running tests/opening.rs (/Users/receptutku/src/pprev-m/target/release/deps/opening-2639c6e0a730e376)
+
+running 2 tests
+test blinder_opening_yields_the_attested_hash ... ok
+test order_and_blinder_matter ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
+     Running tests/phases_circuit.rs (/Users/receptutku/src/pprev-m/target/release/deps/phases_circuit-d7be1426a694ed41)
+
+running 23 tests
+test phi_a_fails_for_an_empty_account ... ok
+test phi_a_fails_one_unit_below_the_income_multiple ... ok
+test phi_a_fails_when_an_opening_does_not_match_its_commitment ... ok
+test phi_a_bounds_the_amount ... ok
+test phi_a_fails_when_c_b_names_another_account ... ok
+test phi_a_reads_decimal_digits_only ... ok
+test phi_a_holds_at_exactly_the_income_multiple ... ok
+test phi_s_bounds_the_engagement_day ... ok
+test phi_s_fails_for_a_notation_of_another_tenant ... ok
+test phi_s_fails_for_an_empty_tenant ... ok
+test phi_s_fails_for_an_empty_account ... ok
+test phi_s_bounds_the_attestation_day ... ok
+test phi_s_fails_when_the_account_does_not_match_its_commitment ... ok
+test phi_s_fails_for_a_notation_on_another_property ... ok
+test phi_s_fails_for_another_owner_salt ... ok
+test phi_s_fails_when_the_date_does_not_match_its_commitment ... ok
+test phi_s_holds_on_and_after_the_engagement_day ... ok
+test phi_s_fails_the_day_before_the_engagement_day ... ok
+test phi_s_accepts_leap_days_of_leap_years_only ... ok
+test phi_s_fails_the_day_after_the_attestation_day ... ok
+test phi_s_fails_when_the_session_is_not_the_account_in_c_p ... ok
+test phi_s_holds_up_to_the_attestation_day ... ok
+test phi_s_reads_canonical_calendar_dates_only ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.65s
+
+     Running tests/phases_policy_verifier.rs (/Users/receptutku/src/pprev-m/target/release/deps/phases_policy_verifier-0c29fe1fef519208)
+
+running 20 tests
+test one_attestation_backs_one_apply_statement ... ok
+test a_notation_dated_after_the_attestation_day_is_refused ... ok
+test a_stale_notation_cannot_pass_for_an_earlier_engagement ... ok
+test one_nonce_is_signed_once_across_phases ... ok
+test refuses_a_settle_request_for_another_notation_or_phase ... ok
+test refuses_a_settle_statement_changed_after_proving ... ok
+test refuses_an_apply_statement_changed_after_proving ... ok
+test refuses_an_apply_statement_under_another_phase_or_key ... ok
+test refuses_apply_inputs_outside_the_circuit_range ... ok
+test refuses_settle_inputs_outside_the_circuit_range ... ok
+test signs_an_honest_apply_request_once ... ok
+test signs_an_honest_settle_request_once ... ok
+test the_engagement_day_follows_the_deployment_tau_lock ... ok
+test refuses_a_settle_proof_for_another_attestation_day ... ok
+test a_nonce_refusal_does_not_consume_the_attestation ... ok
+test a_request_outside_the_template_consumes_no_nonce_attestation_or_notation ... ok
+test refuses_a_settle_proof_for_another_account_hash ... ok
+test one_attestation_backs_one_settle_statement ... ok
+test phi_s_has_no_witness_for_a_session_of_another_account ... ok
+test a_notation_settles_one_engagement_across_restarts ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 26.35s
+
+     Running tests/policy_verifier.rs (/Users/receptutku/src/pprev-m/target/release/deps/policy_verifier-72d6d4192cd178d6)
+
+running 9 tests
+test refuses_a_property_other_than_the_notarised_one ... ok
+test refuses_a_t_att_other_than_the_attested_time ... ok
+test signs_a_nonce_once ... ok
+test refuses_a_statement_changed_after_proving ... ok
+test refuses_a_c_p_other_than_the_proven_one ... ok
+test checks_each_proof_under_its_own_policy_key ... ok
+test signs_an_honest_register_request ... ok
+test refuses_a_proof_from_another_session ... ok
+test one_attestation_backs_one_register_statement ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.30s
+
+     Running tests/proof.rs (/Users/receptutku/src/pprev-m/target/release/deps/proof-078270534e83c52f)
+
+running 4 tests
+test owner_proof_verifies_with_the_attested_public_inputs ... ok
+test a_proof_is_bound_to_its_statement ... ok
+test a_proof_does_not_transfer_to_another_session ... ok
+test snarkjs_and_the_rust_verifier_agree ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.63s
+
+     Running tests/request_template.rs (/Users/receptutku/src/pprev-m/target/release/deps/request_template-1665092ea185b346)
+
+running 11 tests
+test a_sent_range_left_hidden_is_refused ... ok
+test a_request_body_is_refused ... ok
+test a_second_pipelined_request_is_refused ... ok
+test a_shifted_credential_range_is_refused ... ok
+test a_reordered_header_is_refused ... ok
+test a_longer_credential_range_is_refused ... ok
+test a_shorter_credential_range_is_refused ... ok
+test a_changed_header_value_is_refused ... ok
+test an_extra_header_is_refused ... ok
+test trailing_bytes_are_refused ... ok
+test the_honest_request_is_accepted_in_every_phase ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.39s
+
+     Running tests/retry.rs (/Users/receptutku/src/pprev-m/target/release/deps/retry-0aa5f62c1c2087b8)
+
+running 8 tests
+test a_cut_before_preprocessing_is_a_stall_whichever_side_observes_it ... ok
+test errors_after_preprocessing_are_not_retried ... ok
+test notary_cuts_a_session_above_its_bound ... ok
+test notary_cuts_a_stalled_preprocessing ... ok
+test prover_times_out_a_stalled_preprocessing ... ok
+test prover_retries_after_a_stalled_preprocessing ... ok
+test prover_retries_when_the_notary_cuts_preprocessing ... ok
+test prover_gives_up_after_three_retries ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.02s
+
+     Running tests/time.rs (/Users/receptutku/src/pprev-m/target/release/deps/time-76c1a6f53631d4ea)
+
+running 6 tests
+test prover_clock_minus_3s_is_accepted_and_t_att_is_the_notary_clock ... ignored, requires libfaketime
+test prover_clock_plus_10s_is_rejected_by_tlsn ... ignored, requires libfaketime
+test prover_clock_plus_3s_is_accepted_and_t_att_is_the_notary_clock ... ignored, requires libfaketime
+test t_att_is_the_notary_clock ... ok
+test rejects_t_att_before_the_connection_time ... ok
+test rejects_a_gap_above_the_session_bound_and_the_bound_is_configurable ... ok
+
+test result: ok. 3 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.58s
+
+     Running unittests src/lib.rs (/Users/receptutku/src/pprev-m/target/release/deps/pprev_types-33d9c14e87639026)
+
+running 38 tests
+test calendar::tests::days_map_to_civil_dates ... ok
+test calendar::tests::the_engagement_day_is_taken_in_the_registry_time_zone ... ok
+test calendar::tests::the_attestation_day_is_taken_in_the_registry_time_zone ... ok
+test circuit::tests::phi_r_refuses_non_canonical_c_p ... ok
+test circuit::tests::phi_s_public_inputs_follow_the_circuit_order ... ok
+test circuit::tests::phi_a_public_inputs_follow_the_circuit_order ... ok
+test circuit::tests::public_inputs_follow_the_circuit_order ... ok
+test circuit::tests::phi_a_refuses_non_canonical_c_b_and_wide_amounts ... ok
+test circuit::tests::committed_main_component_matches_the_layout ... ok
+test circuit::tests::owner_stride_follows_the_rendered_offsets ... ok
+test circuit::tests::phase_layouts_are_checked_against_their_predicates ... ok
+test field::tests::bind_reduces_modulo_r ... ok
+test field::tests::limbs_split_big_endian ... ok
+test layout::tests::a_credential_must_fill_its_range_without_control_bytes ... ok
+test layout::tests::property_id_word_is_left_aligned ... ok
+test layout::tests::every_record_has_the_same_ranges ... ok
+test layout::tests::property_id_word_keeps_the_value_padding ... ok
+test layout::tests::rejects_values_that_do_not_fit ... ok
+test layout::tests::renders_the_request_template_with_its_credential_range ... ok
+test layout::tests::rejects_malformed_request_templates ... ok
+test circuit::tests::committed_phase_main_components_match_their_layouts ... ok
+test layout::tests::renders_fields_at_their_ranges ... ok
+test policy::tests::rental_bounds_are_d18 ... ok
+test policy::tests::rental_identifiers_match_the_fixture ... ok
+test policy::tests::rental_names_its_apply_and_settle_sources ... ok
+test record::tests::every_record_has_the_same_ranges ... ok
+test record::tests::hidden_ranges_are_the_account_and_the_fields ... ok
+test record::tests::property_word_matches_the_title_layout ... ok
+test record::tests::rejects_values_that_do_not_fit ... ok
+test record::tests::rejects_malformed_layouts ... ok
+test record::tests::renders_fields_at_their_ranges ... ok
+test statement::tests::apply_digest_matches_the_contract ... ok
+test statement::tests::commitment_matches_the_contract ... ok
+test statement::tests::register_digest_matches_the_contract ... ok
+test statement::tests::digest_depends_on_chain_and_contract ... ok
+test statement::tests::type_strings_match_the_contract ... ok
+test statement::tests::settle_digest_matches_the_contract ... ok
+test policy::tests::utc_offsets_are_time_zone_offsets ... ok
+
+test result: ok. 38 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/gen-circuit-main.rs (/Users/receptutku/src/pprev-m/target/release/deps/gen_circuit_main-2eb9f731de5305ed)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/gen-phase-circuit-main.rs (/Users/receptutku/src/pprev-m/target/release/deps/gen_phase_circuit_main-1b0377dac2af2a5a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests mock_registry
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests pprev_notary
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests pprev_prover
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests pprev_types
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
