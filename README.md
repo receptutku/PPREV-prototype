@@ -9,7 +9,7 @@ escrow contract.
 
 The repository holds the contracts (Solidity, Foundry), the three predicate circuits (circom,
 Groth16), the off-chain prover, notary, and policy verifier (Rust, tlsn v0.1.0-alpha.15), a local
-mock registry, and the committed measurement records behind every figure below. Tag `artifact-v3`
+mock registry, and the committed measurement records behind every figure below. Tag `artifact-v4`
 is the snapshot whose records the paper cites.
 
 ## Running it
@@ -40,8 +40,8 @@ script/e2e_register.sh                  # Register end to end: TLSNotary session
 script/e2e_lifecycle.sh                 # Register, Apply, Engage, Settle end to end, with negative cases
 ```
 
-Expected: `245 tests passed`, `191 passed, 0 failed, 3 ignored`, `checks: 19/19 passed`,
-`checks: 25/25 passed` (gate record `measurements/gate/20261022T184708Z/`). The end-to-end scripts
+Expected: `301 tests passed`, `240 passed, 0 failed, 3 ignored`, `checks: 19/19 passed`,
+`checks: 25/25 passed` (gate record `measurements/gate/20261124T123516Z/`). The end-to-end scripts
 start and stop their own anvil, mock registry, and notary. A beacon from a public source, the
 `.env` variables, and running the parts by hand are in [REPRODUCTION.md section 3](REPRODUCTION.md#3-setup).
 
@@ -74,7 +74,7 @@ produces it and the committed record it comes from.
 
 This is a prototype, not production software: the registry is a local mock, there is one notary,
 every Groth16 setup is single-party, and there is no mainnet deployment. The figures above are the
-recorded values for the artifact-v3 keys and settings; a new circuit setup changes proofs,
+recorded values for the artifact-v4 keys and settings; a new circuit setup changes proofs,
 verifier constants, and calldata, so they have to be measured again for it. Known issues are in
 [REPRODUCTION.md section 7](REPRODUCTION.md#7-known-issues).
 

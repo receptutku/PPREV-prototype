@@ -106,16 +106,16 @@ script/e2e_lifecycle.sh
 
 | Command | Expected |
 |---|---|
-| `forge test` | `245 tests passed, 0 failed, 0 skipped (245 total tests)`: 244 unit and fuzz tests (39 of them for the baseline of Section 5.3) and the one invariant suite, which checks four invariants |
-| `python3 script/table6_coverage.py` | `Tests: 244/244 passed; invariants: 4/4 held.` and `Conditions without a passing positive and negative test: none.` |
-| `cargo test --release --workspace` | 191 passed, 0 failed, 3 ignored (the ignored clock-shift tests need libfaketime: `cargo test --release -p pprev-prover --test time -- --include-ignored`) |
+| `forge test` | `301 tests passed, 0 failed, 0 skipped (301 total tests)`: 300 unit and fuzz tests (53 of them for the baseline of Section 5.3) and the one invariant suite, which checks four invariants |
+| `python3 script/table6_coverage.py` | `Tests: 300/300 passed; invariants: 4/4 held.` and `Conditions without a passing positive and negative test: none.` |
+| `cargo test --release --workspace` | 240 passed, 0 failed, 3 ignored (the ignored clock-shift tests need libfaketime: `cargo test --release -p pprev-prover --test time -- --include-ignored`) |
 | `script/e2e_register.sh` | `checks: 19/19 passed`; a record in `measurements/e2e_register/` |
 | `script/e2e_lifecycle.sh` | `checks: 25/25 passed`; a record in `measurements/e2e_lifecycle/` |
 
 `script/gate.sh` runs formatting and lint checks, both test suites, the measurement helpers' tests,
 and a shell syntax check, and writes each step's output to `measurements/gate/<run>/` with the
 SHA-256 of every tracked file before and after; the run fails on any difference. The current record
-is `measurements/gate/20261022T184708Z/` (commit `824cd23`: Rust 191 passed, 3 ignored; forge 245;
+is `measurements/gate/20261124T123516Z/` (commit `dac5876`: Rust 240 passed, 3 ignored; forge 301;
 helpers 6). The figures of the earlier records (206 forge and 114 Rust tests in September, 164 Rust
 tests on October 21) describe the sources of their dates.
 
@@ -196,9 +196,9 @@ original and the distributed files, and no number, proof, or test result changed
 
 | Predicate | Constraints | Public inputs | Witness + proving, median ms (IQR), n = 20 | Standalone verifier execution gas |
 |---|---:|---:|---:|---:|
-| phi_R | 119,680 | 9 | 2,995.2 (2,955.9-3,053.2) | 242,098 |
-| phi_A | 59,963 | 7 | 1,778.9 (1,763.1-1,826.5) | 228,804 |
-| phi_S | 89,257 | 11 | 2,795.0 (2,773.6-2,854.8) | 255,392 |
+| phi_R | 119,920 | 10 | 2,872.0 (2,841.7-2,915.1) | 248,745 |
+| phi_A | 59,963 | 7 | 1,728.9 (1,716.1-1,776.8) | 228,804 |
+| phi_S | 119,188 | 15 | 3,060.3 (3,016.9-3,103.7) | 281,980 |
 
 The proving benchmark uses one fixed synthetic input per predicate, one excluded warm-up per
 predicate, a rotating predicate order, and verifies every proof. It ran on the M2 on battery power
@@ -323,7 +323,7 @@ The fixtures (`contracts/test/baseline/fixtures/`) come from real notarised sess
 registry (`offchain/crates/pprev-prover/tests/e1_attestation.rs`). Their identity signatures are
 test-key signatures, issued by the fixture generator after it verified the session's presentation
 (certificate chain against the mock registry's CA, DNS name): not an end-to-end identity service.
-The 39 forge tests accept each real submission and reject every altered part.
+The 53 forge tests accept each real submission and reject every altered part.
 
 ```
 script/measure_e1.sh
