@@ -266,37 +266,37 @@ the same inputs give the same file. This campaign ran on AC power.
 
 | Result | Command | Record | Recorded value | Time (estimate) | Network |
 |---|---|---|---|---|---|
-| End-to-end Register: TLSNotary session, phi_R proof, notary signature, transaction; five negative cases | `script/e2e_register.sh` | `measurements/e2e_register/20260926T201218Z.json` | 19/19 checks pass | ~3 min | no |
-| Freshness budget of one Register run (t_prove + t_verify + t_sign + t_incl, local chain) | `script/e2e_register.sh` | `measurements/e2e_register/20260926T201218Z.json` | 3,279 ms, 1.09% of Delta = 300 s | ~3 min | no |
-| phi_R circuit size | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | 119,680 constraints (O2) | ~15 min | no |
-| Proving time t_prove (witness generation + snarkjs), n = 20 | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | 3,311.8 ms (IQR 3,235.9-3,354.5) | ~15 min | no |
-| Policy verifier: t_verify (presentation checks + Groth16) and t_sign | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | t_verify 1.7 ms (IQR 1.6-1.7); Groth16 alone 1.25 ms; t_sign 5.1 ms (IQR 3.7-6.5) | ~15 min | no |
-| MPC-TLS session with the notary | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | 345.4 ms (IQR 333.0-380.7); 30.2 MB sent, 3.8 MB received | ~15 min | no |
-| Peak memory | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | snarkjs 1,638.6 MB, witness generator 96.9 MB, prover 242.3 MB (medians) | ~15 min | no |
-| MPC-TLS preprocessing stalls (tlsn#1173), recovered by retry | `script/measure_offchain.sh` | `measurements/offchain/20260926T190328Z.json` | 3/223 sessions (1.35%); 0 runs gave up | ~15 min | no |
+| End-to-end Register: TLSNotary session, phi_R proof, notary signature, transaction; five negative cases | `script/e2e_register.sh` | `measurements/e2e_register/20261124T123638Z.json` | 19/19 checks pass | ~3 min | no |
+| Freshness budget of one Register run (t_prove + t_verify + t_sign + t_incl, local chain) | `script/e2e_register.sh` | `measurements/e2e_register/20261124T123638Z.json` | 2,867 ms, 0.96% of Delta = 300 s | ~3 min | no |
+| phi_R circuit size | `script/measure_offchain.sh` | `measurements/offchain/20261124T130142Z.json` | 119,920 constraints (O2) | ~15 min | no |
+| Proving time t_prove (witness generation + snarkjs), n = 20 | `script/measure_offchain.sh` | `measurements/offchain/20261124T130142Z.json` | 2,849.1 ms (IQR 2,839.4-2,860.8) | ~15 min | no |
+| Policy verifier: t_verify (presentation checks + Groth16) and t_sign | `script/measure_offchain.sh` | `measurements/offchain/20261124T130142Z.json` | t_verify 1.7 ms (IQR 1.7-1.7); Groth16 alone 1.29 ms; t_sign 9.1 ms (IQR 7.9-9.6) | ~15 min | no |
+| MPC-TLS session with the notary | `script/measure_offchain.sh` | `measurements/offchain/20261124T130142Z.json` | 283.9 ms (IQR 282.6-286.1); 30.2 MB sent, 3.8 MB received | ~15 min | no |
+| Peak memory | `script/measure_offchain.sh` | `measurements/offchain/20261124T130142Z.json` | snarkjs 1,968.5 MB, witness generator 106.7 MB, prover 256.1 MB (medians) | ~15 min | no |
+| MPC-TLS preprocessing stalls (tlsn#1173), recovered by retry | `script/measure_offchain.sh` | `measurements/offchain/20261124T130142Z.json` | 1/221 sessions (0.45%); 0 runs gave up | ~15 min | no |
 | Contract tests | `script/record_tests.sh` | `measurements/tests/20260926T212837Z.json` | 206 forge tests (Fuzz 5, Invariant 1, Unit 200), 0 failed; invariants 256 runs x depth 128 | ~10 min | no |
 | Security-property coverage (contract conditions) | `script/record_tests.sh` | `measurements/tests/20260926T212837Z.json` | 205/205 tests pass, 4/4 invariants hold; every condition has a passing positive and negative test | ~10 min | no |
 | Coverage of contracts/src | `script/record_tests.sh` | `measurements/tests/20260926T212837Z.json` | lines 100.0%, statements 100.0%, branches 100.0%, functions 100.0% | ~10 min | no |
 | Rust tests | `script/record_tests.sh` | `measurements/tests/20260926T212837Z.json` | 114 passed, 0 failed, 3 ignored; ignored clock-shift tests under libfaketime: 6 passed | ~10 min | no |
-| On-chain execution gas per operation | `script/measure.sh` | `measurements/l1/20260926T194331Z.json` | Register 182,779, Apply 168,680, Engage 96,593, Settle 90,924, Expire 58,787, Reclaim 23,853, Cancel 21,238 | ~2 min | no |
-| Lifecycle gas (Register + Apply + Engage + Settle) | `script/measure.sh` | `measurements/l1/20260926T194331Z.json` | execution 538,976; receipts 625,732; 1,753 transaction bytes | ~2 min | no |
-| Deployment and bytecode size | `script/measure.sh` | `measurements/l1/20260926T194331Z.json` | PPREV 2,124,381 gas, runtime 9,126 B (37.1% of EIP-170); verifier 192,589 gas, 634 B | ~2 min | no |
-| Cost decomposition of Register and Apply | `script/measure.sh` | `measurements/l1/20260926T194331Z.json` | storage 92.4% and 92.0%; slots initialised 7 and 6; ECDSA marginal 3,574 and 3,594 gas | ~2 min | no |
-| ECDSA verifier call | `script/measure.sh` | `measurements/l1/20260926T194331Z.json` | frame 4,020 gas against 434 for an accept-all verifier | ~2 min | no |
-| Receipts against measured gas (signature-dependent difference) | `script/measure.sh` | `measurements/l1/20260926T194331Z.json` | Register +32, Apply +0, Engage +0, Settle +12 gas | ~2 min | no |
+| On-chain execution gas per operation | `script/measure.sh` | `measurements/l1/20261124T123725Z.json` | Register 205,221, Apply 169,536, Engage 96,615, Settle 93,242, Expire 58,809, Reclaim 23,831, Cancel 21,194 | ~2 min | no |
+| Lifecycle gas (Register + Apply + Engage + Settle) | `script/measure.sh` | `measurements/l1/20261124T123725Z.json` | execution 564,614; receipts 651,854; 1,785 transaction bytes | ~2 min | no |
+| Deployment and bytecode size | `script/measure.sh` | `measurements/l1/20261124T123725Z.json` | PPREV 2,458,118 gas, runtime 10,560 B (43.0% of EIP-170); verifier 192,589 gas, 634 B | ~2 min | no |
+| Cost decomposition of Register and Apply | `script/measure.sh` | `measurements/l1/20261124T123725Z.json` | storage 93.0% and 91.7%; slots initialised 8 and 6; ECDSA marginal 3,606 and 3,594 gas | ~2 min | no |
+| ECDSA verifier call | `script/measure.sh` | `measurements/l1/20261124T123725Z.json` | frame 4,040 gas against 434 for an accept-all verifier | ~2 min | no |
+| Receipts against measured gas (signature-dependent difference) | `script/measure.sh` | `measurements/l1/20261124T123725Z.json` | Register -20, Apply +0, Engage +0, Settle +24 gas | ~2 min | no |
 | L1 gas price snapshot (one day of blocks) | `script/l1_price.sh` | `measurements/l1_price/20260926T194005Z.json` | blocks 26,056,487-26,063,686; base fee 0.075715 gwei, priority fee 0.05 gwei, effective 0.133984 gwei (medians) | ~1 min | yes: ETH_MAINNET_RPC_URL |
 | ETH/USD (Chainlink, one reading, used for L1 and L2) | `script/l1_price.sh` | `measurements/l1_price/20260926T194005Z.json` | $2,685.42 at block 26,063,686 | ~1 min | yes: ETH_MAINNET_RPC_URL |
-| L1 cost per operation (execution gas at the median effective price) | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | Register $0.0658, Apply $0.0607, Engage $0.0348, Settle $0.0327, Expire $0.0212, Reclaim $0.0086, Cancel $0.0076 | ~1 s | no |
-| L1 lifecycle and deployment cost | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | execution $0.194; receipts $0.225 (without refunds $0.229); deployment $0.834 | ~1 s | no |
-| L1 lifecycle cost at other gas prices | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | 0.1 gwei $0.145, 1 gwei $1.447, 10 gwei $14.474, 30 gwei $43.421 | ~1 s | no |
-| Freshness budget, sum of component medians (Section VII-E) | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | local anvil total: 3,333 ms (1.11% of Delta); Base Sepolia total: 4,728 ms (1.58% of Delta) | ~1 s | no |
-| On-chain Groth16 verification of phi_R (9 public inputs) | `script/measure_groth16.sh` | `measurements/groth16/20260926T201202Z.json` | 242,098 gas execution; EIP-1108 model 236,350 | ~1 min | no |
-| Lifecycle with three predicate verifications on-chain | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | 1,265,270 gas, x2.3475 (assumes phi_A, phi_S verified like phi_R) | ~1 s | no |
-| L2 receipt gas per operation (Base Sepolia) | `script/measure_l2.sh` | `measurements/l2/20260926T195911Z.json` | Register 208,227, Apply 193,736, Engage 113,137, Settle 110,636, Expire 79,991, Reclaim 40,257, Cancel 37,642 | ~4 min | yes: BASE_SEPOLIA_RPC_URL, BASE_MAINNET_RPC_URL, TESTNET_PRIVATE_KEY |
-| L2 cost per operation (Base mainnet prices) | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | Register $0.0034, Apply $0.0032, Engage $0.0019, Settle $0.0018, Expire $0.0013, Reclaim $0.0007, Cancel $0.0006 | ~1 s | no |
-| L2 lifecycle cost and L1 data share | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | $0.0103, 1,762 bytes; L1 data 0.12% (per operation 0.07-0.22%) | ~1 s | no |
-| Inclusion time t_incl on Base Sepolia (Register, n = 10) | `script/measure_l2.sh` | `measurements/l2/20260926T195911Z.json` | 1,409.2 ms (IQR 1,300.8-2,780.1) | ~4 min | yes: BASE_SEPOLIA_RPC_URL, BASE_MAINNET_RPC_URL, TESTNET_PRIVATE_KEY |
-| L1 against L2 lifecycle cost (receipt gas, same ETH/USD) | `python3 script/derive_summary.py` | `measurements/summary/20260926T201202Z.json` | L1 21.94x L2 | ~1 s | no |
+| L1 cost per operation (execution gas at the median effective price) | `python3 script/derive_summary.py` | `measurements/summary/20261124T130142Z.json` | Register $0.0738, Apply $0.0610, Engage $0.0348, Settle $0.0335, Expire $0.0212, Reclaim $0.0086, Cancel $0.0076 | ~1 s | no |
+| L1 lifecycle and deployment cost | `python3 script/derive_summary.py` | `measurements/summary/20261124T130142Z.json` | execution $0.203; receipts $0.235 (without refunds $0.238); deployment $0.954 | ~1 s | no |
+| L1 lifecycle cost at other gas prices | `python3 script/derive_summary.py` | `measurements/summary/20261124T130142Z.json` | 0.1 gwei $0.152, 1 gwei $1.516, 10 gwei $15.162, 30 gwei $45.487 | ~1 s | no |
+| Freshness budget, sum of component medians (Section VII-E) | `python3 script/derive_summary.py` | `measurements/summary/20261124T130142Z.json` | local anvil total: 2,873 ms (0.96% of Delta); Base Sepolia total: 3,769 ms (1.26% of Delta) | ~1 s | no |
+| On-chain Groth16 verification of phi_R (10 public inputs) | `script/measure_groth16.sh` | `measurements/groth16/20261124T123742Z.json` | 248,745 gas execution; EIP-1108 model 242,500 | ~1 min | no |
+| Lifecycle with three phi_R-cost verifications on-chain | `python3 script/derive_summary.py` | `measurements/summary/20261124T130142Z.json` | 1,310,849 gas, x2.3217 (three times phi_R's verification gas; phi_A and phi_S differ, see the integrated baseline) | ~1 s | no |
+| L2 receipt gas per operation (Base Sepolia) | `script/measure_l2.sh` | `measurements/l2/20261124T123824Z.json` | Register 231,149, Apply 194,580, Engage 113,159, Settle 112,942, Expire 80,013, Reclaim 40,235, Cancel 37,598 | ~4 min | yes: BASE_SEPOLIA_RPC_URL, BASE_MAINNET_RPC_URL, TESTNET_PRIVATE_KEY |
+| L2 cost per operation (Base mainnet prices) | `python3 script/derive_summary.py` | `measurements/summary/20261124T130142Z.json` | Register $0.0143, Apply $0.0121, Engage $0.0070, Settle $0.0070, Expire $0.0050, Reclaim $0.0025, Cancel $0.0023 | ~1 s | no |
+| L2 lifecycle cost and L1 data share | `python3 script/derive_summary.py` | `measurements/summary/20261124T130142Z.json` | $0.0405, 1,791 bytes; L1 data 0.07% (per operation 0.05-0.14%) | ~1 s | no |
+| Inclusion time t_incl on Base Sepolia (Register, n = 10) | `script/measure_l2.sh` | `measurements/l2/20261124T123824Z.json` | 909.3 ms (IQR 859.7-916.2) | ~4 min | yes: BASE_SEPOLIA_RPC_URL, BASE_MAINNET_RPC_URL, TESTNET_PRIVATE_KEY |
+| L1 against L2 lifecycle cost (receipt gas, same ETH/USD) | `python3 script/derive_summary.py` | `measurements/summary/20261124T130142Z.json` | L1 5.8x L2 | ~1 s | no |
 <!-- results:end -->
 
 `script/render_results.py` regenerates this table from the newest records; `--check` tells whether
