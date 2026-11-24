@@ -25,16 +25,16 @@ TABLE_VI = {
     "P1 Freshness": ["R(e)", "A(f)", "S(g)"],
     "P2 Transaction binding": ["R(b)", "R(c)", "R(f)", "A(c)", "A(d)", "S(d)", "S(e)", "R(d)", "A(e)", "S(f)"],
     "P3 Phase binding": ["R(c)", "A(d)", "S(e)"],
-    "P4 Settlement integrity": ["R(h)", "S(b)", "S(c)", "S(d)", "S(h)", "E(a)", "E(b)", "E(c)"],
+    "P4 Settlement integrity": ["R(c)", "R(h)", "S(b)", "S(c)", "S(d)", "S(e)", "S(h)", "E(a)", "E(b)", "E(c)"],
     "P5 Sender binding": ["R(c)", "A(d)", "S(e)", "S(b)"],
 }
 
 # Negative tests of a shared signature condition that target one property.
 ASPECTS = {
     "P1 Freshness": r"AfterWindow|FutureAttestation",
-    "P2 Transaction binding": r"OtherChain|OtherDeployment|OtherListing|OtherEngagement|Signed(Nonce|Timestamp|Cb|Expiry)Differs",
+    "P2 Transaction binding": r"OtherChain|OtherDeployment|OtherListing|OtherEngagement|Signed(Nonce|Timestamp|Cb|Cp|Expiry)Differs",
     "P3 Phase binding": r"OtherPhaseTag|RegistrationPolicy",
-    "P4 Settlement integrity": r"ShareRaised|PreviousRound|DoubleSettlement|Counterparty",
+    "P4 Settlement integrity": r"ShareRaised|PreviousRound|DoubleSettlement|Counterparty|CpDiffers|S_e_reverts\w*Key",
     "P5 Sender binding": r"OtherSubmitter|BeforeSignatureCheck",
 }
 

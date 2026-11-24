@@ -9,8 +9,9 @@
 # and the median (gas-weighted 50th percentile) priority fee; the effective price of a block is their
 # sum. ETH/USD is one reading of the Chainlink ETH/USD feed on Ethereum mainnet at the newest block of
 # the range; measure_l2.sh takes the price from this record instead of reading it again, so L1 and L2
-# dollar figures rest on the same price. The dollar costs use the gas of the newest L1 record
-# (measurements/l1/, override with PPREV_L1_RECORD).
+# dollar figures rest on the same price. The dollar costs use the gas of an L1 record: PPREV_L1_RECORD
+# if set, otherwise the newest record in ${PPREV_MEASUREMENTS_DIR:-measurements}/l1/; the record read
+# is logged and written to costBasis.l1Record.
 #
 # Output: measurements/l1_price/<run>.json. Refuses a dirty working tree (PPREV_ALLOW_DIRTY=1 with
 # PPREV_MEASUREMENTS_DIR for a trial run). The RPC URL is never printed.
@@ -38,8 +39,10 @@ ETH_MAINNET_RPC_URL="$(
 )"
 [ -n "${ETH_MAINNET_RPC_URL}" ] || die "ETH_MAINNET_RPC_URL is empty in .env"
 
-L1_RECORD="${PPREV_L1_RECORD:-$(find "${ROOT}/measurements/l1" -name '*.json' 2>/dev/null | sort | tail -n 1)}"
-[ -f "${L1_RECORD}" ] || die "no L1 record in measurements/l1; run script/measure.sh"
+L1_RECORD="${PPREV_L1_RECORD:-$(find "${MEASUREMENTS_DIR}/l1" -name '*.json' 2>/dev/null | sort | tail -n 1)}"
+[ -f "${L1_RECORD}" ] || die "no L1 record in ${MEASUREMENTS_DIR#"${ROOT}/"}/l1; run script/measure.sh or set PPREV_L1_RECORD"
+L1_RECORD="$(cd "$(dirname "${L1_RECORD}")" && pwd)/$(basename "${L1_RECORD}")"
+log "L1 record: ${L1_RECORD#"${ROOT}/"}"
 
 init_run l1_price
 mkdir -p "${OUT_DIR:?}"

@@ -21,7 +21,9 @@
 #   additive     the newest L1 record's lifecycle plus the three integrated verifications, keeping
 #                PPREV's signature checks;
 #   replacement  as additive, minus each attested operation's ECDSA marginal from the same record.
-# Calldata, storage, and deployment differences are not modelled.
+# Calldata, storage, and deployment differences are not modelled. The L1 record is PPREV_L1_RECORD if
+# set, otherwise the newest record in ${PPREV_MEASUREMENTS_DIR:-measurements}/l1/; the record read is
+# logged, hashed with the inputs, and written to lifecycleCompositionalEstimate.l1Record.
 #
 # The identity signatures in the fixtures are test-key signatures, issued by the fixture generator
 # after it verified the session's presentation against the mock registry's CA and DNS name.
@@ -53,8 +55,10 @@ for setup in "${CIRCUITS}/setup" "${CIRCUITS}/setup/phi_a" "${CIRCUITS}/setup/ph
     [ "$(shasum -a 256 "${setup}/Groth16Verifier.sol" | cut -d' ' -f1)" = "$(jq -r .solidityVerifierSha256 "${setup}/setup.json")" ] \
         || die "${setup#"${ROOT}/"}/Groth16Verifier.sol does not match its setup.json"
 done
-L1_RECORD="${PPREV_L1_RECORD:-$(find "${ROOT}/measurements/l1" -name '*.json' 2>/dev/null | sort | tail -n 1)}"
-[ -f "${L1_RECORD}" ] || die "no L1 record in measurements/l1"
+L1_RECORD="${PPREV_L1_RECORD:-$(find "${MEASUREMENTS_DIR}/l1" -name '*.json' 2>/dev/null | sort | tail -n 1)}"
+[ -f "${L1_RECORD}" ] || die "no L1 record in ${MEASUREMENTS_DIR#"${ROOT}/"}/l1; set PPREV_L1_RECORD"
+L1_RECORD="$(cd "$(dirname "${L1_RECORD}")" && pwd)/$(basename "${L1_RECORD}")"
+log "L1 record: ${L1_RECORD#"${ROOT}/"}"
 init_run e1
 mkdir -p "${OUT_DIR:?}" "${ROOT}/target/measure"
 OUT="${OUT_DIR:?}/${RUN_ID:?}.json"
@@ -189,7 +193,7 @@ result = {
     "lifecycleCompositionalEstimate": {
         "note": ("estimate, not a measurement: verify() is a view without nonce, state, or caller "
                  "handling; no integrated lifecycle contract was executed"),
-        "l1Record": l1_path[len(root) + 1:],
+        "l1Record": l1_path[len(root) + 1:] if l1_path.startswith(root + "/") else l1_path,
         "pprevExecutionGas": lifecycle,
         "integratedVerificationExecutionGas": integrated,
         "additive": {"executionGas": lifecycle + integrated,

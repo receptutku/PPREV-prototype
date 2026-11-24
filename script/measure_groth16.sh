@@ -3,14 +3,17 @@
 #
 # Compiles circuits/setup/Groth16Verifier.sol as snarkjs exported it (checked against setup.json)
 # with the contract settings (solc 0.8.36, optimizer 200 runs, via-IR off, cancun), deploys it on
-# anvil, and verifies the committed sample proof (circuits/setup/sample, 9 public inputs, same key):
+# anvil, and verifies the committed sample proof (circuits/setup/sample, same key; the number of
+# public inputs is that of sample/public.json, checked against nPublic of the verification key):
 # eth_call must return true, and false with one public input changed; the verification is then sent
 # as a transaction for its receipt gas. Execution gas is receipt gas minus 21,000 and calldata gas.
 # The transaction carries an explicit gas limit: the exported verifier returns false instead of
 # reverting when a precompile runs out of gas, so a gas estimate settles too low and the call fails
 # silently. The call trace of the transaction must return true.
 # The comparison "three predicate verifications on-chain" adds three times that execution gas to the
-# lifecycle of the newest L1 record (measurements/l1/, override with PPREV_L1_RECORD).
+# lifecycle of an L1 record: PPREV_L1_RECORD if set, otherwise the newest record in
+# ${PPREV_MEASUREMENTS_DIR:-measurements}/l1/. The record read is logged and written to
+# threeVerificationsOnChain.l1Record. phi_A and phi_S: script/measure_groth16_phase.sh.
 #
 # Output: measurements/groth16/<run>.json. Refuses a dirty working tree (PPREV_ALLOW_DIRTY=1 with
 # PPREV_MEASUREMENTS_DIR for a trial run).
@@ -24,7 +27,8 @@ OUT_DIR="${MEASUREMENTS_DIR:?}/groth16"
 PORTS="${ANVIL_PORT:?}"
 VERIFIER_SRC="${CIRCUITS}/setup/Groth16Verifier.sol"
 SAMPLE="${CIRCUITS}/setup/sample"
-SIG="verifyProof(uint256[2],uint256[2][2],uint256[2],uint256[9])"
+PUBLIC_COUNT="$(jq length "${SAMPLE}/public.json")"
+SIG="verifyProof(uint256[2],uint256[2][2],uint256[2],uint256[${PUBLIC_COUNT}])"
 
 for tool in anvil forge cast jq lsof python3 git; do
     command -v "${tool}" >/dev/null || die "missing tool: ${tool}"
@@ -34,8 +38,12 @@ require_clean_tree
 check_ports_free
 [ "$(shasum -a 256 "${VERIFIER_SRC}" | cut -d' ' -f1)" = "$(jq -r .solidityVerifierSha256 "${CIRCUITS}/setup/setup.json")" ] \
     || die "Groth16Verifier.sol does not match circuits/setup/setup.json"
-L1_RECORD="${PPREV_L1_RECORD:-$(find "${ROOT}/measurements/l1" -name '*.json' 2>/dev/null | sort | tail -n 1)}"
-[ -f "${L1_RECORD}" ] || die "no L1 record in measurements/l1; run script/measure.sh"
+[ "${PUBLIC_COUNT}" = "$(jq -r .nPublic "${CIRCUITS}/setup/verification_key.json")" ] \
+    || die "public input count of the sample differs from the verification key"
+L1_RECORD="${PPREV_L1_RECORD:-$(find "${MEASUREMENTS_DIR}/l1" -name '*.json' 2>/dev/null | sort | tail -n 1)}"
+[ -f "${L1_RECORD}" ] || die "no L1 record in ${MEASUREMENTS_DIR#"${ROOT}/"}/l1; run script/measure.sh or set PPREV_L1_RECORD"
+L1_RECORD="$(cd "$(dirname "${L1_RECORD}")" && pwd)/$(basename "${L1_RECORD}")"
+log "L1 record: ${L1_RECORD#"${ROOT}/"}"
 init_run groth16
 mkdir -p "${OUT_DIR:?}"
 OUT="${OUT_DIR:?}/${RUN_ID:?}.json"
@@ -53,17 +61,18 @@ forge build --root "${PROJ}" -q >"${WORK}/build.log" 2>&1 || die "compiling the 
 # Proof and public inputs as call arguments.
 "${CIRCUITS}/node_modules/.bin/snarkjs" zkey export soliditycalldata "${SAMPLE}/public.json" "${SAMPLE}/proof.json" \
     >"${WORK}/calldata.txt"
-python3 - "${WORK}/calldata.txt" "${WORK}" <<'PY'
+python3 - "${WORK}/calldata.txt" "${WORK}" "${PUBLIC_COUNT}" <<'PY'
 import json, sys
 args = json.loads("[" + open(sys.argv[1]).read() + "]")
-assert len(args) == 4 and len(args[3]) == 9, "expected a, b, c and 9 public inputs"
+n = int(sys.argv[3])
+assert len(args) == 4 and len(args[3]) == n, f"expected a, b, c and {n} public inputs"
 fmt = lambda v: "[" + ",".join(fmt(x) if isinstance(x, list) else x for x in v) + "]"
 for i, a in enumerate(args):
     open(f"{sys.argv[2]}/arg{i}.txt", "w").write(fmt(a))
-# One public input changed by one, modulo the BN254 scalar field order.
+# The last public input changed by one, modulo the BN254 scalar field order.
 r = 21888242871839275222246405745257275088548364400416034343698204186575808495617
 tampered = list(args[3])
-tampered[8] = hex((int(tampered[8], 16) + 1) % r)
+tampered[-1] = hex((int(tampered[-1], 16) + 1) % r)
 open(f"{sys.argv[2]}/arg3-tampered.txt", "w").write(fmt(tampered))
 PY
 A="$(cat "${WORK}/arg0.txt")" B="$(cat "${WORK}/arg1.txt")" C="$(cat "${WORK}/arg2.txt")"
@@ -115,7 +124,7 @@ runtime = len(bytes.fromhex(art["deployedBytecode"]["object"][2:]))
 
 # EIP-1108 prices: ecAdd 150, ecMul 6,000, pairing 45,000 + 34,000 per pair. snarkjs' verifier does
 # one ecMul and one ecAdd per public input and one pairing check over four pairs.
-n = 9
+n = len(json.load(open(f"{root}/circuits/setup/sample/public.json")))
 model = {"pairing": 45000 + 4 * 34000, "publicInputMsm": n * (6000 + 150)}
 model["total"] = model["pairing"] + model["publicInputMsm"]
 
@@ -124,7 +133,7 @@ lc = l1["lifecycle"]["executionGas"]
 three = 3 * execution
 result = {
     "parameters": {"publicInputs": n, "anvilHardfork": hardfork,
-                   "proof": "circuits/setup/sample/{proof,public}.json (register statement of test-vectors/eip712.json, same key)",
+                   "proof": "circuits/setup/sample/{proof,public}.json (register statement of test-vectors/eip712.json with the sample owner's c_P, same key)",
                    "verifier": "circuits/setup/Groth16Verifier.sol as exported by snarkjs, unmodified"},
     "checks": {"validProofAccepted": True, "changedPublicInputRejected": True,
                "transactionReturnedTrue": True, "transactionGasLimit": 1000000},
@@ -136,7 +145,7 @@ result = {
     "deployment": {"transactionGas": int(create["gasUsed"], 16), "initcodeBytes": len(bytes.fromhex(art["bytecode"]["object"][2:])),
                    "runtimeBytes": runtime, "calldataGas": cd(create_input)},
     "threeVerificationsOnChain": {
-        "assumption": "Groth16 verification gas depends on the number of public inputs, not on the circuit size. The comparison assumes that phi_A and phi_S are circuits of similar size and interface to phi_R, each verified with 9 public inputs at the measured cost; neither circuit exists in the prototype (D23).",
+        "assumption": f"Groth16 verification gas depends on the number of public inputs, not on the circuit size. This comparison counts three verifications at phi_R's measured cost ({n} public inputs); phi_A and phi_S have their own verifiers and public-input counts (script/measure_groth16_phase.sh), and the integrated baseline (script/measure_e1.sh) measures all three.",
         "l1Record": l1_path.replace(root + "/", ""), "l1RecordCommit": l1.get("commit"),
         "lifecycleExecutionGas": lc,
         "addedExecutionGas": three,

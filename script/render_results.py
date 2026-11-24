@@ -137,10 +137,10 @@ def main():
         ("Freshness budget, sum of component medians (Section VII-E)", SUM,
          f"local anvil total: {n(round(budget['localAnvil']['totalMs']))} ms ({budget['localAnvil']['totalOverDelta'] * 100:.2f}% of Delta); "
          f"Base Sepolia total: {n(round(budget['baseSepolia']['totalMs']))} ms ({budget['baseSepolia']['totalOverDelta'] * 100:.2f}% of Delta)"),
-        ("On-chain Groth16 verification of phi_R (9 public inputs)", G16,
+        (f"On-chain Groth16 verification of phi_R ({g16['parameters']['publicInputs']} public inputs)", G16,
          f"{n(g16['verification']['executionGas'])} gas execution; EIP-1108 model {n(g16['eip1108Model']['total'])}"),
-        ("Lifecycle with three predicate verifications on-chain", SUM,
-         f"{n(sm['groth16']['lifecycleWithThreeVerificationsGas'])} gas, x{sm['groth16']['factor']} (assumes phi_A, phi_S verified like phi_R)"),
+        ("Lifecycle with three phi_R-cost verifications on-chain", SUM,
+         f"{n(sm['groth16']['lifecycleWithThreeVerificationsGas'])} gas, x{sm['groth16']['factor']} (three times phi_R's verification gas; phi_A and phi_S differ, see the integrated baseline)"),
         ("L2 receipt gas per operation (Base Sepolia)", L2,
          ", ".join(f"{op} {n(l2['perOperation'][op]['receiptGas'])}" for op in ops)),
         ("L2 cost per operation (Base mainnet prices)", SUM,

@@ -154,7 +154,7 @@ for name in ("register", "applyFor", "engage", "settle"):
 lifecycle_ops = ["Register", "Apply", "Engage", "Settle"]
 lifecycle_tx = [by_name[n] for n in ("register", "applyFor", "engage", "settle")]
 result = {
-    "parameters": {"deployment": "D18 (Delta 300 s, tau_lock 14 days, maxExpirations 3, rho 5000 bp)",
+    "parameters": {"deployment": "D18 (Delta 300 s, tau_lock 14 days, maxExpirations 3, rho 5000 bp, rotation delay 14 days)",
                    "anvilHardfork": hardfork, "evmVersion": "cancun (compiler target)"},
     "tests": test_summary,
     "method": {

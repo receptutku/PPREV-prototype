@@ -17,6 +17,10 @@
 # fee parameters); ETH/USD from the newest L1 price record (not read again). The test wallet's balance
 # is recorded at the start and the end; the campaign does not start if it is too low.
 #
+# Records read: PPREV_L1_RECORD (reconciliation) and PPREV_PRICE_RECORD (ETH/USD) if set, otherwise
+# the newest record in ${PPREV_MEASUREMENTS_DIR:-measurements}/l1/ and .../l1_price/. Both are logged
+# and written to comparisonWithL1.l1Record and ethUsd.source.
+#
 # Reads BASE_SEPOLIA_RPC_URL, BASE_MAINNET_RPC_URL, TESTNET_PRIVATE_KEY from .env; none is printed.
 # Output: measurements/l2/<run>.json. Refuses a dirty working tree (PPREV_ALLOW_DIRTY=1 with
 # PPREV_MEASUREMENTS_DIR for a trial run).
@@ -59,9 +63,13 @@ env_var() (
 SEPOLIA_RPC="$(env_var BASE_SEPOLIA_RPC_URL)"
 MAINNET_RPC="$(env_var BASE_MAINNET_RPC_URL)"
 [ -n "${SEPOLIA_RPC}" ] && [ -n "${MAINNET_RPC}" ] || die "BASE_SEPOLIA_RPC_URL and BASE_MAINNET_RPC_URL must be set in .env"
-L1_RECORD="${PPREV_L1_RECORD:-$(find "${ROOT}/measurements/l1" -name '*.json' | sort | tail -n 1)}"
-PRICE_RECORD="${PPREV_PRICE_RECORD:-$(find "${ROOT}/measurements/l1_price" -name '*.json' | sort | tail -n 1)}"
-[ -f "${L1_RECORD}" ] && [ -f "${PRICE_RECORD}" ] || die "needs an L1 record and an L1 price record"
+L1_RECORD="${PPREV_L1_RECORD:-$(find "${MEASUREMENTS_DIR}/l1" -name '*.json' 2>/dev/null | sort | tail -n 1)}"
+PRICE_RECORD="${PPREV_PRICE_RECORD:-$(find "${MEASUREMENTS_DIR}/l1_price" -name '*.json' 2>/dev/null | sort | tail -n 1)}"
+[ -f "${L1_RECORD}" ] && [ -f "${PRICE_RECORD}" ] \
+    || die "needs an L1 record and an L1 price record (PPREV_L1_RECORD, PPREV_PRICE_RECORD)"
+L1_RECORD="$(cd "$(dirname "${L1_RECORD}")" && pwd)/$(basename "${L1_RECORD}")"
+PRICE_RECORD="$(cd "$(dirname "${PRICE_RECORD}")" && pwd)/$(basename "${PRICE_RECORD}")"
+log "L1 record: ${L1_RECORD#"${ROOT}/"}; price record: ${PRICE_RECORD#"${ROOT}/"}"
 
 init_run l2
 # Provenance before anything is written under measurements/.
