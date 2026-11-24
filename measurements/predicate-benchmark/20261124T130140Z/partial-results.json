@@ -1,0 +1,630 @@
+{
+  "startedAt": "2026-11-24T13:04:25.198813+00:00",
+  "scriptSha256": "8041114d98bb95c14404acd156055fa3428d5da03cf3dc2f46221785335a2f73",
+  "scope": "Local witness generation and Groth16 proving on fixed synthetic fixtures; excludes TLS, service verification, signing, and chain inclusion.",
+  "commit": "039f6bcb84e62293f4f610a409a92cf2b8bbdcf7",
+  "workingTreeStatus": "",
+  "machine": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "architecture": "arm64",
+    "powerStart": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=38076515)\t18%; charging; 20:00 remaining present: true\n",
+    "cpu": "Apple M2",
+    "memoryBytes": 17179869184,
+    "powerEnd": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=38076515)\t22%; charging; (no estimate) present: true\n"
+  },
+  "node": "v26.9.0",
+  "nPerPhase": 20,
+  "warmupsPerPhase": 1,
+  "quantileMethod": "linear interpolation at (n-1)*q",
+  "sourceSha256": {
+    "/Users/receptutku/src/pprev-m/circuits/build/main_title_v1_js/main_title_v1.wasm": "c74f27c385c2f2cae5c426b93312b7c66c48a24cc6766300b31d59d615ad7201",
+    "/Users/receptutku/src/pprev-m/circuits/build/main_title_v1_js/generate_witness.js": "4995a2e6b01432f76182abec6a831fdaf7f840384035072002ccaa43101b14d4",
+    "/Users/receptutku/src/pprev-m/circuits/build/phi_r.zkey": "cdf90fe7eda6ec60b19352581778386e0f4c14775f516bc19b79ea319d02e256",
+    "/Users/receptutku/src/pprev-m/circuits/setup/verification_key.json": "631a3ee92df6d3ae91ade1f8248aa3e808a45207d17ebd5e93723cdb94837ae8",
+    "/Users/receptutku/src/pprev-m/circuits/setup/sample/input.json": "1a40132c199fc35718f5506bcd87035b9de694890413c7f498e5319150ac6cd3",
+    "/Users/receptutku/src/pprev-m/circuits/setup/sample/public.json": "1b36aea46dae021894a5e60428966f16ec244e20bfe610f1c45a1398682c52a7",
+    "/Users/receptutku/src/pprev-m/circuits/build/main_income_v1_js/main_income_v1.wasm": "0d951466432820e1f29feb38f241a1aa95cd85a39430f5839094bb803ed5beb5",
+    "/Users/receptutku/src/pprev-m/circuits/build/main_income_v1_js/generate_witness.js": "4995a2e6b01432f76182abec6a831fdaf7f840384035072002ccaa43101b14d4",
+    "/Users/receptutku/src/pprev-m/circuits/build/phi_a.zkey": "1867088245853e2975bd9e7e070ddae04c9e87730d09b7b593f1ef907172294a",
+    "/Users/receptutku/src/pprev-m/circuits/setup/phi_a/verification_key.json": "157bb2d4f144c2de04a9b4ee8ffb6b52699707fd23f47bc1d8cfc9c6913594b5",
+    "/Users/receptutku/src/pprev-m/circuits/setup/phi_a/sample/input.json": "ffc16025246f920622a6429b9ac8d92635340b3b29c18625e83d5022d6423ba2",
+    "/Users/receptutku/src/pprev-m/circuits/setup/phi_a/sample/public.json": "a3cceb4e417198b51902547dd83bf7bbd0e95e5f8e83886693129246c7e9ab93",
+    "/Users/receptutku/src/pprev-m/circuits/build/main_tenancy_v1_js/main_tenancy_v1.wasm": "29bf1c666483afd32273caf8709cd068d30a4c38c2a0e141ce06dfe0966a72c4",
+    "/Users/receptutku/src/pprev-m/circuits/build/main_tenancy_v1_js/generate_witness.js": "4995a2e6b01432f76182abec6a831fdaf7f840384035072002ccaa43101b14d4",
+    "/Users/receptutku/src/pprev-m/circuits/build/phi_s.zkey": "ab0013f9757e9612db8388b6f7b775ca4901d81877114fc377a5ee012d5add21",
+    "/Users/receptutku/src/pprev-m/circuits/setup/phi_s/verification_key.json": "99d75aefadc7a6760f01c2f7618483c904aadcb0078f2760802afc3098888739",
+    "/Users/receptutku/src/pprev-m/circuits/setup/phi_s/sample/input.json": "570eb9c316abba75f1439aa890c30b668705682bb425b5dde312b0f38c33eade",
+    "/Users/receptutku/src/pprev-m/circuits/setup/phi_s/sample/public.json": "e8bc82cc47bba6205847c1847c44d8ad8d92e23a3c394f428da5b1c4a6333821"
+  },
+  "warmups": [
+    {
+      "phase": "r",
+      "round": -1,
+      "witnessMs": 303.287375,
+      "proveMs": 2555.310708,
+      "totalProvingMs": 2858.598083,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": -1,
+      "witnessMs": 190.516708,
+      "proveMs": 1510.013666,
+      "totalProvingMs": 1700.530374,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": -1,
+      "witnessMs": 303.071416,
+      "proveMs": 2738.803042,
+      "totalProvingMs": 3041.8744580000002,
+      "proofVerified": true
+    }
+  ],
+  "samples": [
+    {
+      "phase": "r",
+      "round": 0,
+      "witnessMs": 306.931958,
+      "proveMs": 2533.268709,
+      "totalProvingMs": 2840.200667,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 0,
+      "witnessMs": 190.509792,
+      "proveMs": 1520.054834,
+      "totalProvingMs": 1710.564626,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 0,
+      "witnessMs": 302.584875,
+      "proveMs": 2712.316583,
+      "totalProvingMs": 3014.901458,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 1,
+      "witnessMs": 190.785666,
+      "proveMs": 1539.413125,
+      "totalProvingMs": 1730.198791,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 1,
+      "witnessMs": 303.22025,
+      "proveMs": 2709.123583,
+      "totalProvingMs": 3012.343833,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 1,
+      "witnessMs": 304.295625,
+      "proveMs": 2541.223125,
+      "totalProvingMs": 2845.51875,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 2,
+      "witnessMs": 304.583334,
+      "proveMs": 2706.829833,
+      "totalProvingMs": 3011.4131669999997,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 2,
+      "witnessMs": 308.588833,
+      "proveMs": 2515.514417,
+      "totalProvingMs": 2824.10325,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 2,
+      "witnessMs": 191.292708,
+      "proveMs": 1534.755584,
+      "totalProvingMs": 1726.048292,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 3,
+      "witnessMs": 303.977708,
+      "proveMs": 2534.194583,
+      "totalProvingMs": 2838.172291,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 3,
+      "witnessMs": 190.166542,
+      "proveMs": 1526.595375,
+      "totalProvingMs": 1716.761917,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 3,
+      "witnessMs": 372.972917,
+      "proveMs": 2694.877958,
+      "totalProvingMs": 3067.850875,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 4,
+      "witnessMs": 190.944917,
+      "proveMs": 1519.017167,
+      "totalProvingMs": 1709.962084,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 4,
+      "witnessMs": 303.924375,
+      "proveMs": 2734.917333,
+      "totalProvingMs": 3038.841708,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 4,
+      "witnessMs": 303.343917,
+      "proveMs": 2535.213125,
+      "totalProvingMs": 2838.5570420000004,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 5,
+      "witnessMs": 303.0985,
+      "proveMs": 2743.60275,
+      "totalProvingMs": 3046.70125,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 5,
+      "witnessMs": 305.57025,
+      "proveMs": 2586.483208,
+      "totalProvingMs": 2892.0534580000003,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 5,
+      "witnessMs": 189.15225,
+      "proveMs": 1603.354292,
+      "totalProvingMs": 1792.506542,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 6,
+      "witnessMs": 323.499291,
+      "proveMs": 2798.061208,
+      "totalProvingMs": 3121.560499,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 6,
+      "witnessMs": 208.8535,
+      "proveMs": 1562.752667,
+      "totalProvingMs": 1771.606167,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 6,
+      "witnessMs": 300.728,
+      "proveMs": 2752.066167,
+      "totalProvingMs": 3052.794167,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 7,
+      "witnessMs": 195.859042,
+      "proveMs": 1530.78975,
+      "totalProvingMs": 1726.648792,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 7,
+      "witnessMs": 306.408458,
+      "proveMs": 2701.532959,
+      "totalProvingMs": 3007.941417,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 7,
+      "witnessMs": 313.517833,
+      "proveMs": 2531.053375,
+      "totalProvingMs": 2844.571208,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 8,
+      "witnessMs": 308.931583,
+      "proveMs": 2762.808458,
+      "totalProvingMs": 3071.740041,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 8,
+      "witnessMs": 303.851625,
+      "proveMs": 2524.1605,
+      "totalProvingMs": 2828.012125,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 8,
+      "witnessMs": 192.540041,
+      "proveMs": 1535.082333,
+      "totalProvingMs": 1727.622374,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 9,
+      "witnessMs": 306.69725,
+      "proveMs": 2622.5,
+      "totalProvingMs": 2929.19725,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 9,
+      "witnessMs": 192.825125,
+      "proveMs": 1612.885417,
+      "totalProvingMs": 1805.710542,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 9,
+      "witnessMs": 310.263334,
+      "proveMs": 2854.094042,
+      "totalProvingMs": 3164.357376,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 10,
+      "witnessMs": 193.131958,
+      "proveMs": 1518.257209,
+      "totalProvingMs": 1711.389167,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 10,
+      "witnessMs": 308.355125,
+      "proveMs": 2740.043125,
+      "totalProvingMs": 3048.39825,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 10,
+      "witnessMs": 382.827916,
+      "proveMs": 2610.833333,
+      "totalProvingMs": 2993.661249,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 11,
+      "witnessMs": 303.558041,
+      "proveMs": 2700.653041,
+      "totalProvingMs": 3004.211082,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 11,
+      "witnessMs": 305.515375,
+      "proveMs": 2596.909708,
+      "totalProvingMs": 2902.425083,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 11,
+      "witnessMs": 192.03,
+      "proveMs": 1547.356667,
+      "totalProvingMs": 1739.386667,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 12,
+      "witnessMs": 307.823083,
+      "proveMs": 2567.724542,
+      "totalProvingMs": 2875.547625,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 12,
+      "witnessMs": 196.058,
+      "proveMs": 1522.505167,
+      "totalProvingMs": 1718.563167,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 12,
+      "witnessMs": 307.213875,
+      "proveMs": 2776.317042,
+      "totalProvingMs": 3083.530917,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 13,
+      "witnessMs": 191.399792,
+      "proveMs": 1551.200541,
+      "totalProvingMs": 1742.6003329999999,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 13,
+      "witnessMs": 304.17275,
+      "proveMs": 2766.800958,
+      "totalProvingMs": 3070.973708,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 13,
+      "witnessMs": 306.428291,
+      "proveMs": 2575.350125,
+      "totalProvingMs": 2881.778416,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 14,
+      "witnessMs": 305.543,
+      "proveMs": 2765.242709,
+      "totalProvingMs": 3070.785709,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 14,
+      "witnessMs": 306.832334,
+      "proveMs": 2535.309291,
+      "totalProvingMs": 2842.141625,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 14,
+      "witnessMs": 190.241375,
+      "proveMs": 1523.712333,
+      "totalProvingMs": 1713.953708,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 15,
+      "witnessMs": 308.451667,
+      "proveMs": 2548.7965,
+      "totalProvingMs": 2857.2481669999997,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 15,
+      "witnessMs": 191.439,
+      "proveMs": 1543.781458,
+      "totalProvingMs": 1735.220458,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 15,
+      "witnessMs": 304.442542,
+      "proveMs": 2713.068709,
+      "totalProvingMs": 3017.511251,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 16,
+      "witnessMs": 191.580875,
+      "proveMs": 1514.036417,
+      "totalProvingMs": 1705.617292,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 16,
+      "witnessMs": 305.294167,
+      "proveMs": 3001.157667,
+      "totalProvingMs": 3306.451834,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 16,
+      "witnessMs": 308.713542,
+      "proveMs": 2559.737167,
+      "totalProvingMs": 2868.450709,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 17,
+      "witnessMs": 303.788708,
+      "proveMs": 4025.400334,
+      "totalProvingMs": 4329.189042,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 17,
+      "witnessMs": 358.656291,
+      "proveMs": 3018.773291,
+      "totalProvingMs": 3377.4295819999998,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 17,
+      "witnessMs": 213.27825,
+      "proveMs": 1699.635833,
+      "totalProvingMs": 1912.9140830000001,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 18,
+      "witnessMs": 308.925833,
+      "proveMs": 2907.811541,
+      "totalProvingMs": 3216.7373740000003,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 18,
+      "witnessMs": 197.052791,
+      "proveMs": 1603.733208,
+      "totalProvingMs": 1800.7859990000002,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 18,
+      "witnessMs": 321.788166,
+      "proveMs": 3039.34325,
+      "totalProvingMs": 3361.1314159999997,
+      "proofVerified": true
+    },
+    {
+      "phase": "a",
+      "round": 19,
+      "witnessMs": 194.715959,
+      "proveMs": 1677.875917,
+      "totalProvingMs": 1872.591876,
+      "proofVerified": true
+    },
+    {
+      "phase": "s",
+      "round": 19,
+      "witnessMs": 332.62,
+      "proveMs": 2949.878042,
+      "totalProvingMs": 3282.4980419999997,
+      "proofVerified": true
+    },
+    {
+      "phase": "r",
+      "round": 19,
+      "witnessMs": 310.3805,
+      "proveMs": 2600.023,
+      "totalProvingMs": 2910.4035000000003,
+      "proofVerified": true
+    }
+  ],
+  "status": "passed",
+  "summary": {
+    "r": {
+      "witnessMs": {
+        "n": 20,
+        "median": 307.3775205,
+        "p25": 305.55653125,
+        "p75": 309.28949975,
+        "min": 303.343917,
+        "max": 382.827916
+      },
+      "proveMs": {
+        "n": 20,
+        "median": 2563.7308545,
+        "p25": 2534.9584895000003,
+        "p75": 2602.72558325,
+        "min": 2515.514417,
+        "max": 3018.773291
+      },
+      "totalProvingMs": {
+        "n": 20,
+        "median": 2871.999167,
+        "p25": 2841.6563855000004,
+        "p75": 2915.1019375000005,
+        "min": 2824.10325,
+        "max": 3377.4295819999998
+      }
+    },
+    "a": {
+      "witnessMs": {
+        "n": 20,
+        "median": 191.80543749999998,
+        "p25": 190.90510425,
+        "p75": 195.00172974999998,
+        "min": 189.15225,
+        "max": 213.27825
+      },
+      "proveMs": {
+        "n": 20,
+        "median": 1537.2477290000002,
+        "p25": 1523.4105415,
+        "p75": 1572.90307325,
+        "min": 1514.036417,
+        "max": 1699.635833
+      },
+      "totalProvingMs": {
+        "n": 20,
+        "median": 1728.9105825000001,
+        "p25": 1716.05986475,
+        "p75": 1776.83126075,
+        "min": 1705.617292,
+        "max": 1912.9140830000001
+      }
+    },
+    "s": {
+      "witnessMs": {
+        "n": 20,
+        "median": 304.93875049999997,
+        "p25": 303.73104125,
+        "p75": 308.4992395,
+        "min": 300.728,
+        "max": 372.972917
+      },
+      "proveMs": {
+        "n": 20,
+        "median": 2747.8344585,
+        "p25": 2711.518333,
+        "p75": 2795.761292,
+        "min": 2694.877958,
+        "max": 4025.400334
+      },
+      "totalProvingMs": {
+        "n": 20,
+        "median": 3060.322521,
+        "p25": 3016.85880275,
+        "p75": 3103.73753175,
+        "min": 3004.211082,
+        "max": 4329.189042
+      }
+    }
+  },
+  "sourceUnchanged": true,
+  "finishedAt": "2026-11-24T13:13:47.194059+00:00"
+}
