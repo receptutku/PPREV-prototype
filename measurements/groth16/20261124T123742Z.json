@@ -1,0 +1,66 @@
+{
+  "runId": "20261124T123742Z",
+  "commit": "0f7e3fddc576a73d784b788c5ce7ae8e88e7cc7f",
+  "workingTreeDirty": false,
+  "machine": {
+    "cpu": "Apple M2",
+    "memoryBytes": 17179869184,
+    "os": "26.6.2",
+    "powerSource": "Battery Power"
+  },
+  "tools": {
+    "anvil": "anvil Version: 1.8.3",
+    "forge": "forge Version: 1.8.3",
+    "cast": "cast Version: 1.8.3",
+    "solc": "0.8.36",
+    "circom": "circom compiler 2.2.3",
+    "snarkjs": "0.7.6",
+    "circomlib": "2.0.5",
+    "node": "v26.9.0",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "tlsn": "v0.1.0-alpha.15#47aee45b53e06648c1b2ad3689b367b8c923fdec",
+    "alloy": "2.5.0"
+  },
+  "parameters": {
+    "publicInputs": 10,
+    "anvilHardfork": "Osaka",
+    "proof": "circuits/setup/sample/{proof,public}.json (register statement of test-vectors/eip712.json with the sample owner's c_P, same key)",
+    "verifier": "circuits/setup/Groth16Verifier.sol as exported by snarkjs, unmodified"
+  },
+  "checks": {
+    "validProofAccepted": true,
+    "changedPublicInputRejected": true,
+    "transactionReturnedTrue": true,
+    "transactionGasLimit": 1000000
+  },
+  "verification": {
+    "receiptGas": 277333,
+    "intrinsicGas": 21000,
+    "calldataBytes": 580,
+    "calldataGas": 7588,
+    "executionGas": 248745,
+    "transactionHash": "0x9e707cebca0956a278286009b8dcff76c3259cee1c9d719eb61d77bfb9e8fec9"
+  },
+  "eip1108Model": {
+    "pairing": 181000,
+    "publicInputMsm": 61500,
+    "total": 242500,
+    "executionMinusModel": 6245,
+    "modelShareOfExecution": 0.9749
+  },
+  "deployment": {
+    "transactionGas": 526968,
+    "initcodeBytes": 2220,
+    "runtimeBytes": 2192,
+    "calldataGas": 34956
+  },
+  "threeVerificationsOnChain": {
+    "assumption": "Groth16 verification gas depends on the number of public inputs, not on the circuit size. This comparison counts three verifications at phi_R's measured cost (10 public inputs); phi_A and phi_S have their own verifiers and public-input counts (script/measure_groth16_phase.sh), and the integrated baseline (script/measure_e1.sh) measures all three.",
+    "l1Record": "measurements/l1/20261124T123725Z.json",
+    "l1RecordCommit": "1d377404ae15cc02e2cd8c8258f8d50e5b28e2c0",
+    "lifecycleExecutionGas": 564614,
+    "addedExecutionGas": 746235,
+    "lifecycleWithVerificationGas": 1310849,
+    "factor": 2.3217
+  }
+}
