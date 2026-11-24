@@ -1,0 +1,196 @@
+{
+  "deltaBudget": {
+    "baseSepolia": {
+      "components": {
+        "tInclMs": 909.269,
+        "tProveMs": 2849.137,
+        "tSignMs": 9.057,
+        "tVerifyMs": 1.675
+      },
+      "deltaMs": 300000,
+      "tInclSource": "L2 record, Register on Base Sepolia, n = 10",
+      "totalMs": 3769.138,
+      "totalOverDelta": 0.012564
+    },
+    "formula": "Delta >= t_prove + t_verify + t_sign + t_incl (medians; t_prove = witness generation + snarkjs)",
+    "localAnvil": {
+      "components": {
+        "tInclMs": 13.472,
+        "tProveMs": 2849.137,
+        "tSignMs": 9.057,
+        "tVerifyMs": 1.675
+      },
+      "deltaMs": 300000,
+      "tInclSource": "offchain record, local anvil node, n = 20",
+      "totalMs": 2873.341,
+      "totalOverDelta": 0.009578
+    }
+  },
+  "derivedBy": {
+    "script": "script/derive_summary.py",
+    "sha256": "c88c56c7dc05219c8a345937ee81ecb6f1f8f0b3d75b4d0ce9c7d25f3ee2aac4"
+  },
+  "ethUsd": {
+    "block": 26063686,
+    "chain": "Ethereum mainnet",
+    "price": 2685.42
+  },
+  "groth16": {
+    "assumption": "Groth16 verification gas depends on the number of public inputs, not on the circuit size. This comparison counts three verifications at phi_R's measured cost (10 public inputs); phi_A and phi_S have their own verifiers and public-input counts (script/measure_groth16_phase.sh), and the integrated baseline (script/measure_e1.sh) measures all three.",
+    "factor": 2.3217,
+    "lifecycleExecutionGas": 564614,
+    "lifecycleWithThreeVerificationsGas": 1310849,
+    "publicInputs": 10,
+    "verificationExecutionGas": 248745
+  },
+  "inputs": {
+    "groth16": {
+      "committedIn": "0e1fcf8ff218f4e89a6b810500a50b30a54d26da",
+      "file": "measurements/groth16/20261124T123742Z.json",
+      "measuredAtCommit": "0f7e3fddc576a73d784b788c5ce7ae8e88e7cc7f",
+      "sha256": "997453a472d702a42c7cba612c1e4b00cb810bb0e88d0df0146b49cd11a50f06"
+    },
+    "l1": {
+      "committedIn": "0f7e3fddc576a73d784b788c5ce7ae8e88e7cc7f",
+      "file": "measurements/l1/20261124T123725Z.json",
+      "measuredAtCommit": "1d377404ae15cc02e2cd8c8258f8d50e5b28e2c0",
+      "sha256": "9e8d44b66f2a845d309cdc19ce9f83aa53e0a75ae2da3f4afea914be85718d49"
+    },
+    "l1Price": {
+      "committedIn": "f49965208630fa45beb6148435cf6a2c8a028cf3",
+      "file": "measurements/l1_price/20260926T194005Z.json",
+      "measuredAtCommit": "170817a8affb157a1133edd9c63d7d5cfb2be31a",
+      "sha256": "2f464b3a21bfff7f0402f972cedcdde573115495011b1ada57735d44b2992e93"
+    },
+    "l2": {
+      "committedIn": "e6f5aced776c6c6786151ce2f6d8ccf64a61fa2b",
+      "file": "measurements/l2/20261124T123824Z.json",
+      "measuredAtCommit": "8202f5862d46b5c0d4dfc9f250cc92ba31857ec6",
+      "sha256": "538dcff3ecd237387fc56b91b7f29e4da19f4376a6ecfd1fd36da74046c2d63b"
+    },
+    "offchain": {
+      "committedIn": "039f6bcb84e62293f4f610a409a92cf2b8bbdcf7",
+      "file": "measurements/offchain/20261124T130142Z.json",
+      "measuredAtCommit": "6e3254871c0368e770c9ed153a4e2a137a8ec9a1",
+      "sha256": "a89817fa0c2517e3f374b1f1df44c610d079d8115e3ac5a81c30696b6cdba401"
+    }
+  },
+  "l1OverL2": {
+    "basis": "receipt gas on both layers (refunds netted), same ETH/USD",
+    "l1LifecycleReceiptUsd": 0.23453912,
+    "l1OverL2": 5.8,
+    "l2LifecycleUsd": 0.04045725
+  },
+  "layer1": {
+    "deploymentTransactions": {
+      "EcdsaNotaryVerifier": {
+        "gas": 192589,
+        "usd": 0.06929413
+      },
+      "PPREV": {
+        "gas": 2458118,
+        "usd": 0.88443857
+      },
+      "total": {
+        "gas": 2650707,
+        "usd": 0.9537327
+      }
+    },
+    "gasPriceGwei": 0.133983935,
+    "gasPriceWei": "133983935",
+    "lifecycleExecution": {
+      "gas": 564614,
+      "usd": 0.20314989
+    },
+    "lifecycleExecutionSensitivity": {
+      "0.1 gwei": 0.15162257,
+      "1 gwei": 1.51622573,
+      "10 gwei": 15.16225728,
+      "30 gwei": 45.48677184
+    },
+    "lifecycleReceiptWithRefunds": {
+      "gas": 651854,
+      "usd": 0.23453912
+    },
+    "lifecycleReceiptWithoutRefunds": {
+      "gas": 661474,
+      "usd": 0.23800042
+    },
+    "perOperationExecution": {
+      "Apply": {
+        "gas": 169536,
+        "usd": 0.06099958
+      },
+      "Cancel": {
+        "gas": 21194,
+        "usd": 0.00762567
+      },
+      "Engage": {
+        "gas": 96615,
+        "usd": 0.03476238
+      },
+      "Expire": {
+        "gas": 58809,
+        "usd": 0.02115966
+      },
+      "Reclaim": {
+        "gas": 23831,
+        "usd": 0.00857447
+      },
+      "Register": {
+        "gas": 205221,
+        "usd": 0.07383916
+      },
+      "Settle": {
+        "gas": 93242,
+        "usd": 0.03354876
+      }
+    }
+  },
+  "layer2": {
+    "lifecycle": {
+      "l1DataShare": 0.000731,
+      "rawTransactionBytes": 1791,
+      "receiptGas": 651830,
+      "usd": 0.04045725
+    },
+    "mainnetBlock": 61668263,
+    "perOperation": {
+      "Apply": {
+        "l1DataShare": 0.000717,
+        "receiptGas": 194580,
+        "usd": 0.01207686
+      },
+      "Cancel": {
+        "l1DataShare": 0.001401,
+        "receiptGas": 37598,
+        "usd": 0.00233517
+      },
+      "Engage": {
+        "l1DataShare": 0.000466,
+        "receiptGas": 113159,
+        "usd": 0.0070216
+      },
+      "Expire": {
+        "l1DataShare": 0.000659,
+        "receiptGas": 80013,
+        "usd": 0.00496582
+      },
+      "Reclaim": {
+        "l1DataShare": 0.00131,
+        "receiptGas": 40235,
+        "usd": 0.00249872
+      },
+      "Register": {
+        "l1DataShare": 0.000706,
+        "receiptGas": 231149,
+        "usd": 0.01434642
+      },
+      "Settle": {
+        "l1DataShare": 0.00107,
+        "receiptGas": 112942,
+        "usd": 0.00701237
+      }
+    }
+  }
+}
